@@ -5,45 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Super Rabbit Adventure (Online)</title>
     <style>
-        body, html { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; user-select: none; background-color: #000; }
-        #canvas-container { width: 100%; height: 100%; display: block; }
+        body, html { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; user-select: none; background-color: #000; font-family: 'Arial', sans-serif; }
+        #canvas-container { width: 100%; height: 100%; display: block; position: absolute; top: 0; left: 0; z-index: 1; }
         
-        /* ANA GİRİŞ PANELİ */
+        /* ŞEFFAF MENÜ PANELLERİ (Arkadaki 3D sahneyi görmek için) */
         #lobby-container, #waiting-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            background: rgba(30, 60, 114, 0.4); /* Şeffaf yapıldı */
             z-index: 1000; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; font-family: 'Arial', sans-serif; color: white;
+            align-items: center; justify-content: center; color: white;
         }
         
-        /* BEKLEME LOBİSİ (SONRADAN AÇILACAK) */
-        #waiting-container { background: linear-gradient(135deg, #2c3e50, #3498db); display: none; }
+        #waiting-container { background: rgba(44, 62, 80, 0.5); display: none; }
 
-        .lobby-box { background: rgba(0, 0, 0, 0.8); padding: 30px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 300px; }
-        h1 { margin-bottom: 20px; font-size: 28px; text-shadow: 2px 2px 4px rgba(0,0,0,0.6); }
-        h2 { font-size: 24px; margin-bottom: 10px; }
+        .lobby-box { background: rgba(0, 0, 0, 0.85); padding: 25px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.6); width: 300px; }
+        h1 { margin: 0 0 15px 0; font-size: 26px; text-shadow: 2px 2px 4px rgba(0,0,0,0.6); color: #ffeb3b; }
+        h2 { font-size: 22px; margin-bottom: 10px; }
         
         .lobby-btn {
             background: #ff9800; color: white; border: none; padding: 12px 20px;
-            font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;
-            width: 100%; margin: 10px 0; transition: 0.2s; box-shadow: 0 4px 0 #e65100;
+            font-size: 17px; font-weight: bold; border-radius: 8px; cursor: pointer;
+            width: 100%; margin: 8px 0; transition: 0.2s; box-shadow: 0 4px 0 #e65100;
         }
         .lobby-btn:active { transform: translateY(4px); box-shadow: none; }
+        
         .room-input {
             width: 90%; padding: 10px; font-size: 18px; text-align: center;
-            border-radius: 8px; border: 2px solid #ccc; margin-top: 10px; color: black;
+            border-radius: 8px; border: 2px solid #ccc; margin-top: 5px; color: black; font-weight: bold;
         }
+
+        /* MAX OYUNCU AYAR SLIDER'I */
+        .slider-container { background: rgba(255,255,255,0.1); padding: 10px; border-radius: 8px; margin: 10px 0; text-align: left; }
+        .slider-label { font-size: 14px; font-weight: bold; display: flex; justify-content: space-between; }
+        .player-slider { width: 100%; margin-top: 8px; cursor: pointer; accent-color: #ff9800; }
         
-        /* OYUN İÇİ ODA PANELİ */
+        /* OYUN İÇİ PANEL */
         #room-info {
-            position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.7);
+            position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.8);
             color: #fff; padding: 10px 15px; font-family: Arial; font-weight: bold;
             border-radius: 8px; z-index: 100; pointer-events: none; font-size: 14px;
         }
 
         /* MOBİL BUTONLAR */
         #joystick-zone { position: absolute; bottom: 40px; left: 40px; width: 110px; height: 110px; background: rgba(255,255,255,0.2); border-radius: 50%; z-index: 10; touch-action: none; }
-        #joystick-stick { position: absolute; top: 35px; left: 35px; width: 40px; height: 40px; background: #fff; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
+        #joystick-stick { position: absolute; top: 35px; left: 35px; width: 40px; height: 40px; background: #fff; border-radius: 50%; }
         .action-btn { position: absolute; width: 70px; height: 70px; border-radius: 50%; border: none; color: white; font-weight: bold; font-size: 14px; z-index: 10; box-shadow: 0 6px 0 rgba(0,0,0,0.3); }
         .action-btn:active { transform: translateY(4px); box-shadow: none; }
         #jump-button { bottom: 50px; right: 130px; background: #2196f3; box-shadow: 0 6px 0 #0d47a1; }
@@ -54,13 +59,24 @@
 </head>
 <body>
 
+    <div id="canvas-container"></div>
+
     <div id="lobby-container">
         <div class="lobby-box">
             <h1>RABBIT ONLINE</h1>
             <button class="lobby-btn" style="background:#9c27b0; box-shadow: 0 4px 0 #4a148c;" onclick="playSolo()">TEK OYNA</button>
+            
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Maksimum Oyuncu:</span>
+                    <span id="slider-val" style="color:#ff9800; font-size:16px;">4</span>
+                </div>
+                <input type="range" id="max-players-range" class="player-slider" min="2" max="10" value="4" oninput="document.getElementById('slider-val').innerText = this.value">
+            </div>
+
             <button class="lobby-btn" onclick="createRoom()">ODA OLUŞTUR</button>
-            <hr style="border: 1px solid rgba(255,255,255,0.2); margin: 15px 0;">
-            <input type="number" id="room-code-input" class="room-input" placeholder="5 HANELİ KOD GİR" oninput="if(this.value.length > 5) this.value = this.value.slice(0,5);">
+            <hr style="border: 1px solid rgba(255,255,255,0.2); margin: 10px 0;">
+            <input type="number" id="room-code-input" class="room-input" placeholder="5 HANELİ KOD" oninput="if(this.value.length > 5) this.value = this.value.slice(0,5);">
             <button class="lobby-btn" style="background:#4caf50; box-shadow: 0 4px 0 #1b5e20;" onclick="joinRoom()">ODAYA KATIL</button>
         </div>
     </div>
@@ -68,9 +84,9 @@
     <div id="waiting-container">
         <div class="lobby-box">
             <h2>BEKLEME ODASI</h2>
-            <div style="font-size: 32px; font-weight: bold; color: #ff9800; margin: 15px 0; letter-spacing: 2px;" id="waiting-code-text">00000</div>
-            <p style="font-size: 16px; color: #e0e0e0;" id="waiting-status-text">Oyuncular bekleniyor...</p>
-            <p style="font-size: 18px; font-weight: bold;">Toplam Oyuncu: <span id="waiting-count-text">1</span></p>
+            <div style="font-size: 34px; font-weight: bold; color: #ff9800; margin: 10px 0; letter-spacing: 2px;" id="waiting-code-text">00000</div>
+            <p style="font-size: 15px; color: #e0e0e0;" id="waiting-status-text">Oyuncular bekleniyor...</p>
+            <p style="font-size: 18px; font-weight: bold;">Oyuncu Kapasitesi: <span id="waiting-count-text">1 / 4</span></p>
             
             <button class="lobby-btn" id="start-game-btn" style="background:#e91e63; box-shadow: 0 4px 0 #880e4f; display: none;" onclick="hostStartGame()">OYUNU BAŞLAT</button>
         </div>
@@ -80,8 +96,6 @@
         MOD: <span id="current-room-text" style="color: #ff9800;">-----</span><br>
         ODADAKİLER: <span id="player-count-text">1</span>
     </div>
-
-    <div id="canvas-container"></div>
 
     <div id="joystick-zone"><div id="joystick-stick"></div></div>
     <button id="jump-button" class="action-btn">ZIPLA</button>
