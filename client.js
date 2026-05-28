@@ -7,197 +7,100 @@ let maxPlayersLimit = 4;
 let isDead = false;
 let respawnTimer = null;
 let respawnCountdown = 15;
+let lastTeleportTime = 0;
+const teleportCooldown = 3; // saniye
 
 // 3D SAHNE AYARLARI
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB);
-scene.fog = new THREE.Fog(0x87CEEB, 70, 140);
+scene.fog = new THREE.Fog(0x87CEEB, 100, 350);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 400);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = 1.1;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
 // IŞIKLANDIRMA
-const ambientLight = new THREE.AmbientLight(0xfff5e6, 0.55);
+const ambientLight = new THREE.AmbientLight(0xfff5e6, 0.6);
 scene.add(ambientLight);
-const sunLight = new THREE.DirectionalLight(0xfff5e6, 0.85);
-sunLight.position.set(60, 80, 50);
+const sunLight = new THREE.DirectionalLight(0xfff5e6, 0.9);
+sunLight.position.set(100, 120, 80);
 sunLight.castShadow = true;
-sunLight.shadow.camera.left = -60;
-sunLight.shadow.camera.right = 60;
-sunLight.shadow.camera.top = 60;
-sunLight.shadow.camera.bottom = -60;
+sunLight.shadow.camera.left = -100;
+sunLight.shadow.camera.right = 100;
+sunLight.shadow.camera.top = 100;
+sunLight.shadow.camera.bottom = -100;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
-sunLight.shadow.bias = -0.0004;
+sunLight.shadow.bias = -0.0005;
 scene.add(sunLight);
 
-// --- ASIL OYUN DÜNYASI (BÜYÜK HARİTA) ---
+// --- ANA GRUP ---
 const gameplayGroup = new THREE.Group();
 scene.add(gameplayGroup);
 
-// Devasa ana zemin
-const groundGeo = new THREE.CircleGeometry(75, 64);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x7ba428, roughness: 0.9 });
+// Devasa ana zemin (çimen)
+const groundGeo = new THREE.CircleGeometry(150, 128);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x7ba428, roughness: 0.95 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
-// İç bölge (daha açık yeşil)
-const innerGroundGeo = new THREE.CircleGeometry(55, 64);
-const innerGroundMat = new THREE.MeshStandardMaterial({ color: 0x96c93d, roughness: 0.8 });
+// İç bölge (daha açık)
+const innerGroundGeo = new THREE.CircleGeometry(110, 128);
+const innerGroundMat = new THREE.MeshStandardMaterial({ color: 0x96c93d, roughness: 0.85 });
 const innerGround = new THREE.Mesh(innerGroundGeo, innerGroundMat);
 innerGround.rotation.x = -Math.PI / 2;
 innerGround.position.y = 0.02;
 innerGround.receiveShadow = true;
 gameplayGroup.add(innerGround);
 
-// Çarpışma listesi
+// Çarpışma ve portal listeleri
 const obstacles = [];
+const portals = [];
 
-// --- YARDIMCI FONKSİYONLAR ---
-function createMesa(x, z, radius, height, color = 0x9b8c75) {
-    const group = new THREE.Group();
-    // Gövde
-    const bodyGeo = new THREE.CylinderGeometry(radius, radius + 0.5, height, 16);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.7 });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = height / 2;
-    body.castShadow = true; body.receiveShadow = true;
-    group.add(body);
-    // Üst çimen
-    const topGeo = new THREE.CylinderGeometry(radius + 0.1, radius + 0.1, 0.3, 16);
-    const topMat = new THREE.MeshStandardMaterial({ color: 0x8cc63e, roughness: 0.8 });
-    const top = new THREE.Mesh(topGeo, topMat);
-    top.position.y = height + 0.15;
-    top.receiveShadow = true;
-    group.add(top);
+// --- BÖLGE İNŞA FONKSİYONLARI ---
 
-    group.position.set(x, 0, z);
-    gameplayGroup.add(group);
-    obstacles.push(group);
-    return group;
-}
-
-function createHill(x, z, radius, height) {
-    const geo = new THREE.ConeGeometry(radius, height, 16, 4);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x7ba428, roughness: 0.8 });
-    const hill = new THREE.Mesh(geo, mat);
-    hill.position.set(x, height / 2, z);
-    hill.receiveShadow = true; hill.castShadow = true;
-    gameplayGroup.add(hill);
-    obstacles.push(hill);
-    return hill;
-}
-
+// Ağaç (merkez orman)
 function createTree(x, z, scale = 1, type = 'round') {
     const group = new THREE.Group();
     const trunkGeo = new THREE.CylinderGeometry(0.25 * scale, 0.35 * scale, 2.5 * scale, 8);
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.7 });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-    trunk.position.y = 1.25 * scale;
-    trunk.castShadow = true; trunk.receiveShadow = true;
+    trunk.position.y = 1.25 * scale; trunk.castShadow = true; trunk.receiveShadow = true;
     group.add(trunk);
-
     if (type === 'round') {
         const leafMat = new THREE.MeshStandardMaterial({ color: 0x4a8f29, roughness: 0.4 });
         for (let i = 0; i < 4; i++) {
-            const sGeo = new THREE.SphereGeometry(0.7 * scale - i * 0.1, 8, 6);
+            const sGeo = new THREE.SphereGeometry(0.65 * scale - i * 0.1, 8, 6);
             const s = new THREE.Mesh(sGeo, leafMat);
-            s.position.set((Math.random() - 0.5) * 0.5 * scale, 2.2 * scale + i * 0.5 * scale, (Math.random() - 0.5) * 0.5 * scale);
+            s.position.set((Math.random() - 0.5) * 0.6 * scale, 2.0 * scale + i * 0.5 * scale, (Math.random() - 0.5) * 0.6 * scale);
             s.castShadow = true; s.receiveShadow = true;
             group.add(s);
         }
     } else if (type === 'cone') {
         const leafMat = new THREE.MeshStandardMaterial({ color: 0x2d5a1e, roughness: 0.5 });
         for (let i = 0; i < 4; i++) {
-            const cGeo = new THREE.ConeGeometry(0.7 * scale - i * 0.1, 0.9 * scale, 8);
+            const cGeo = new THREE.ConeGeometry(0.65 * scale - i * 0.1, 0.8 * scale, 8);
             const c = new THREE.Mesh(cGeo, leafMat);
-            c.position.y = 2.0 * scale + i * 0.7 * scale;
+            c.position.y = 1.9 * scale + i * 0.65 * scale;
             c.castShadow = true; c.receiveShadow = true;
             group.add(c);
         }
-    } else if (type === 'weeping') {
-        const leafMat = new THREE.MeshStandardMaterial({ color: 0x5a9e3f, roughness: 0.5 });
-        const topGeo = new THREE.SphereGeometry(1.0 * scale, 8, 6);
-        const top = new THREE.Mesh(topGeo, leafMat);
-        top.position.y = 3.0 * scale;
-        top.castShadow = true; top.receiveShadow = true;
-        group.add(top);
-        for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
-            const vineGeo = new THREE.CylinderGeometry(0.04, 0.08, 1.5 * scale, 4);
-            const vine = new THREE.Mesh(vineGeo, leafMat);
-            vine.position.set(Math.cos(angle) * 0.6 * scale, 1.8 * scale, Math.sin(angle) * 0.6 * scale);
-            vine.rotation.z = (Math.random() - 0.5) * 0.6;
-            vine.rotation.x = (Math.random() - 0.5) * 0.6;
-            vine.castShadow = true;
-            group.add(vine);
-        }
     }
-
     group.position.set(x, 0, z);
     gameplayGroup.add(group);
     obstacles.push(trunk);
     return group;
 }
 
-function createBigMushroom(x, z, scale = 1) {
-    const group = new THREE.Group();
-    const stemGeo = new THREE.CylinderGeometry(0.35 * scale, 0.45 * scale, 2.5 * scale, 8);
-    const stemMat = new THREE.MeshStandardMaterial({ color: 0xf5e6d3, roughness: 0.6 });
-    const stem = new THREE.Mesh(stemGeo, stemMat);
-    stem.position.y = 1.25 * scale; stem.castShadow = true; stem.receiveShadow = true;
-    group.add(stem);
-    const capGeo = new THREE.SphereGeometry(1.0 * scale, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2);
-    const capMat = new THREE.MeshStandardMaterial({ color: 0xff5555, roughness: 0.3, metalness: 0.1 });
-    const cap = new THREE.Mesh(capGeo, capMat);
-    cap.position.y = 2.5 * scale; cap.castShadow = true; cap.receiveShadow = true;
-    group.add(cap);
-    for (let i = 0; i < 6; i++) {
-        const dotGeo = new THREE.SphereGeometry(0.12 * scale, 4);
-        const dotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-        const dot = new THREE.Mesh(dotGeo, dotMat);
-        const angle = (i / 6) * Math.PI * 2;
-        dot.position.set(Math.cos(angle) * 0.6 * scale, 2.8 * scale, Math.sin(angle) * 0.6 * scale);
-        group.add(dot);
-    }
-    group.position.set(x, 0, z);
-    gameplayGroup.add(group);
-    obstacles.push(stem);
-    return group;
-}
-
-function createRockPlatform(x, z, scale = 1) {
-    const geo = new THREE.CylinderGeometry(0.9 * scale, 1.1 * scale, 0.6 * scale, 8);
-    const mat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.5, metalness: 0.2 });
-    const rock = new THREE.Mesh(geo, mat);
-    rock.position.set(x, 0.3 * scale, z);
-    rock.castShadow = true; rock.receiveShadow = true;
-    gameplayGroup.add(rock);
-    obstacles.push(rock);
-    return rock;
-}
-
-function createBoulder(x, z, scale = 1) {
-    const geo = new THREE.IcosahedronGeometry(0.7 * scale, 0);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4, metalness: 0.1 });
-    const boulder = new THREE.Mesh(geo, mat);
-    boulder.position.set(x, 0.3 * scale, z);
-    boulder.castShadow = true; boulder.receiveShadow = true;
-    boulder.rotation.set(Math.random() * 0.5, Math.random() * 0.5, Math.random() * 0.5);
-    gameplayGroup.add(boulder);
-    obstacles.push(boulder);
-    return boulder;
-}
-
+// Çiçek
 function createFlower(x, z, color = 0xffaa88) {
     const group = new THREE.Group();
     const stemGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.5, 6);
@@ -213,6 +116,7 @@ function createFlower(x, z, color = 0xffaa88) {
     return group;
 }
 
+// Çalı
 function createBush(x, z, scale = 1) {
     const group = new THREE.Group();
     const bushMat = new THREE.MeshStandardMaterial({ color: 0x3a6b1e, roughness: 0.6 });
@@ -228,193 +132,267 @@ function createBush(x, z, scale = 1) {
     return group;
 }
 
-function createWoodenBridge(x, z, rotY = 0, length = 5) {
+// Kaya
+function createBoulder(x, z, scale = 1) {
+    const geo = new THREE.IcosahedronGeometry(0.7 * scale, 0);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4, metalness: 0.1 });
+    const boulder = new THREE.Mesh(geo, mat);
+    boulder.position.set(x, 0.3 * scale, z);
+    boulder.castShadow = true; boulder.receiveShadow = true;
+    boulder.rotation.set(Math.random() * 0.5, Math.random() * 0.5, Math.random() * 0.5);
+    gameplayGroup.add(boulder);
+    obstacles.push(boulder);
+    return boulder;
+}
+
+// Portal (ışınlanma halkası)
+function createPortal(x, z, targetX, targetZ, color = 0x00ffff) {
     const group = new THREE.Group();
-    const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.7 });
-    for (let side = -1; side <= 1; side += 2) {
-        const railGeo = new THREE.BoxGeometry(length, 0.1, 0.2);
-        const rail = new THREE.Mesh(railGeo, woodMat);
-        rail.position.set(0, 0.5, side * 0.6);
-        rail.castShadow = true; rail.receiveShadow = true;
-        group.add(rail);
-        // Direkler
-        for (let j = 0; j < 3; j++) {
-            const postGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.6, 4);
-            const post = new THREE.Mesh(postGeo, woodMat);
-            post.position.set(-length / 2 + j * (length / 2), 0.3, side * 0.6);
-            post.castShadow = true;
-            group.add(post);
-        }
-    }
-    // Tabandan çıtalar
-    for (let i = 0; i < length * 2; i++) {
-        const slatGeo = new THREE.BoxGeometry(0.25, 0.06, 1.2);
-        const slat = new THREE.Mesh(slatGeo, woodMat);
-        slat.position.set(-length / 2 + i * 0.5 + 0.25, 0.15, 0);
-        slat.castShadow = true; slat.receiveShadow = true;
-        group.add(slat);
-    }
+    const ringGeo = new THREE.TorusGeometry(1.0, 0.15, 16, 32);
+    const ringMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.8, roughness: 0.2 });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 1.2;
+    group.add(ring);
+    // Işık huzmesi
+    const pillarGeo = new THREE.CylinderGeometry(0.3, 0.3, 2.5, 8);
+    const pillarMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0.3 });
+    const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+    pillar.position.y = 1.25;
+    group.add(pillar);
     group.position.set(x, 0, z);
-    group.rotation.y = rotY;
     gameplayGroup.add(group);
-    obstacles.push(group);
+    portals.push({ mesh: group, target: new THREE.Vector3(targetX, 0, targetZ), color: color });
     return group;
 }
 
-// --- NEHİR (AKAN SU) ---
-const riverSegments = [];
-const riverPath = [
-    [-40, -35], [-35, -28], [-30, -22], [-25, -16], [-20, -10],
-    [-15, -5], [-10, -1], [-5, 3], [0, 6], [5, 10],
-    [10, 15], [15, 20], [20, 26], [25, 32], [30, 38]
-];
-
-function createRiverSegment(x1, z1, x2, z2) {
-    const dx = x2 - x1;
-    const dz = z2 - z1;
-    const length = Math.sqrt(dx * dx + dz * dz);
-    const angle = Math.atan2(dx, dz);
-
-    const geo = new THREE.BoxGeometry(2.8, 0.08, length);
-    const mat = new THREE.MeshStandardMaterial({
-        color: 0x4499dd,
-        roughness: 0.1,
-        metalness: 0.5,
-        transparent: true,
-        opacity: 0.75
-    });
-    const water = new THREE.Mesh(geo, mat);
-    water.position.set((x1 + x2) / 2, 0.06, (z1 + z2) / 2);
-    water.rotation.y = angle;
-    water.receiveShadow = true;
-    gameplayGroup.add(water);
-    riverSegments.push({ mesh: water, baseY: 0.06, speed: 0.3 + Math.random() * 0.5, offset: Math.random() * Math.PI * 2 });
-    return water;
+// --- BÖLGE 1: MERKEZ ORMAN (Başlangıç) ---
+for (let i = 0; i < 50; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 10 + Math.random() * 35;
+    createTree(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.8 + Math.random() * 0.8, Math.random() > 0.5 ? 'round' : 'cone');
 }
-
-// Nehir kenarı taşları
-function createRiverRock(x, z) {
-    const geo = new THREE.SphereGeometry(0.15 + Math.random() * 0.25, 4);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.5 });
-    const rock = new THREE.Mesh(geo, mat);
-    rock.position.set(x, 0.05, z);
-    rock.castShadow = true; rock.receiveShadow = true;
-    gameplayGroup.add(rock);
-    return rock;
-}
-
-// --- HARİTAYI OLUŞTUR ---
-
-// Mesalar (yüksek düzlükler)
-createMesa(20, 20, 6, 4, 0x9b8c75);
-createMesa(-22, -15, 7, 5, 0xa89070);
-createMesa(18, -20, 5, 3.5, 0x8b7d6b);
-createMesa(-18, 22, 6.5, 4.5, 0x968870);
-createMesa(0, 30, 4, 3, 0xa09078);
-
-// Tepeler
-createHill(-35, 30, 8, 6);
-createHill(35, -30, 7, 5);
-createHill(-30, -35, 9, 7);
-createHill(32, 32, 6, 4.5);
-createHill(0, -40, 8, 6);
-createHill(-40, 0, 7, 5);
-
-// Nehir
-for (let i = 0; i < riverPath.length - 1; i++) {
-    createRiverSegment(
-        riverPath[i][0], riverPath[i][1],
-        riverPath[i + 1][0], riverPath[i + 1][1]
-    );
-}
-
-// Nehir kenarı taşları
 for (let i = 0; i < 80; i++) {
-    const t = i / 80;
-    const idx = Math.floor(t * (riverPath.length - 1));
-    const frac = t * (riverPath.length - 1) - idx;
-    const x = riverPath[idx][0] + (riverPath[Math.min(idx + 1, riverPath.length - 1)][0] - riverPath[idx][0]) * frac;
-    const z = riverPath[idx][1] + (riverPath[Math.min(idx + 1, riverPath.length - 1)][1] - riverPath[idx][1]) * frac;
-    const side = (Math.random() > 0.5 ? 1 : -1) * (1.5 + Math.random() * 0.8);
-    const perpX = -(riverPath[Math.min(idx + 1, riverPath.length - 1)][0] - riverPath[idx][0]) / Math.max(Math.abs(riverPath[Math.min(idx + 1, riverPath.length - 1)][0] - riverPath[idx][0]), 0.1);
-    const perpZ = (riverPath[Math.min(idx + 1, riverPath.length - 1)][1] - riverPath[idx][1]) / Math.max(Math.abs(riverPath[Math.min(idx + 1, riverPath.length - 1)][1] - riverPath[idx][1]), 0.1);
-    createRiverRock(x + perpX * side * 2.5, z + perpZ * side * 2.5);
-}
-
-// Köprüler (nehir üzerinde)
-createWoodenBridge(-15, -3, -0.5, 6);
-createWoodenBridge(12, 17, 0.6, 5.5);
-createWoodenBridge(-5, 5, 0.3, 5);
-
-// Ağaçlar (bolca)
-const treePositions = [
-    [-28, 15], [30, -15], [-25, -25], [28, 25], [-32, 8], [33, -8],
-    [-20, 35], [20, -32], [-35, -20], [35, 18], [-10, 40], [15, -38],
-    [-38, -10], [38, -22], [-15, 42], [22, 35], [-42, 15], [40, 10],
-    [-33, 33], [33, -33], [-28, -30], [30, 28], [-40, 28], [28, -40],
-    [8, 42], [-8, -42], [42, -15], [-45, 0], [45, 5], [-5, -44]
-];
-treePositions.forEach(p => createTree(p[0], p[1], 0.8 + Math.random() * 0.6, ['round', 'cone', 'weeping'][Math.floor(Math.random() * 3)]));
-
-// Büyük mantarlar
-createBigMushroom(-12, -8, 1.3);
-createBigMushroom(14, 8, 1.1);
-createBigMushroom(-8, 15, 1.2);
-createBigMushroom(10, -12, 1.0);
-createBigMushroom(25, -10, 1.4);
-createBigMushroom(-25, 10, 1.1);
-createBigMushroom(0, 20, 1.3);
-
-// Taş platformlar
-for (let i = 0; i < 25; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const radius = 8 + Math.random() * 35;
-    createRockPlatform(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.5 + Math.random() * 1.2);
+    const radius = 8 + Math.random() * 40;
+    createFlower(Math.cos(angle) * radius, Math.sin(angle) * radius, [0xffaa88, 0xffcc44, 0xff6699][Math.floor(Math.random() * 3)]);
 }
-
-// Kayalar
-for (let i = 0; i < 35; i++) {
+for (let i = 0; i < 40; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const radius = 5 + Math.random() * 40;
+    const radius = 5 + Math.random() * 45;
+    createBush(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.6 + Math.random() * 1.0);
+}
+for (let i = 0; i < 20; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 12 + Math.random() * 42;
     createBoulder(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.5 + Math.random() * 1.5);
 }
 
-// Çalılıklar
-for (let i = 0; i < 80; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 4 + Math.random() * 45;
-    createBush(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.6 + Math.random() * 1.2);
-}
+// Merkezdeki ana portallar (diğer bölgelere)
+createPortal(0, -25, 0, -130, 0xff8844);   // Güney Çöl
+createPortal(25, 0, 130, 0, 0x44ff44);     // Doğu Mantar
+createPortal(-25, 0, -130, 0, 0xff4444);   // Batı Volkan
+createPortal(0, 25, 0, 130, 0x44ffff);     // Kuzey Kar
+createPortal(18, 18, 90, 90, 0xcc44ff);    // KB Kristal (daha yakın)
+createPortal(-18, 18, -90, 90, 0xffaa00);  // GD Harabeler
 
-// Çiçekler
-for (let i = 0; i < 120; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 3 + Math.random() * 48;
-    createFlower(Math.cos(angle) * radius, Math.sin(angle) * radius, [0xffaa88, 0xffcc44, 0xff6699, 0xff8844, 0xffff66][Math.floor(Math.random() * 5)]);
-}
+// --- BÖLGE 2: KUZEY KARLI DAĞLAR (z = 130) ---
+const snowGroundGeo = new THREE.CircleGeometry(40, 64);
+const snowGroundMat = new THREE.MeshStandardMaterial({ color: 0xe0f0ff, roughness: 0.6 });
+const snowGround = new THREE.Mesh(snowGroundGeo, snowGroundMat);
+snowGround.rotation.x = -Math.PI / 2;
+snowGround.position.set(0, 0, 130);
+snowGround.receiveShadow = true;
+gameplayGroup.add(snowGround);
 
-// --- LOBİ ODASI ---
+for (let i = 0; i < 30; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 5 + Math.random() * 30;
+    const x = Math.cos(angle) * radius;
+    const z = 130 + Math.sin(angle) * radius;
+    const tree = createTree(x, z, 0.9 + Math.random() * 0.7, 'cone');
+    tree.children[0].material.color.set(0x6B4226); // koyu gövde
+}
+for (let i = 0; i < 50; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 8 + Math.random() * 32;
+    const iceGeo = new THREE.IcosahedronGeometry(0.3 + Math.random() * 0.5, 0);
+    const iceMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, roughness: 0.1, metalness: 0.3, emissive: 0x112233, emissiveIntensity: 0.2 });
+    const ice = new THREE.Mesh(iceGeo, iceMat);
+    ice.position.set(Math.cos(angle) * radius, 0.2, 130 + Math.sin(angle) * radius);
+    ice.castShadow = true; ice.receiveShadow = true;
+    gameplayGroup.add(ice);
+    obstacles.push(ice);
+}
+createPortal(0, 130, 0, 20, 0x44ffff); // Geri dönüş portalı
+
+// --- BÖLGE 3: GÜNEY ÇÖL (z = -130) ---
+const sandGroundGeo = new THREE.CircleGeometry(45, 64);
+const sandGroundMat = new THREE.MeshStandardMaterial({ color: 0xedc9af, roughness: 0.9 });
+const sandGround = new THREE.Mesh(sandGroundGeo, sandGroundMat);
+sandGround.rotation.x = -Math.PI / 2;
+sandGround.position.set(0, 0, -130);
+sandGround.receiveShadow = true;
+gameplayGroup.add(sandGround);
+
+for (let i = 0; i < 15; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 8 + Math.random() * 35;
+    const x = Math.cos(angle) * radius;
+    const z = -130 + Math.sin(angle) * radius;
+    const cactusGroup = new THREE.Group();
+    const trunkGeo = new THREE.CylinderGeometry(0.2, 0.25, 2.5, 8);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a7c3f, roughness: 0.7 });
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.y = 1.25; trunk.castShadow = true; trunk.receiveShadow = true;
+    cactusGroup.add(trunk);
+    // Kollar
+    for (let j = 0; j < 3; j++) {
+        const armGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.2, 6);
+        const arm = new THREE.Mesh(armGeo, trunkMat);
+        arm.position.set((Math.random() - 0.5) * 0.6, 1.0 + Math.random() * 1.2, (Math.random() - 0.5) * 0.6);
+        arm.rotation.z = (Math.random() - 0.5) * 0.8;
+        arm.rotation.x = (Math.random() - 0.5) * 0.8;
+        arm.castShadow = true;
+        cactusGroup.add(arm);
+    }
+    cactusGroup.position.set(x, 0, z);
+    gameplayGroup.add(cactusGroup);
+    obstacles.push(trunk);
+}
+createPortal(0, -130, 0, -20, 0xff8844);
+
+// --- BÖLGE 4: DOĞU MANTAR ORMANI (x = 130) ---
+const mushGroundGeo = new THREE.CircleGeometry(40, 64);
+const mushGroundMat = new THREE.MeshStandardMaterial({ color: 0x7a5c8a, roughness: 0.85 });
+const mushGround = new THREE.Mesh(mushGroundGeo, mushGroundMat);
+mushGround.rotation.x = -Math.PI / 2;
+mushGround.position.set(130, 0, 0);
+mushGround.receiveShadow = true;
+gameplayGroup.add(mushGround);
+
+for (let i = 0; i < 25; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 5 + Math.random() * 30;
+    const x = 130 + Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    const stemGeo = new THREE.CylinderGeometry(0.3, 0.4, 2.0 + Math.random() * 2.5, 8);
+    const stemMat = new THREE.MeshStandardMaterial({ color: 0xf5e6d3, roughness: 0.6 });
+    const stem = new THREE.Mesh(stemGeo, stemMat);
+    stem.position.y = 1.2; stem.castShadow = true; stem.receiveShadow = true;
+    const capGeo = new THREE.SphereGeometry(0.9 + Math.random() * 0.8, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2);
+    const capMat = new THREE.MeshStandardMaterial({ color: [0xff5555, 0x55ff55, 0x5555ff, 0xff55ff][Math.floor(Math.random() * 4)], roughness: 0.3 });
+    const cap = new THREE.Mesh(capGeo, capMat);
+    cap.position.y = stem.position.y + 1.5; cap.castShadow = true;
+    const mushGroup = new THREE.Group();
+    mushGroup.add(stem);
+    mushGroup.add(cap);
+    mushGroup.position.set(x, 0, z);
+    gameplayGroup.add(mushGroup);
+    obstacles.push(stem);
+}
+createPortal(130, 0, 20, 0, 0x44ff44);
+
+// --- BÖLGE 5: BATI VOLKANİK (x = -130) ---
+const lavaGroundGeo = new THREE.CircleGeometry(40, 64);
+const lavaGroundMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.8 });
+const lavaGround = new THREE.Mesh(lavaGroundGeo, lavaGroundMat);
+lavaGround.rotation.x = -Math.PI / 2;
+lavaGround.position.set(-130, 0, 0);
+lavaGround.receiveShadow = true;
+gameplayGroup.add(lavaGround);
+
+for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2;
+    const radius = 15 + Math.random() * 20;
+    const x = -130 + Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    const poolGeo = new THREE.CircleGeometry(2 + Math.random() * 3, 32);
+    const poolMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.9, roughness: 0.2 });
+    const pool = new THREE.Mesh(poolGeo, poolMat);
+    pool.rotation.x = -Math.PI / 2;
+    pool.position.set(x, 0.05, z);
+    gameplayGroup.add(pool);
+}
+for (let i = 0; i < 30; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 8 + Math.random() * 32;
+    const x = -130 + Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    const rockGeo = new THREE.IcosahedronGeometry(0.6 + Math.random() * 1.2, 0);
+    const rockMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
+    const rock = new THREE.Mesh(rockGeo, rockMat);
+    rock.position.set(x, 0.3, z);
+    rock.castShadow = true; rock.receiveShadow = true;
+    gameplayGroup.add(rock);
+    obstacles.push(rock);
+}
+createPortal(-130, 0, -20, 0, 0xff4444);
+
+// --- BÖLGE 6: KUZEYBATI KRİSTAL MAĞARALAR (x = 90, z = 90) ---
+const crystalGroundGeo = new THREE.CircleGeometry(35, 64);
+const crystalGroundMat = new THREE.MeshStandardMaterial({ color: 0x2a1a3a, roughness: 0.7 });
+const crystalGround = new THREE.Mesh(crystalGroundGeo, crystalGroundMat);
+crystalGround.rotation.x = -Math.PI / 2;
+crystalGround.position.set(90, 0, 90);
+crystalGround.receiveShadow = true;
+gameplayGroup.add(crystalGround);
+
+for (let i = 0; i < 40; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 5 + Math.random() * 28;
+    const x = 90 + Math.cos(angle) * radius;
+    const z = 90 + Math.sin(angle) * radius;
+    const crystalGeo = new THREE.OctahedronGeometry(0.3 + Math.random() * 0.7, 0);
+    const crystalMat = new THREE.MeshStandardMaterial({ color: 0xcc88ff, roughness: 0.2, metalness: 0.4, emissive: 0x220044, emissiveIntensity: 0.5 });
+    const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+    crystal.position.set(x, 0.4, z);
+    crystal.castShadow = true; crystal.receiveShadow = true;
+    crystal.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    gameplayGroup.add(crystal);
+    obstacles.push(crystal);
+}
+createPortal(90, 90, 15, 15, 0xcc44ff);
+
+// --- BÖLGE 7: GÜNEYDOĞU HARABELER (x = -90, z = -90) ---
+const ruinGroundGeo = new THREE.CircleGeometry(35, 64);
+const ruinGroundMat = new THREE.MeshStandardMaterial({ color: 0x8b7d6b, roughness: 0.9 });
+const ruinGround = new THREE.Mesh(ruinGroundGeo, ruinGroundMat);
+ruinGround.rotation.x = -Math.PI / 2;
+ruinGround.position.set(-90, 0, -90);
+ruinGround.receiveShadow = true;
+gameplayGroup.add(ruinGround);
+
+for (let i = 0; i < 15; i++) {
+    const angle = (i / 15) * Math.PI * 2;
+    const radius = 12 + Math.random() * 18;
+    const x = -90 + Math.cos(angle) * radius;
+    const z = -90 + Math.sin(angle) * radius;
+    const pillarGeo = new THREE.CylinderGeometry(0.4, 0.5, 3.5 + Math.random() * 2, 8);
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.7 });
+    const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+    pillar.position.set(x, 1.8, z);
+    pillar.castShadow = true; pillar.receiveShadow = true;
+    gameplayGroup.add(pillar);
+    obstacles.push(pillar);
+}
+createPortal(-90, -90, -15, -15, 0xffaa00);
+
+// --- LOBİ ODASI (aynı) ---
 const lobbyGroup = new THREE.Group();
 scene.add(lobbyGroup);
-
 const cylinderGeo = new THREE.CylinderGeometry(12, 12, 15, 32, 1, true);
-const cylinderMat = new THREE.MeshStandardMaterial({
-    color: 0x00a2ff, transparent: true, opacity: 0.25, side: THREE.DoubleSide, roughness: 0.2, metalness: 0.1
-});
+const cylinderMat = new THREE.MeshStandardMaterial({ color: 0x00a2ff, transparent: true, opacity: 0.25, side: THREE.DoubleSide, roughness: 0.2, metalness: 0.1 });
 const lobbyRoom = new THREE.Mesh(cylinderGeo, cylinderMat);
 lobbyRoom.position.set(0, 7.5, 50);
 lobbyGroup.add(lobbyRoom);
-
 const lobbyFloorGeo = new THREE.CylinderGeometry(12, 12, 0.5, 32);
 const lobbyFloorMat = new THREE.MeshStandardMaterial({ color: 0x0d47a1, roughness: 0.5 });
 const lobbyFloorMesh = new THREE.Mesh(lobbyFloorGeo, lobbyFloorMat);
 lobbyFloorMesh.position.set(0, -0.25, 50);
 lobbyGroup.add(lobbyFloorMesh);
-
 const pads = [];
-const padPositions = [
-    { x: 0, z: 47.5 }, { x: -3.5, z: 49.5 }, { x: 3.5, z: 49.5 }, { x: 0, z: 52.0 }
-];
+const padPositions = [{ x: 0, z: 47.5 }, { x: -3.5, z: 49.5 }, { x: 3.5, z: 49.5 }, { x: 0, z: 52.0 }];
 for (let i = 0; i < 4; i++) {
     const padGeo = new THREE.CylinderGeometry(1.2, 1.3, 0.2, 24);
     const padMat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.6, roughness: 0.1 });
@@ -429,7 +407,6 @@ const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
 const otherBodyMat = new THREE.MeshStandardMaterial({ color: 0xddf0ff });
 const noseMat = new THREE.MeshStandardMaterial({ color: 0xffaaaa });
 const eyeMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
-
 function createRabbitModel(isLocal = false) {
     const group = new THREE.Group(); const visualGroup = new THREE.Group(); group.add(visualGroup);
     const currentMat = isLocal ? bodyMat : otherBodyMat;
@@ -450,7 +427,6 @@ function createRabbitModel(isLocal = false) {
     const fBR = new THREE.Mesh(footGeo, footMat); fBR.position.set(0.32, -0.08, -0.22); group.add(fBR);
     return { mesh: group, visual: visualGroup, head: head, feet: [fFL, fFR, fBL, fBR] };
 }
-
 const localPlayer = createRabbitModel(true);
 const rabbit = localPlayer.mesh; const rabbitVisualGroup = localPlayer.visual; const head = localPlayer.head;
 const [footFL, footFR, footBL, footBR] = localPlayer.feet;
@@ -458,8 +434,7 @@ scene.add(rabbit);
 
 let otherPlayers = {};
 let isAttacking = false, attackAnimTime = 0;
-let myHealth = 100;
-const maxHealth = 100;
+let myHealth = 100; const maxHealth = 100;
 
 function updateHealthBar() {
     const percent = (myHealth / maxHealth) * 100;
@@ -469,22 +444,17 @@ function updateHealthBar() {
     else if (percent > 30) document.getElementById('health-bar-fill').style.background = 'linear-gradient(90deg, #ff9800, #ffc107)';
     else document.getElementById('health-bar-fill').style.background = 'linear-gradient(90deg, #f44336, #ff5722)';
 }
-
 function die() {
     if (isDead) return;
-    isDead = true;
-    gameActive = false;
-    rabbit.visible = false;
+    isDead = true; gameActive = false; rabbit.visible = false;
     document.getElementById('death-screen').style.display = 'flex';
-    respawnCountdown = 15;
-    document.getElementById('countdown-display').innerText = respawnCountdown;
+    respawnCountdown = 15; document.getElementById('countdown-display').innerText = respawnCountdown;
     respawnTimer = setInterval(() => {
         respawnCountdown--;
         document.getElementById('countdown-display').innerText = respawnCountdown;
         if (respawnCountdown <= 0) { clearInterval(respawnTimer); respawn(); }
     }, 1000);
 }
-
 function respawn() {
     isDead = false; gameActive = true; rabbit.visible = true;
     rabbit.position.set(0, 0, 0); rabbit.rotation.y = 0;
@@ -508,7 +478,6 @@ function checkCollision(newX, newY, newZ) {
     }
     return false;
 }
-
 function getFloorY(pX, pY, pZ) {
     gameplayGroup.updateMatrixWorld(true);
     let highestCeil = 0;
@@ -522,7 +491,6 @@ function getFloorY(pX, pY, pZ) {
     }
     return highestCeil;
 }
-
 let velocityY = 0, jumpCount = 0;
 const gravity = 0.8, jumpForce = 18;
 
@@ -545,7 +513,6 @@ window.hostStartGame = function() { socket.emit('startGameSignal'); };
 
 socket.on('roomCreated', (data) => { setupLobbyUI(data); });
 socket.on('roomUpdate', (data) => { setupLobbyUI(data); });
-
 function setupLobbyUI(data) {
     maxPlayersLimit = data.maxPlayers;
     document.getElementById('main-menu').style.display = 'none';
@@ -566,13 +533,9 @@ function setupLobbyUI(data) {
     otherPlayers = {};
     let padIndex = 1;
     Object.keys(data.players).forEach((id) => {
-        if (id !== socket.id && padIndex < 4) {
-            const pos = padPositions[padIndex];
-            addOtherPlayer(id, pos.x, 0.2, pos.z); padIndex++;
-        }
+        if (id !== socket.id && padIndex < 4) { const pos = padPositions[padIndex]; addOtherPlayer(id, pos.x, 0.2, pos.z); padIndex++; }
     });
 }
-
 socket.on('gameStartedAtAll', (allPlayers) => {
     document.getElementById('lobby-ui').style.display = 'none';
     document.getElementById('controls-ui').style.display = 'block';
@@ -590,30 +553,26 @@ socket.on('gameStartedAtAll', (allPlayers) => {
     gameActive = true; isDead = false;
     gameplayGroup.updateMatrixWorld(true);
 });
-
 function addOtherPlayer(id, x, y, z) {
     if (otherPlayers[id]) return;
     const modelData = createRabbitModel(false);
     modelData.mesh.position.set(x, y, z); scene.add(modelData.mesh);
     otherPlayers[id] = { mesh: modelData.mesh, visual: modelData.visual, head: modelData.head, isAttacking: false, attackAnimTime: 0 };
 }
-
 socket.on('playerMoved', (playerInfo) => {
     if (gameActive && otherPlayers[playerInfo.id]) {
         otherPlayers[playerInfo.id].mesh.position.set(playerInfo.x, playerInfo.y, playerInfo.z);
         otherPlayers[playerInfo.id].mesh.rotation.y = playerInfo.ry;
     }
 });
-socket.on('playerAttacked', (id) => {
-    if (gameActive && otherPlayers[id]) { otherPlayers[id].isAttacking = true; otherPlayers[id].attackAnimTime = 0; }
-});
+socket.on('playerAttacked', (id) => { if (gameActive && otherPlayers[id]) { otherPlayers[id].isAttacking = true; otherPlayers[id].attackAnimTime = 0; } });
 socket.on('knockback', (angle) => {
     if (!gameActive || isDead) return;
     rabbit.position.x += Math.sin(angle) * 2.0; rabbit.position.z += Math.cos(angle) * 2.0;
     socket.emit('playerMovement', { x: rabbit.position.x, y: rabbit.position.y, z: rabbit.position.z, ry: rabbit.rotation.y });
 });
 socket.on('playerDisconnected', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id].mesh); delete otherPlayers[id]; } });
-socket.on('hostDisconnected', () => { alert('Oda sahibi oyundan ayrıldı. Lobiye dönülüyor.'); location.reload(); });
+socket.on('hostDisconnected', () => { alert('Oda sahibi oyundan ayrıldı.'); location.reload(); });
 
 // KONTROLLER
 const zone = document.getElementById('joystick-zone'), stick = document.getElementById('joystick-stick'), maxRadius = 35;
@@ -621,9 +580,7 @@ let joystickActive = false, moveX = 0, moveZ = 0;
 zone.addEventListener('touchstart', (e) => { if(!gameActive || isDead) return; joystickActive = true; handleJoystick(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
 window.addEventListener('touchmove', (e) => {
     if (joystickActive && gameActive && !isDead) {
-        for (let i = 0; i < e.touches.length; i++) {
-            if (zone.contains(e.touches[i].target)) { handleJoystick(e.touches[i].clientX, e.touches[i].clientY); break; }
-        }
+        for (let i = 0; i < e.touches.length; i++) { if (zone.contains(e.touches[i].target)) { handleJoystick(e.touches[i].clientX, e.touches[i].clientY); break; } }
     }
 }, { passive: true });
 zone.addEventListener('touchend', () => { joystickActive = false; stick.style.transform = 'translate(0px, 0px)'; moveX = 0; moveZ = 0; });
@@ -635,8 +592,7 @@ function handleJoystick(clientX, clientY) {
     stick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
     moveX = deltaX / maxRadius; moveZ = deltaY / maxRadius;
 }
-
-let cameraAngleY = 0, cameraAngleX = 0.3, cameraDistance = 6, touchStartX = 0, touchStartY = 0, isTurningCamera = false;
+let cameraAngleY = 0, cameraAngleX = 0.4, cameraDistance = 7, touchStartX = 0, touchStartY = 0, isTurningCamera = false;
 window.addEventListener('touchstart', (e) => {
     const jBtn = document.getElementById('jump-button'), aBtn = document.getElementById('attack-button');
     if (e.touches.length === 1 && !zone.contains(e.target) && !jBtn.contains(e.target) && !aBtn.contains(e.target)) {
@@ -648,14 +604,14 @@ window.addEventListener('touchmove', (e) => {
     const jBtn = document.getElementById('jump-button'), aBtn = document.getElementById('attack-button');
     for (let i = 0; i < e.touches.length; i++) {
         if (!zone.contains(e.touches[i].target) && !jBtn.contains(e.touches[i].target) && !aBtn.contains(e.target)) {
-            cameraAngleY -= (e.touches[i].clientX - touchStartX) * 0.005; cameraAngleX += (e.touches[i].clientY - touchStartY) * 0.005;
-            cameraAngleX = Math.max(0.1, Math.min(1.1, cameraAngleX));
+            cameraAngleY -= (e.touches[i].clientX - touchStartX) * 0.005;
+            cameraAngleX += (e.touches[i].clientY - touchStartY) * 0.005;
+            cameraAngleX = Math.max(0.1, Math.min(1.2, cameraAngleX));
             touchStartX = e.touches[i].clientX; touchStartY = e.touches[i].clientY; break;
         }
     }
 }, { passive: true });
 window.addEventListener('touchend', () => { isTurningCamera = false; });
-
 document.getElementById('jump-button').addEventListener('touchstart', (e) => {
     e.preventDefault(); if (gameActive && !isDead && jumpCount < 2) { velocityY = jumpForce; jumpCount++; }
 });
@@ -677,18 +633,35 @@ document.getElementById('attack-button').addEventListener('touchstart', (e) => {
     }
 });
 
-// ANA DÖNGÜ
+// ANA DÖNGÜ + PORTAL KONTROLÜ
 let legWiggle = 0;
 function animate() {
     requestAnimationFrame(animate);
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
 
-    // Nehir animasyonu
-    const time = Date.now() * 0.001;
-    riverSegments.forEach(seg => {
-        seg.mesh.position.y = seg.baseY + Math.sin(time * seg.speed + seg.offset) * 0.04;
-    });
+    // Portal kontrolü (ışınlanma)
+    if (gameActive && !isDead) {
+        const now = Date.now() / 1000;
+        for (let i = 0; i < portals.length; i++) {
+            const p = portals[i];
+            const dist = new THREE.Vector2(rabbit.position.x - p.mesh.position.x, rabbit.position.z - p.mesh.position.z).length();
+            if (dist < 2.5 && (now - lastTeleportTime > teleportCooldown)) {
+                lastTeleportTime = now;
+                // Kararma efekti
+                document.getElementById('death-screen').style.display = 'flex';
+                document.getElementById('death-screen').style.background = 'rgba(0,0,0,0.95)';
+                document.querySelector('.death-text').innerText = 'YÜKLENİYOR...';
+                document.getElementById('countdown-display').innerText = '';
+                setTimeout(() => {
+                    rabbit.position.x = p.target.x;
+                    rabbit.position.z = p.target.z;
+                    document.getElementById('death-screen').style.display = 'none';
+                }, 800);
+                break;
+            }
+        }
+    }
 
     if (isOnlineMode && !gameActive && !isDead) {
         rabbit.rotation.y += 1.2 * deltaTime;
@@ -702,8 +675,8 @@ function animate() {
             const rightX = Math.sin(cameraAngleY + Math.PI / 2), rightZ = Math.cos(cameraAngleY + Math.PI / 2);
             const dirX = (forwardX * -moveZ) - (rightX * moveX);
             const dirZ = (forwardZ * -moveZ) - (rightZ * moveX);
-            const nextX = rabbit.position.x + dirX * 10.0 * deltaTime;
-            const nextZ = rabbit.position.z + dirZ * 10.0 * deltaTime;
+            const nextX = rabbit.position.x + dirX * 12.0 * deltaTime;
+            const nextZ = rabbit.position.z + dirZ * 12.0 * deltaTime;
             if (!checkCollision(nextX, rabbit.position.y, rabbit.position.z)) rabbit.position.x = nextX;
             if (!checkCollision(rabbit.position.x, rabbit.position.y, nextZ)) rabbit.position.z = nextZ;
             rabbit.rotation.y = Math.atan2(dirX, dirZ);
@@ -716,7 +689,6 @@ function animate() {
         } else {
             footFL.position.y = 0.08; footFR.position.y = 0.08; footBL.position.y = 0.08; footBR.position.y = 0.08;
         }
-
         if (isAttacking) {
             attackAnimTime += 12 * deltaTime; const factor = Math.sin(attackAnimTime * Math.PI);
             if (attackAnimTime <= 1.0) { rabbitVisualGroup.position.z = factor * 0.5; head.position.z = 0.1 + factor * 0.25; head.rotation.x = factor * 0.4; }
@@ -748,7 +720,6 @@ function animate() {
                 }
             });
         }
-
         if (hasMoved || isAttacking) socket.emit('playerMovement', { x: rabbit.position.x, y: rabbit.position.y, z: rabbit.position.z, ry: rabbit.rotation.y });
 
         camera.position.x = rabbit.position.x - Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
