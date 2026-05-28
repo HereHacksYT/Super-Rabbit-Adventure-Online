@@ -2,13 +2,19 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
     <title>Super Rabbit Adventure (Online)</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; user-select: none; touch-action: none; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background-color: #000; 
+            user-select: none; 
+            touch-action: none; 
+        }
         #canvas-container { width: 100vw; height: 100vh; }
         
-        /* SABİT JOYSTICK TASARIMI */
+        /* JOYSTICK TASARIMI */
         #joystick-zone {
             position: absolute;
             bottom: 40px;
@@ -34,7 +40,7 @@
             touch-action: none;
         }
 
-        /* ZIPLAMA BUTONU TASARIMI */
+        /* ZIPLAMA BUTONU - ÇİFT TIKLAMAYI ENGELLEYEN CSS EKLENDİ */
         #jump-button {
             position: absolute;
             bottom: 50px;
@@ -53,7 +59,10 @@
             align-items: center;
             z-index: 10;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            touch-action: none;
+            /* Tarayıcının varsayılan çift tıklama büyümesini bu buton üzerinde sıfırlar: */
+            touch-action: manipulation; 
+            user-select: none;
+            -webkit-user-select: none;
             text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
         }
         #jump-button:active {
