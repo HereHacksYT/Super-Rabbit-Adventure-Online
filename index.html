@@ -5,13 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
     <title>Super Rabbit Adventure (Online)</title>
     <style>
-        body { 
-            margin: 0; 
-            overflow: hidden; 
-            background-color: #000; 
-            user-select: none; 
-            touch-action: none; 
-        }
+        body { margin: 0; overflow: hidden; background-color: #000; user-select: none; touch-action: none; }
         #canvas-container { width: 100vw; height: 100vh; }
         
         /* JOYSTICK TASARIMI */
@@ -36,15 +30,22 @@
             background: rgba(255, 255, 255, 0.8);
             border-radius: 50%;
             position: absolute;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             touch-action: none;
         }
 
-        /* ZIPLAMA BUTONU - ÇİFT TIKLAMAYI ENGELLEYEN CSS EKLENDİ */
-        #jump-button {
+        /* AKSİYON BUTONLARI KONTEYNERI (Sağ Alt) */
+        #action-buttons {
             position: absolute;
-            bottom: 50px;
+            bottom: 40px;
             right: 40px;
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+            z-index: 10;
+        }
+
+        /* ZIPLAMA VE VURMA BUTONLARININ ORTAK CSS'i */
+        .game-button {
             width: 80px;
             height: 80px;
             background: rgba(255, 255, 255, 0.3);
@@ -57,17 +58,27 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 10;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            /* Tarayıcının varsayılan çift tıklama büyümesini bu buton üzerinde sıfırlar: */
-            touch-action: manipulation; 
+            touch-action: manipulation;
             user-select: none;
             -webkit-user-select: none;
             text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
         }
-        #jump-button:active {
+        .game-button:active {
             background: rgba(255, 255, 255, 0.6);
             transform: scale(0.95);
+        }
+
+        /* VURMA BUTONUNA ÖZEL KIRMIZI TASARIM */
+        #attack-button {
+            width: 70px;  /* Biraz daha küçük yapalım */
+            height: 70px;
+            background: rgba(255, 60, 60, 0.3);
+            border-color: rgba(255, 100, 100, 0.6);
+            margin-bottom: 5px; /* JUMP'ın yanında durması için */
+        }
+        #attack-button:active {
+            background: rgba(255, 60, 60, 0.6);
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -81,7 +92,10 @@
         <div id="joystick-stick"></div>
     </div>
 
-    <div id="jump-button">JUMP</div>
+    <div id="action-buttons">
+        <div id="attack-button" class="game-button">HIT</div>
+        <div id="jump-button" class="game-button">JUMP</div>
+    </div>
 
     <script src="client.js"></script>
 </body>
