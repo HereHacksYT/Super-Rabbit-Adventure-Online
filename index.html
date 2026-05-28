@@ -81,15 +81,7 @@
         .action-btn { position: absolute; bottom: 50px; width: 75px; height: 75px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.5); color: white; font-weight: bold; font-size: 16px; display: flex; justify-content: center; align-items: center; pointer-events: auto; box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
         #attack-button { right: 135px; background: linear-gradient(135deg, #a1887f, #8d6e63); }
         #jump-button { right: 40px; background: linear-gradient(135deg, #81c784, #4caf50); }
-        
-        /* Debug Butonu */
-        #damage-test-btn {
-            position: absolute; top: 60px; left: 15px; z-index: 7;
-            background: rgba(255,0,0,0.7); color: white; border: none;
-            padding: 6px 12px; border-radius: 15px; font-weight: bold; pointer-events: auto;
-        }
 
-        /* Ölüm Geri Sayım Ekranı */
         #death-screen {
             display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 20; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; flex-direction: column;
@@ -138,16 +130,12 @@
         <div id="health-text">100/100</div>
     </div>
 
-    <!-- Debug Hasar Butonu -->
-    <button id="damage-test-btn" onclick="takeDamage(25)" style="display:none;">HASAR TEST</button>
-
     <div id="controls-ui">
         <div id="joystick-zone"><div id="joystick-stick"></div></div>
         <div class="action-btn" id="attack-button">HIT</div>
         <div class="action-btn" id="jump-button">JUMP</div>
     </div>
 
-    <!-- Ölüm Geri Sayımı -->
     <div id="death-screen">
         <div class="death-text">ÖLDÜN!</div>
         <div class="countdown-text" id="countdown-display">15</div>
