@@ -82,13 +82,11 @@ function createSoftRock(x, z, radius = 0.9, height = 0.7) {
 
 function createSoftTree(x, z, scale = 1) {
     const group = new THREE.Group();
-    // Gövde (yumuşak silindir)
     const trunkGeo = new THREE.CylinderGeometry(0.28 * scale, 0.38 * scale, 2.5 * scale, 16);
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.6 });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
     trunk.position.y = 1.25 * scale; trunk.castShadow = true; trunk.receiveShadow = true;
     group.add(trunk);
-    // Yapraklar (tam küreler, yumuşak)
     const leafMat = new THREE.MeshStandardMaterial({ color: 0x4a8f29, roughness: 0.35 });
     for (let i = 0; i < 4; i++) {
         const sGeo = new THREE.SphereGeometry(0.7 * scale - i * 0.1, 16, 12);
@@ -140,7 +138,6 @@ function createSoftPond(x, z, radius = 2.0) {
     const pond = new THREE.Mesh(pondGeo, pondMat);
     pond.rotation.x = -Math.PI / 2; pond.position.y = 0.04;
     group.add(pond);
-    // Kenar taşları (yuvarlak)
     for (let i = 0; i < 24; i++) {
         const angle = (i / 24) * Math.PI * 2;
         const stoneGeo = new THREE.SphereGeometry(0.2, 6, 4);
@@ -167,7 +164,6 @@ function createSoftMushroom(x, z, scale = 1, color = 0xff5555) {
     const cap = new THREE.Mesh(capGeo, capMat);
     cap.position.y = 1.8 * scale; cap.castShadow = true; cap.receiveShadow = true;
     group.add(cap);
-    // Beyaz benekler
     for (let i = 0; i < 6; i++) {
         const dotGeo = new THREE.SphereGeometry(0.1 * scale, 4, 4);
         const dotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
@@ -184,31 +180,26 @@ function createSoftMushroom(x, z, scale = 1, color = 0xff5555) {
 
 function createMushroomHouse(x, z, colorRoof = 0xff6666) {
     const group = new THREE.Group();
-    // Gövde (yumuşak)
     const bodyGeo = new THREE.CylinderGeometry(1.1, 1.3, 2.2, 16);
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf5f0e0, roughness: 0.55 });
     const body = new THREE.Mesh(bodyGeo, bodyMat);
     body.position.y = 1.1; body.castShadow = true; body.receiveShadow = true;
     group.add(body);
-    // Çatı (yumuşak yarım küre)
     const roofGeo = new THREE.SphereGeometry(1.4, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2);
     const roofMat = new THREE.MeshStandardMaterial({ color: colorRoof, roughness: 0.28, metalness: 0.1 });
     const roof = new THREE.Mesh(roofGeo, roofMat);
     roof.position.y = 2.2; roof.castShadow = true; roof.receiveShadow = true;
     group.add(roof);
-    // Kapı
     const doorGeo = new THREE.BoxGeometry(0.55, 1.0, 0.15);
     const doorMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.5 });
     const door = new THREE.Mesh(doorGeo, doorMat);
     door.position.set(0, 0.65, 1.35); group.add(door);
-    // Pencereler (yuvarlak)
     const windowGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.1, 12);
     const windowMat = new THREE.MeshStandardMaterial({ color: 0xffffcc, roughness: 0.2 });
     const winL = new THREE.Mesh(windowGeo, windowMat);
     winL.rotation.x = Math.PI / 2; winL.position.set(0.65, 1.3, 1.3); group.add(winL);
     const winR = new THREE.Mesh(windowGeo, windowMat);
     winR.rotation.x = Math.PI / 2; winR.position.set(-0.65, 1.3, 1.3); group.add(winR);
-    // Çatı benekleri
     for (let i = 0; i < 8; i++) {
         const dotGeo = new THREE.SphereGeometry(0.14, 4, 4);
         const dotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
@@ -266,49 +257,50 @@ function createPortalRing(x, z, targetX, targetZ, color = 0x00ffff) {
     return group;
 }
 
-// ============ BAŞLANGIÇ ADASI (SBA KOPYASI) ============
+// ============ BAŞLANGIÇ ADASI (SBA'NIN AYNISI) ============
 createSoftGround(0, 0, 22, 0x8cc63e);
-// Engebeli zemin (alçak tepeler)
-createSoftHill(0, 0, 10, 1.0, 0x8cc63e);
-createSoftHill(4, -3, 7, 0.7, 0x90c84a);
-createSoftHill(-5, 4, 6, 0.6, 0x8bc840);
-createSoftHill(3, 5, 5, 0.5, 0x92ca4c);
-createSoftHill(-4, -5, 6, 0.55, 0x8fc945);
+createSoftHill(0, 0, 11, 1.1, 0x8cc63e);
+createSoftHill(-4, -4, 7, 0.8, 0x90c84a);
+createSoftHill(5, 3, 8, 0.9, 0x8bc840);
+createSoftHill(-5, 5, 6, 0.7, 0x92ca4c);
 
-// Gölet (ortada)
-createSoftPond(0, 0, 1.8);
+// Merkez büyük ağaç
+createSoftTree(0, 0, 1.3);
 
-// Mantar evler
+// Gölet (ağacın yanında)
+createSoftPond(2, -2, 1.5);
+
+// Üç mantar ev (SBA'daki gibi)
 createMushroomHouse(-6, -5, 0xff6666);
-createMushroomHouse(7, 4, 0xffaa44);
-createMushroomHouse(-7, 6, 0xff66aa);
+createMushroomHouse(7, 3, 0xffaa44);
+createMushroomHouse(-6, 6, 0xff66aa);
 
-// Ağaçlar
+// Diğer ağaçlar
 createSoftTree(-9, -9, 0.9);
 createSoftTree(10, -8, 0.85);
 createSoftTree(-8, 10, 0.95);
 createSoftTree(9, 9, 0.9);
 createSoftTree(-10, 2, 0.8);
 createSoftTree(11, -2, 0.85);
-createSoftTree(2, -11, 0.9);
-createSoftTree(-2, 11, 0.85);
+createSoftTree(3, -10, 0.9);
+createSoftTree(-3, 10, 0.85);
 
 // Küçük mantarlar
-createSoftMushroom(-3, -2, 0.9, 0xff6666);
+createSoftMushroom(-3, -3, 0.9, 0xff6666);
 createSoftMushroom(5, -4, 0.8, 0xffaa44);
 createSoftMushroom(-5, 3, 1.0, 0xff44ff);
-createSoftMushroom(3, 6, 0.85, 0x66ff66);
+createSoftMushroom(4, 5, 0.85, 0x66ff66);
 
 // Taş platformlar
-createSoftRock(-3, -4, 0.9, 0.7);
-createSoftRock(4, -3, 0.8, 0.6);
+createSoftRock(-4, -5, 0.9, 0.7);
+createSoftRock(5, -3, 0.8, 0.6);
 createSoftRock(-5, 5, 1.0, 0.8);
 createSoftRock(5, 4, 0.9, 0.7);
 createSoftRock(-2, -7, 1.0, 0.9);
 createSoftRock(3, 7, 0.8, 0.6);
 
 // Banklar
-createSoftBench(5, 5, -0.5);
+createSoftBench(6, 5, -0.5);
 createSoftBench(-5, -5, 0.7);
 createSoftBench(0, -7, 0.2);
 
