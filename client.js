@@ -1,4 +1,4 @@
-// client.js - TAM VE GÜNCEL KOD (TAVŞAN KARAKTERİ DAHİL)
+// client.js - SIFIRDAN TEMİZLENMİŞ TAVŞAN KODU
 
 // 1. ONLINE SUNUCU BAĞLANTISI
 const socket = io();
@@ -9,22 +9,22 @@ socket.on('connect', () => {
 
 // 2. 3D SAHNE VE KAMERA AYARLARI
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xa0a0a0); // Gökyüzü rengi
+scene.background = new THREE.Color(0xa0a0a0); 
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-// 3. RENDERER (EKRANA ÇİZİCİ) AYARI
+// 3. RENDERER AYARI
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio); // Mobil netlik için
-renderer.shadowMap.enabled = true; // Gölgeleri aktif et
+renderer.setPixelRatio(window.devicePixelRatio); 
+renderer.shadowMap.enabled = true; 
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
 // 4. IŞIKLANDIRMA
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Genel yumuşak ışık
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); 
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); // Güneş ışığı
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); 
 dirLight.position.set(20, 40, 20);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 1024;
@@ -33,10 +33,10 @@ scene.add(dirLight);
 
 // 5. OYUN ZEMİNİ
 const floorGeometry = new THREE.PlaneGeometry(60, 60);
-const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x4caf50 }); // Yeşil çimen
+const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x4caf50 }); 
 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-floor.rotation.x = -Math.PI / 2; // Yere ser
-floor.receiveShadow = true; // Gölgeleri kabul et
+floor.rotation.x = -Math.PI / 2; 
+floor.receiveShadow = true; 
 scene.add(floor);
 
 // HARİTADAKİ RENKLİ KUTULAR (Fizik için)
@@ -54,7 +54,7 @@ function createCube(x, y, z, w, h, d, color) {
     obstacles.push(mesh);
 }
 
-// Renkli kutular yerinde kalıyor
+// Renkli engeller
 createCube(5, 1, -8, 2, 2, 2, 0xff9800);   
 createCube(-7, 0.5, -3, 3, 1, 3, 0x00bcd4); 
 createCube(0, 1.5, -15, 4, 3, 4, 0x9c27b0); 
@@ -80,88 +80,85 @@ function swayDummy() {
     dummySwayTime = 0; 
 }
 
-// 6. ANA KARAKTER: KÜBİK TAVŞAN YAPIMI (GÜNCELLENDİ)
-// Karakter artık tek bir küp değil, parçalardan oluşan bir gruptur.
+// 6. YENİ KARAKTER: BLOK TAVŞAN MODELİ (Eski Kırmızı Küp Tamamen Silindi)
 const rabbit = new THREE.Group();
-rabbit.position.set(0, 0.5, 0); // Başlangıç noktası
+rabbit.position.set(0, 0.5, 0); 
 scene.add(rabbit);
 
-// Ortak Materyaller
+// Tavşan materyalleri
 const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff }); // Beyaz kürk
 const noseMat = new THREE.MeshStandardMaterial({ color: 0xffaaaa }); // Pembe burun
-const eyeMat = new THREE.MeshBasicMaterial({ color: 0x333333 });   // Koyu gözler
+const eyeMat = new THREE.MeshBasicMaterial({ color: 0x222222 });   // Gözler
 
-// --- Tavşan Parçaları ---
-// Gövde (Biraz daha tombul bir küp)
+// Gövde
 const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.0, 0.8), bodyMat);
-body.position.y = 0.5; // Ayakların üstünde dursun
+body.position.y = 0.5; 
 body.castShadow = true;
 rabbit.add(body);
 
-// Kafa (Daha küçük bir küp)
+// Kafa
 const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), bodyMat);
-head.position.y = 1.2; // Gövdenin üstü
-head.position.z = 0.1; // Hafif öne doğru
+head.position.set(0, 1.2, 0.1);
 head.castShadow = true;
 rabbit.add(head);
 
-// Burun (Küçük pembe küp)
-const nose = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.15, 0.15), noseMat);
-nose.position.y = 1.15; // Kafanın ön altı
-nose.position.z = 0.45; // Kafanın tam önü
-head.add(nose); // Kafaya bağla
+// Burun
+const nose = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), noseMat);
+nose.position.set(0, 1.15, 0.42); 
+rabbit.add(nose); 
 
-// Gözler (İki küçük koyu küre)
+// Sol Göz
 const eyeGeo = new THREE.SphereGeometry(0.06, 8, 8);
 const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-eyeL.position.set(-0.2, 0.1, 0.3); // Kafa içinde pozisyon
-head.add(eyeL);
+eyeL.position.set(-0.18, 1.25, 0.38); 
+rabbit.add(eyeL);
 
+// Sağ Göz
 const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-eyeR.position.set(0.2, 0.1, 0.3);
-head.add(eyeR);
+eyeR.position.set(0.18, 1.25, 0.38);
+rabbit.add(eyeR);
 
-// Kulaklar (Uzun, blocky küpler)
-const earGeo = new THREE.BoxGeometry(0.18, 0.7, 0.1);
+// Sol Kulak
+const earGeo = new THREE.BoxGeometry(0.15, 0.6, 0.1);
 const earL = new THREE.Mesh(earGeo, bodyMat);
-earL.position.set(-0.2, 0.5, -0.1); // Kafa üstünde sol
-head.add(earL);
+earL.position.set(-0.18, 1.7, 0.1); 
+rabbit.add(earL);
 
+// Sağ Kulak
 const earR = new THREE.Mesh(earGeo, bodyMat);
-earR.position.set(0.2, 0.5, -0.1); // Kafa üstünde sağ
-head.add(earR);
+earR.position.set(0.18, 1.7, 0.1); 
+rabbit.add(earR);
 
-// Kuyruk (Şirin beyaz bir top)
-const tail = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), bodyMat);
-tail.position.set(0, 0.3, -0.5); // Gövdenin arkası
+// Kuyruk
+const tail = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), bodyMat);
+tail.position.set(0, 0.4, -0.45); 
 rabbit.add(tail);
 
-// Ayaklar (Dört küçük blocky ayak)
+// Ayaklar
 const footGeo = new THREE.BoxGeometry(0.25, 0.2, 0.4);
-const footMat = new THREE.MeshStandardMaterial({ color: 0xdddddd }); // Hafif gri
+const footMat = new THREE.MeshStandardMaterial({ color: 0xdddddd }); 
 const createFoot = (x, z) => {
     const foot = new THREE.Mesh(footGeo, footMat);
-    foot.position.set(x, 0.1, z); // Tam yerde
+    foot.position.set(x, 0.1, z); 
     foot.castShadow = true;
     rabbit.add(foot);
-    return foot;
 };
-const footFL = createFoot(-0.3, 0.3); // Ön sol
-const footFR = createFoot(0.3, 0.3);  // Ön sağ
-const footBL = createFoot(-0.3, -0.3); // Arka sol
-const footBR = createFoot(0.3, -0.3);  // Arka sağ
+createFoot(-0.28, 0.25);  // Ön sol
+createFoot(0.28, 0.25);   // Ön sağ
+createFoot(-0.28, -0.25); // Arka sol
+createFoot(0.28, -0.25);  // Arka sağ
 
-// --- VURMA EFEKTİ (Güncellendi: Artık Tavşan Grubunun Önünde Açılacak) ---
+// VURMA EFEKTİ
 const attackGeometry = new THREE.RingGeometry(0.2, 0.8, 16);
 const attackMaterial = new THREE.MeshBasicMaterial({ color: 0xff1111, transparent: true, opacity: 0, side: THREE.DoubleSide });
 const attackEffect = new THREE.Mesh(attackGeometry, attackMaterial);
 scene.add(attackEffect);
-attackEffect.rotation.x = Math.PI / 2; // Yere ser
+attackEffect.rotation.x = Math.PI / 2; 
 
 let isAttacking = false;
 let attackAnimTime = 0;
 
-// ÇARPIŞMA KONTROLÜ (Tavşan grubunun sınırlarına göre güncellendi)
+// ÇARPIŞMA KONTROLÜ
 function checkCollision(newX, newY, newZ) {
     const playerBox = new THREE.Box3(
         new THREE.Vector3(newX - 0.5, newY - 0.5, newZ - 0.5),
@@ -174,13 +171,13 @@ function checkCollision(newX, newY, newZ) {
     return false;
 }
 
-// HAREKET VE YERÇEKİMİ DEĞİŞKENLERİ
+// HAREKET DEĞİŞKENLERİ
 let velocityY = 0;
 let jumpCount = 0;
 const gravity = 0.014;
 const jumpForce = 0.32;
 
-// 7. JOYSTICK SİSTEMİ (Mevcut, dokunma)
+// 7. JOYSTICK SİSTEMİ
 const zone = document.getElementById('joystick-zone');
 const stick = document.getElementById('joystick-stick');
 const maxRadius = 35; 
@@ -224,7 +221,7 @@ function handleJoystick(clientX, clientY) {
     moveX = deltaX / maxRadius; moveZ = deltaY / maxRadius;
 }
 
-// KAMERA ÇEVİRME SİSTEMİ (Mevcut, dokunma)
+// KAMERA ÇEVİRME SİSTEMİ
 let cameraAngleY = 0; 
 let touchStartX = 0;
 let isTurningCamera = false;
@@ -256,7 +253,7 @@ window.addEventListener('touchend', (e) => {
     if (e.touches.length === 0) isTurningCamera = false;
 });
 
-// ZIPLAMA VE VURMA FONKSİYONLARI (Mevcut)
+// ZIPLAMA VE VURMA
 function executeJump() {
     if (jumpCount < 2) {
         velocityY = jumpForce;
@@ -281,14 +278,17 @@ const attackButton = document.getElementById('attack-button');
 jumpButton.addEventListener('touchend', (e) => { e.preventDefault(); executeJump(); });
 attackButton.addEventListener('touchend', (e) => { e.preventDefault(); executeAttack(); });
 
-// 8. OYUN DÖNGÜSÜ (GÜNCELLENDİ)
+jumpButton.addEventListener('click', (e) => { e.preventDefault(); executeJump(); });
+attackButton.addEventListener('click', (e) => { e.preventDefault(); executeAttack(); });
+
+// 8. OYUN DÖNGÜSÜ
 const speed = 0.15;
 const cameraDistance = 8, cameraHeight = 5;    
 
 function animate() {
     requestAnimationFrame(animate);
 
-    // HAREKET (Tavşan grubunun dönüşü dâhil)
+    // HAREKET KONTROLÜ
     if (joystickActive && (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05)) {
         const forwardX = Math.sin(cameraAngleY), forwardZ = Math.cos(cameraAngleY);
         const rightX = Math.sin(cameraAngleY + Math.PI / 2), rightZ = Math.cos(cameraAngleY + Math.PI / 2);
@@ -301,14 +301,13 @@ function animate() {
         if (!checkCollision(nextX, rabbit.position.y, rabbit.position.z)) rabbit.position.x = nextX;
         if (!checkCollision(rabbit.position.x, rabbit.position.y, nextZ)) rabbit.position.z = nextZ;
         
-        // Tavşan grubunu hareket ettiği yöne döndür
+        // Tavşanı gidiş yönüne döndür
         rabbit.rotation.y = Math.atan2(directionX, directionZ);
     }
 
-    // HIT (VURMA) ANİMASYONU (Efekt tavşanın önüne yerleştiriliyor)
+    // HIT ANİMASYONU
     if (isAttacking) {
         attackAnimTime += 0.15;
-        // Tavşanın baktığı yöne göre efekti 1.0 birim önüne koy
         const attackOffsetX = Math.sin(rabbit.rotation.y) * 1.0;
         const attackOffsetZ = Math.cos(rabbit.rotation.y) * 1.0;
         
@@ -324,7 +323,7 @@ function animate() {
         }
     }
 
-    // DUMMY SALLANMA MATEMATİĞİ (Mevcut)
+    // DUMMY ANİMASYONU
     if (isDummyHit) {
         dummySwayTime += 0.12;
         dummySwayAngle = Math.sin(dummySwayTime * 2.0) * 5 * Math.pow(0.90, dummySwayTime);
@@ -335,7 +334,7 @@ function animate() {
         }
     }
 
-    // YERÇEKİMİ VE DÜŞEY FİZİK
+    // YERÇEKİMİ VE DÜŞÜŞ
     velocityY -= gravity; 
     const nextY = rabbit.position.y + velocityY;
     if (checkCollision(rabbit.position.x, nextY, rabbit.position.z)) {
@@ -345,7 +344,7 @@ function animate() {
     
     if (rabbit.position.y <= 0.5) { rabbit.position.y = 0.5; velocityY = 0; jumpCount = 0; }
 
-    // KAMERANIN SAKİN TAKİBİ
+    // KAMERA TAKİBİ
     camera.position.x = rabbit.position.x - Math.sin(cameraAngleY) * cameraDistance;
     camera.position.z = rabbit.position.z - Math.cos(cameraAngleY) * cameraDistance;
     camera.position.y = rabbit.position.y + cameraHeight;
