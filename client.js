@@ -14,6 +14,7 @@ const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerH
 // 3. RENDERER (EKRANA ÇİZİCİ) AYARI
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio); 
 renderer.shadowMap.enabled = true;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
@@ -51,32 +52,30 @@ function createCube(x, y, z, w, h, d, color) {
     obstacles.push(mesh);
 }
 
-createCube(5, 1, -5, 2, 2, 2, 0xff9800);   
+createCube(5, 1, -8, 2, 2, 2, 0xff9800);   
 createCube(-7, 0.5, -3, 3, 1, 3, 0x00bcd4); 
-createCube(0, 1.5, -12, 4, 3, 4, 0x9c27b0); 
+createCube(0, 1.5, -15, 4, 3, 4, 0x9c27b0); 
 createCube(8, 0.5, 6, 2, 1, 2, 0xffeb3b);   
 
-// --- YENİ EKLENEN KISIM: SALLANAN DUMMY (ANTRENMAN KUKLASI) ---
-const dummyGeometry = new THREE.BoxGeometry(1.2, 2.5, 1.2);
-const dummyMaterial = new THREE.MeshStandardMaterial({ color: 0xe67e22 }); // Turuncu
+// --- SÜPER AYIDAKİ SALLANAN DUMMY (KUKLA) ---
+const dummyGeometry = new THREE.BoxGeometry(1, 2.5, 1);
+const dummyMaterial = new THREE.MeshStandardMaterial({ color: 0xe67e22 }); 
 const dummy = new THREE.Mesh(dummyGeometry, dummyMaterial);
-dummy.position.set(-8, 1.25, -8); // Haritanın bir köşesine koyalım
+dummy.position.set(0, 1.25, -5); // Tam karşında doğacak
 dummy.castShadow = true;
 dummy.receiveShadow = true;
 dummy.geometry.computeBoundingBox();
 scene.add(dummy);
-obstacles.push(dummy); // Çarpışma fiziği Dummy için de geçerli olsun
+obstacles.push(dummy); 
 
 let isDummyHit = false;
-let dummySwayAngle = 0; // Dummy'nin anlık sallanma açısı
-let dummySwayTime = 0;   // Sallanma animasyonunun zamanlayıcısı
+let dummySwayAngle = 0;
+let dummySwayTime = 0;
 
-// Dummy'ye vurulduğunu tetikleyen fonksiyon
 function swayDummy() {
     isDummyHit = true;
-    dummySwayTime = 0; // Animasyonu başa sar
+    dummySwayTime = 0; 
 }
-// -----------------------------------------------------------------
 
 // 6. ANA KARAKTER
 const geometry = new THREE.BoxGeometry(1, 1, 1);
@@ -86,23 +85,22 @@ rabbit.position.set(0, 0.5, 0);
 rabbit.castShadow = true;
 scene.add(rabbit);
 
-// Vurma efekti (Karakterin hemen önünde çıkacak kırmızı iz)
-const attackGeometry = new THREE.RingGeometry(0.3, 0.8, 16);
-const attackMaterial = new THREE.MeshBasicMaterial({ color: 0xff3333, transparent: true, opacity: 0, side: THREE.DoubleSide });
+// VURMA EFEKTİ (Kırmızı halka izi)
+const attackGeometry = new THREE.RingGeometry(0.2, 0.8, 16);
+const attackMaterial = new THREE.MeshBasicMaterial({ color: 0xff1111, transparent: true, opacity: 0, side: THREE.DoubleSide });
 const attackEffect = new THREE.Mesh(attackGeometry, attackMaterial);
 scene.add(attackEffect);
-attackEffect.rotation.x = Math.PI / 2; // Yere paralel yap
+attackEffect.rotation.x = Math.PI / 2; 
 
 let isAttacking = false;
 let attackAnimTime = 0;
 
-// ÇARPIŞMA KONTROL FONKSİYONU
+// ÇARPIŞMA KONTROLÜ
 function checkCollision(newX, newY, newZ) {
     const playerBox = new THREE.Box3(
         new THREE.Vector3(newX - 0.5, newY - 0.5, newZ - 0.5),
         new THREE.Vector3(newX + 0.5, newY + 0.5, newZ + 0.5)
     );
-
     for (let i = 0; i < obstacles.length; i++) {
         const obstacleBox = new THREE.Box3().setFromObject(obstacles[i]);
         if (playerBox.intersectsBox(obstacleBox)) return true; 
@@ -110,13 +108,13 @@ function checkCollision(newX, newY, newZ) {
     return false;
 }
 
-// FİZİK VE YERÇEKİMİ DEĞİŞKENLERİ
+// HAREKET VE YERÇEKİMİ DEĞİŞKENLERİ
 let velocityY = 0;
 let jumpCount = 0;
 const gravity = 0.014;
 const jumpForce = 0.32;
 
-// 7. SABİT JOYSTICK HAREKET SİSTEMİ
+// 7. JOYSTICK SİSTEMİ
 const zone = document.getElementById('joystick-zone');
 const stick = document.getElementById('joystick-stick');
 const maxRadius = 35; 
@@ -127,10 +125,19 @@ let moveX = 0, moveZ = 0;
 zone.addEventListener('touchstart', (e) => {
     joystickActive = true;
     handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
-});
+}, { passive: true });
+
 window.addEventListener('touchmove', (e) => {
-    if (joystickActive) handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
-});
+    if (joystickActive) {
+        for (let i = 0; i < e.touches.length; i++) {
+            if (zone.contains(e.touches[i].target)) {
+                handleJoystick(e.touches[i].clientX, e.touches[i].clientY);
+                break;
+            }
+        }
+    }
+}, { passive: true });
+
 zone.addEventListener('touchend', () => {
     joystickActive = false;
     stick.style.transform = 'translate(0px, 0px)';
@@ -146,13 +153,12 @@ function handleJoystick(clientX, clientY) {
     if (distance > maxRadius) {
         deltaX = (deltaX / distance) * maxRadius;
         deltaY = (deltaY / distance) * maxRadius;
-        distance = maxRadius;
     }
     stick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
     moveX = deltaX / maxRadius; moveZ = deltaY / maxRadius;
 }
 
-// KAMERA ÇEVİRME VE AKSİYON BUTONLARI KONTROLÜ (GÜNCELLENDİ)
+// KAMERA ÇEVİRME SİSTEMİ
 let cameraAngleY = 0; 
 let touchStartX = 0;
 let isTurningCamera = false;
@@ -164,7 +170,7 @@ window.addEventListener('touchstart', (e) => {
         isTurningCamera = true;
         touchStartX = e.touches[0].clientX;
     }
-});
+}, { passive: true });
 
 window.addEventListener('touchmove', (e) => {
     if (!isTurningCamera) return;
@@ -178,12 +184,13 @@ window.addEventListener('touchmove', (e) => {
             break;
         }
     }
-});
+}, { passive: true });
+
 window.addEventListener('touchend', (e) => {
     if (e.touches.length === 0) isTurningCamera = false;
 });
 
-// AKSİYON BUTONLARININ TETİKLEYİCİLERİ
+// ZIPLAMA VE VURMA FONKSİYONLARI
 function executeJump() {
     if (jumpCount < 2) {
         velocityY = jumpForce;
@@ -191,16 +198,14 @@ function executeJump() {
     }
 }
 
-// YENİ: VURMA (HIT) FONKSİYONU
 function executeAttack() {
     if (!isAttacking) {
         isAttacking = true;
-        attackAnimTime = 0; // Efekt animasyonunu başlat
+        attackAnimTime = 0;
         
-        // Dummy'ye vurma kontrolü (Yakınlık testi)
         const distToDummy = rabbit.position.distanceTo(dummy.position);
-        if (distToDummy < 3) { // 3 birimden daha yakınsa vurabilir
-            swayDummy(); // Dummy'nin sallanmasını tetikle
+        if (distToDummy < 2.5) { 
+            swayDummy();
         }
     }
 }
@@ -208,75 +213,77 @@ function executeAttack() {
 const jumpButton = document.getElementById('jump-button');
 const attackButton = document.getElementById('attack-button');
 
-jumpButton.addEventListener('touchstart', (e) => { e.preventDefault(); executeJump(); });
-attackButton.addEventListener('touchstart', (e) => { e.preventDefault(); executeAttack(); });
+jumpButton.addEventListener('touchend', (e) => { e.preventDefault(); executeJump(); });
+attackButton.addEventListener('touchend', (e) => { e.preventDefault(); executeAttack(); });
 
-// 8. EKRAN YENİLEME VE ANİMASYON DÖNGÜSÜ
+jumpButton.addEventListener('click', (e) => { e.preventDefault(); executeJump(); });
+attackButton.addEventListener('click', (e) => { e.preventDefault(); executeAttack(); });
+
+// 8. OYUN DÖNGÜSÜ
 const speed = 0.15;
-const cameraDistance = 10, cameraHeight = 6;    
+const cameraDistance = 8, cameraHeight = 5;    
 
 function animate() {
     requestAnimationFrame(animate);
 
-    // YÜRÜME
+    // HAREKET
     if (joystickActive && (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05)) {
         const forwardX = Math.sin(cameraAngleY), forwardZ = Math.cos(cameraAngleY);
         const rightX = Math.sin(cameraAngleY + Math.PI / 2), rightZ = Math.cos(cameraAngleY + Math.PI / 2);
         const directionX = (forwardX * -moveZ) - (rightX * moveX);
         const directionZ = (forwardZ * -moveZ) - (rightZ * moveX);
-        const nextX = rabbit.position.x + directionX * speed, nextZ = rabbit.position.z + directionZ * speed;
+        
+        const nextX = rabbit.position.x + directionX * speed;
+        const nextZ = rabbit.position.z + directionZ * speed;
+        
         if (!checkCollision(nextX, rabbit.position.y, rabbit.position.z)) rabbit.position.x = nextX;
         if (!checkCollision(rabbit.position.x, rabbit.position.y, nextZ)) rabbit.position.z = nextZ;
+        
         rabbit.rotation.y = Math.atan2(directionX, directionZ);
     }
 
-    // VURMA EFEKTİ ANİMASYONU VE DUMMY SALLANMA MATEMATİĞİ (YENİ)
+    // HIT (VURMA) ANİMASYONU
     if (isAttacking) {
-        attackAnimTime += 0.1; // Animasyon hızı
+        attackAnimTime += 0.15;
+        const attackOffsetX = Math.sin(rabbit.rotation.y) * 1.0;
+        const attackOffsetZ = Math.cos(rabbit.rotation.y) * 1.0;
         
-        // Efekti karakterin baktığı yönde 1.2 birim önüne yerleştir
-        const attackOffsetX = Math.sin(rabbit.rotation.y) * 1.2;
-        const attackOffsetZ = Math.cos(rabbit.rotation.y) * 1.2;
-        attackEffect.position.set(rabbit.position.x + attackOffsetX, rabbit.position.y, rabbit.position.z + attackOffsetZ);
-        attackEffect.scale.set(attackAnimTime, attackAnimTime, attackAnimTime); // Genişle
-
-        // Efekti görünür yap (Sönümlenerek kaybolma)
+        attackEffect.position.set(rabbit.position.x + attackOffsetX, rabbit.position.y - 0.4, rabbit.position.z + attackOffsetZ);
+        attackEffect.scale.set(attackAnimTime, attackAnimTime, attackAnimTime);
+        
         const opacity = Math.max(0, 1 - (attackAnimTime / 2));
         attackMaterial.opacity = opacity;
 
-        if (attackAnimTime >= 2.2) { // Efekt süresi bitti
+        if (attackAnimTime >= 2.0) {
             isAttacking = false;
             attackMaterial.opacity = 0;
         }
     }
 
-    // Dummy'nin Sallanma Matematiği
+    // DUMMY SALLANMA MATEMATİĞİ
     if (isDummyHit) {
-        dummySwayTime += 0.1;
-        
-        // Zamanla sönümlenen bir sinüs dalgası: dummySwayTime arttıkça genlik (4) azalır (* 0.95^t)
-        dummySwayAngle = Math.sin(dummySwayTime * 1.5) * 4 * Math.pow(0.92, dummySwayTime);
-        
-        // Dummy'nin dönüş eksenini ayarla (Z ekseninde sağa-sola sallanma)
-        dummy.rotation.z = dummySwayAngle * (Math.PI / 180); // Dereceden radyana çevir
+        dummySwayTime += 0.12;
+        // Z ekseninde sönümlenen sinüs dalgası hareketi
+        dummySwayAngle = Math.sin(dummySwayTime * 2.0) * 5 * Math.pow(0.90, dummySwayTime);
+        dummy.rotation.z = dummySwayAngle * (Math.PI / 180);
 
-        if (Math.abs(dummySwayAngle) < 0.01) { // Sallanma bitti
+        if (Math.abs(dummySwayAngle) < 0.02) {
             isDummyHit = false;
-            dummy.rotation.z = 0; // Düzelt
+            dummy.rotation.z = 0;
         }
     }
-    // -------------------------------------------------------------
 
-    // YERÇEKİMİ VE DÜŞEY ÇARPIŞMA (Mevcut kodlar tıkır tıkır devam)
+    // YERÇEKİMİ VE DÜŞEY FİZİK
     velocityY -= gravity; 
     const nextY = rabbit.position.y + velocityY;
     if (checkCollision(rabbit.position.x, nextY, rabbit.position.z)) {
         if (velocityY < 0) { velocityY = 0; jumpCount = 0; } 
         else velocityY = -0.02;
     } else rabbit.position.y = nextY;
+    
     if (rabbit.position.y <= 0.5) { rabbit.position.y = 0.5; velocityY = 0; jumpCount = 0; }
 
-    // KAMERANIN TAKİBİ
+    // KAMERANIN SAKİN TAKİBİ
     camera.position.x = rabbit.position.x - Math.sin(cameraAngleY) * cameraDistance;
     camera.position.z = rabbit.position.z - Math.cos(cameraAngleY) * cameraDistance;
     camera.position.y = rabbit.position.y + cameraHeight;
