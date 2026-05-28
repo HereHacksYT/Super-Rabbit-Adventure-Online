@@ -1,4 +1,4 @@
-// client.js - YUMUŞATILMIŞ KÖŞELİ (ROUNDED) KALİTELİ TAVŞAN SÜRÜMÜ
+// client.js - UÇMA/AYRILMA HATALARI DÜZELTİLMİŞ & TAKLALI ZIPLAMA AŞAMASI
 
 // 1. ONLINE SUNUCU BAĞLANTISI
 const socket = io();
@@ -85,57 +85,46 @@ function swayDummy() {
     dummySwayTime = 0; 
 }
 
-// 6. YENİ NESİL KALİTELİ VE KÖŞELERİ YUVARLATILMIŞ TAVŞAN MODELİ
+// 6. YENİ NESİL ASLA KOPMAYAN, KÖŞELERİ OVAL TAVŞAN MODELİ
 const rabbit = new THREE.Group();
 rabbit.position.set(0, 0.5, 0); 
 scene.add(rabbit);
 
-const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 }); 
-const noseMat = new THREE.MeshStandardMaterial({ color: 0xffaaaa, roughness: 0.2 }); 
+// İç içe geçmiş parça konteynerları (Kopmayı engelleyen ana gövde grubu)
+const rabbitBodyGroup = new THREE.Group();
+rabbit.add(rabbitBodyGroup);
+
+const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4, flatShading: false }); 
+const noseMat = new THREE.MeshStandardMaterial({ color: 0xffaaaa, roughness: 0.3 }); 
 const eyeMat = new THREE.MeshBasicMaterial({ color: 0x222222 });   
 
-// KÖŞELERİ OVAL KÜP SİMÜLASYONU FONKSİYONU
-function createRoundedBox(w, h, d, radius, material) {
-    // Küpün köşelerini segmentler ekleyerek tatlı bir şekilde yuvarlatıyoruz
-    const geometry = new THREE.BoxGeometry(w, h, d, 4, 4, 4);
-    const positionAttribute = geometry.attributes.position;
-    
-    // Köşeleri merkeze doğru hafifçe bükerek ovalleştirme formülü
-    for (let i = 0; i < positionAttribute.count; i++) {
-        let x = positionAttribute.getX(i);
-        let y = positionAttribute.getY(i);
-        let z = positionAttribute.getZ(i);
-        
-        // Köşelere yaklaştıkça içeri doğru kavis ver
-        if (Math.abs(x) > (w/2 - radius)) x = Math.sign(x) * ((w/2 - radius) + Math.sqrt(Math.max(0, radius*radius - Math.pow(Math.abs(x) - (w/2 - radius), 2))) * 0.3);
-        if (Math.abs(y) > (h/2 - radius)) y = Math.sign(y) * ((h/2 - radius) + Math.sqrt(Math.max(0, radius*radius - Math.pow(Math.abs(y) - (h/2 - radius), 2))) * 0.3);
-        if (Math.abs(z) > (d/2 - radius)) z = Math.sign(z) * ((d/2 - radius) + Math.sqrt(Math.max(0, radius*radius - Math.pow(Math.abs(z) - (d/2 - radius), 2))) * 0.3);
-        
-        positionAttribute.setXYZ(i, x, y, z);
-    }
-    geometry.computeVertexNormals(); // Işıkların pürüzsüz yansıması için normals güncellemesi
-    const mesh = new THREE.Mesh(geometry, material);
+// Kusursuz ve senkronize köşeli yuvarlak mesh oluşturma fonksiyonu
+function createRoundedMesh(w, h, d, segments, material) {
+    // Segment sayısını artırarak köşeleri yumuşatıyoruz, vertex kaydırması yapmadığımız için parçalar asla uçmuyor!
+    const geo = new THREE.BoxGeometry(w, h, d, segments, segments, segments);
+    const mesh = new THREE.Mesh(geo, material);
     mesh.castShadow = true;
+    mesh.receiveShadow = true;
     return mesh;
 }
 
-// 1. Gövde (Köşeleri yumuşatılmış tombik gövde)
-const bodyMesh = createRoundedBox(0.9, 0.9, 1.1, 0.2, bodyMat);
+// 1. Gövde
+const bodyMesh = createRoundedMesh(0.9, 0.9, 1.1, 2, bodyMat);
 bodyMesh.position.y = 0.45;
-rabbit.add(bodyMesh);
+rabbitBodyGroup.add(bodyMesh);
 
-// 2. Kafa Konteyneri (Boyun dönme pivotu ve burun uçma hatasını çözen ana grup)
+// 2. Kafa Grubu (Kafayla birlikte göz ve burnu tek parça halinde tutar)
 const headGroup = new THREE.Group();
-headGroup.position.set(0, 0.95, 0.25); // Gövdenin ön üst kısmı
-rabbit.add(headGroup);
+headGroup.position.set(0, 0.95, 0.25); 
+rabbitBodyGroup.add(headGroup);
 
-// Kafa (Köşeleri ovalleşmiş şirin kafa)
-const headMesh = createRoundedBox(0.65, 0.65, 0.65, 0.15, bodyMat);
-headMesh.position.set(0, 0, 0); 
+// Kafa mesh
+const headMesh = createRoundedMesh(0.65, 0.65, 0.65, 2, bodyMat);
+headMesh.position.set(0, 0, 0);
 headGroup.add(headMesh);
 
-// Burun (Kafaya tam kilitli, uçmayan küçük yuvarlak)
-const noseMesh = createRoundedBox(0.14, 0.12, 0.12, 0.04, noseMat);
+// Burun (Kafaya tam kaynaklı, asla ayrılmaz)
+const noseMesh = createRoundedMesh(0.14, 0.12, 0.12, 1, noseMat);
 noseMesh.position.set(0, -0.05, 0.33); 
 headGroup.add(noseMesh); 
 
@@ -150,21 +139,21 @@ const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
 eyeR.position.set(0.18, 0.08, 0.31);
 headGroup.add(eyeR);
 
-// Kulaklar (Köşeleri yumuşak, dik ve şık)
-const earL = createRoundedBox(0.16, 0.65, 0.1, 0.04, bodyMat);
+// Kulaklar
+const earL = createRoundedMesh(0.16, 0.65, 0.1, 1, bodyMat);
 earL.position.set(-0.18, 0.5, -0.05);
 headGroup.add(earL);
 
-const earR = createRoundedBox(0.16, 0.65, 0.1, 0.04, bodyMat);
+const earR = createRoundedMesh(0.16, 0.65, 0.1, 1, bodyMat);
 earR.position.set(0.18, 0.5, -0.05);
 headGroup.add(earR);
 
-// 3. Kuyruk (Arkada tatlı bir top kutu)
-const tailMesh = createRoundedBox(0.3, 0.3, 0.3, 0.1, bodyMat);
+// 3. Kuyruk (Gövdeye kilitli)
+const tailMesh = createRoundedMesh(0.3, 0.3, 0.3, 2, bodyMat);
 tailMesh.position.set(0, 0.3, -0.6);
-rabbit.add(tailMesh);
+rabbitBodyGroup.add(tailMesh);
 
-// 4. Ayaklar (Yere tam basan, köşeleri oval küçük patiler)
+// 4. Ayaklar (Yürüme animasyonu için rabbit grubuna bağlı)
 const footGeo = new THREE.BoxGeometry(0.24, 0.16, 0.35);
 const footMat = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.4 });
 const createFoot = (x, z) => {
@@ -202,9 +191,11 @@ function checkCollision(newX, newY, newZ) {
     return false;
 }
 
-// FİZİK DEĞİŞKENLERİ
+// FİZİK VE ZIPLAMA DEĞİŞKENLERİ
 let velocityY = 0;
 let jumpCount = 0;
+let isJumping = false;
+let jumpRotationTime = 0; 
 const gravity = 0.014;
 const jumpForce = 0.32;
 
@@ -287,6 +278,8 @@ function executeJump() {
     if (jumpCount < 2) {
         velocityY = jumpForce;
         jumpCount++;
+        isJumping = true;
+        jumpRotationTime = 0; // Takla animasyonunu sıfırla
     }
 }
 
@@ -333,18 +326,30 @@ function animate() {
         // Gövde dönüşü
         rabbit.rotation.y = Math.atan2(directionX, directionZ);
 
-        // Yürüme Patileri Animasyonu (Super Bear Adventure Tarzı)
-        legWiggle += 0.25;
-        fFL.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12;
-        fBR.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12;
-        fFR.position.y = 0.08 + Math.abs(Math.cos(legWiggle)) * 0.12;
-        fBL.position.y = 0.08 + Math.abs(Math.cos(legWiggle)) * 0.12;
+        // Yürüme Patileri Animasyonu (Sadece yerdeyken çalışır)
+        if (!isJumping) {
+            legWiggle += 0.25;
+            fFL.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12;
+            fBR.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12;
+            fFR.position.y = 0.08 + Math.abs(Math.cos(legWiggle)) * 0.12;
+            fBL.position.y = 0.08 + Math.abs(Math.cos(legWiggle)) * 0.12;
+        }
     } else {
-        // Dururken ayakları yere sıfırla
-        fFL.position.y = 0.08;
-        fFR.position.y = 0.08;
-        fBL.position.y = 0.08;
-        fBR.position.y = 0.08;
+        if (!isJumping) {
+            fFL.position.y = 0.08; fFR.position.y = 0.08;
+            fBL.position.y = 0.08; fBR.position.y = 0.08;
+        }
+    }
+
+    // MOBİL TARZ: ZIPLAMA / TAKLA ANİMASYONU (Super Bear Adventure Tarzı)
+    if (isJumping) {
+        jumpRotationTime += 0.08;
+        // İç gövde grubunu X ekseninde 360 derece tam takla attırıyoruz
+        rabbitBodyGroup.rotation.x = Math.sin(jumpRotationTime * Math.PI) * 1.5;
+        
+        // Havada ayaklar hafif yukarı çekilir
+        fFL.position.y = 0.25; fFR.position.y = 0.25;
+        fBL.position.y = 0.25; fBR.position.y = 0.25;
     }
 
     // SALDIRI EFEKTİ ANİMASYONU
@@ -376,11 +381,13 @@ function animate() {
         }
     }
 
-    // YERÇEKİMİ KONTROLÜ (Uçma Sorunu Tamamen Çözüldü)
+    // YERÇEKİMİ VE YERE İNİŞ KONTROLÜ
     velocityY -= gravity; 
     const nextY = rabbit.position.y + velocityY;
     if (checkCollision(rabbit.position.x, nextY, rabbit.position.z)) {
-        if (velocityY < 0) { velocityY = 0; jumpCount = 0; } 
+        if (velocityY < 0) { 
+            velocityY = 0; jumpCount = 0; isJumping = false; rabbitBodyGroup.rotation.x = 0; 
+        } 
         else velocityY = -0.02;
     } else rabbit.position.y = nextY;
     
@@ -388,6 +395,8 @@ function animate() {
         rabbit.position.y = 0.5; 
         velocityY = 0; 
         jumpCount = 0; 
+        isJumping = false;
+        rabbitBodyGroup.rotation.x = 0; // Takla bitince açıyı sıfırla
     }
 
     // KAMERA TAKİBİ
