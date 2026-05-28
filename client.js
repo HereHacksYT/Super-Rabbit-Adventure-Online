@@ -314,11 +314,19 @@ socket.on('playerAttacked', (id) => {
     }
 });
 
-// Sadece itme, hasar yok
+// Knockback: pozisyonu güncelle ve HEMEN sunucuya bildir
 socket.on('knockback', (angle) => {
     if (!gameActive || isDead) return;
     rabbit.position.x += Math.sin(angle) * 2.0;
     rabbit.position.z += Math.cos(angle) * 2.0;
+    
+    // Anında diğer oyunculara yeni pozisyonu gönder
+    socket.emit('playerMovement', { 
+        x: rabbit.position.x, 
+        y: rabbit.position.y, 
+        z: rabbit.position.z, 
+        ry: rabbit.rotation.y 
+    });
 });
 
 socket.on('playerDisconnected', (id) => {
