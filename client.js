@@ -44,7 +44,7 @@ rabbit.position.y = 0.5;
 rabbit.castShadow = true;
 scene.add(rabbit);
 
-// 7. SABİT JOYSTICK HAREKET SİVESİ
+// 7. SABİT JOYSTICK HAREKET SİSTEMİ (DÜZELTİLEN KISIM)
 const zone = document.getElementById('joystick-zone');
 const stick = document.getElementById('joystick-stick');
 
@@ -53,11 +53,13 @@ let moveX = 0;
 let moveZ = 0;
 
 const maxRadius = 35; 
-const zoneRect = zone.getBoundingClientRect();
-const centerX = zoneRect.left + zoneRect.width / 2;
-const centerY = zoneRect.top + zoneRect.height / 2;
 
 function handleJoystick(clientX, clientY) {
+    // Merkez noktasını her dokunuşta anlık ve doğru hesapla
+    const zoneRect = zone.getBoundingClientRect();
+    const centerX = zoneRect.left + zoneRect.width / 2;
+    const centerY = zoneRect.top + zoneRect.height / 2;
+
     let deltaX = clientX - centerX;
     let deltaY = clientY - centerY;
     let distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
@@ -70,10 +72,12 @@ function handleJoystick(clientX, clientY) {
 
     stick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
+    // Buradaki değerlerin 0 kalmaması için hassasiyeti artırdık
     moveX = deltaX / maxRadius;
     moveZ = deltaY / maxRadius;
 }
 
+// Dokunma Etkinlikleri
 zone.addEventListener('touchstart', (e) => {
     joystickActive = true;
     handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
@@ -97,13 +101,16 @@ const speed = 0.15;
 function animate() {
     requestAnimationFrame(animate);
 
-    if (joystickActive) {
+    if (joystickActive && (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05)) {
+        // Küpü gerçekten dünyada ilerleten kodlar:
         rabbit.position.x += moveX * speed;
         rabbit.position.z += moveZ * speed;
+        
+        // Sadece dönmekle kalmasın, o yöne baksın
         rabbit.rotation.y = Math.atan2(-moveX, -moveZ);
     }
 
-    // KAMERA TAKİP KODU BURADA
+    // KAMERA ARKAMIZDAN GELİYOR
     camera.position.x = rabbit.position.x;
     camera.position.y = rabbit.position.y + 7;
     camera.position.z = rabbit.position.z + 10;
