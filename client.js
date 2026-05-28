@@ -1,5 +1,3 @@
-// client.js - BLOK ÜSTÜNE BASMA VE YANDAN ÇARPIŞMA TAMAMEN DÜZELTİLMİŞ SÜRÜM
-
 const socket = io();
 const clock = new THREE.Clock();
 
@@ -130,6 +128,7 @@ scene.add(rabbit);
 
 let otherPlayers = {};
 let isAttacking = false, attackAnimTime = 0;
+let myHealth = 100;
 
 // --- DÜZELTİLEN YATAY ÇARPIŞMA KONTROLÜ ---
 function checkCollision(newX, newY, newZ) {
@@ -145,7 +144,6 @@ function checkCollision(newX, newY, newZ) {
     for (let i = 0; i < obstacles.length; i++) {
         const obstacleBox = new THREE.Box3().setFromObject(obstacles[i]);
         if (playerBox.intersectsBox(obstacleBox)) {
-            // Eğer bloğun üst yüzeyine çok yakınsak yan çarpışma sayma (üstte kalmaya izin ver)
             if (newY >= obstacleBox.max.y - 0.2) continue;
             return true; 
         }
@@ -158,7 +156,6 @@ function getFloorY(pX, pY, pZ) {
     gameplayGroup.updateMatrixWorld(true);
     let highestCeil = 0;
 
-    // Karakterin bastığı dikey izdüşüm kutusu
     const playerFeetBox = new THREE.Box3(
         new THREE.Vector3(pX - 0.25, pY, pZ - 0.25),
         new THREE.Vector3(pX + 0.25, pY + 0.5, pZ + 0.25)
@@ -167,11 +164,9 @@ function getFloorY(pX, pY, pZ) {
     for (let i = 0; i < obstacles.length; i++) {
         const obstacleBox = new THREE.Box3().setFromObject(obstacles[i]);
         
-        // Yatayda bloğun sınırları içindeysek ve bloğun üstüne yakınsak
         if (pX + 0.25 >= obstacleBox.min.x && pX - 0.25 <= obstacleBox.max.x &&
             pZ + 0.25 >= obstacleBox.min.z && pZ - 0.25 <= obstacleBox.max.z) {
             
-            // Eğer tavşan bloğun tavanından aşağı doğru sızmaya çalışıyorsa yakala
             if (pY >= obstacleBox.max.y - 0.4) {
                 if (obstacleBox.max.y > highestCeil) {
                     highestCeil = obstacleBox.max.y;
@@ -261,11 +256,14 @@ socket.on('gameStartedAtAll', (allPlayers) => {
 
     rabbit.position.set(0, 0, 0);
     rabbit.rotation.y = 0;
+    myHealth = 100;
 
     Object.keys(otherPlayers).forEach(id => scene.remove(otherPlayers[id].mesh));
     otherPlayers = {};
 
-    Object.keys(allPlayers).forEach((id) => { if (id !== socket.id) addOtherPlayer(id, 0, 0, 0); });
+    Object.keys(allPlayers).forEach((id) => {
+        if (id !== socket.id) addOtherPlayer(id, 0, 0, 0);
+    });
     gameActive = true;
     gameplayGroup.updateMatrixWorld(true);
 });
@@ -275,7 +273,14 @@ function addOtherPlayer(id, x, y, z) {
     const modelData = createRabbitModel(false);
     modelData.mesh.position.set(x, y, z);
     scene.add(modelData.mesh);
-    otherPlayers[id] = { mesh: modelData.mesh, visual: modelData.visual, head: modelData.head, isAttacking: false, attackAnimTime: 0 };
+    otherPlayers[id] = {
+        mesh: modelData.mesh,
+        visual: modelData.visual,
+        head: modelData.head,
+        isAttacking: false,
+        attackAnimTime: 0,
+        health: 100
+    };
 }
 
 socket.on('playerMoved', (playerInfo) => {
@@ -286,11 +291,46 @@ socket.on('playerMoved', (playerInfo) => {
 });
 
 socket.on('playerAttacked', (id) => {
-    if (gameActive && otherPlayers[id]) { otherPlayers[id].isAttacking = true; otherPlayers[id].attackAnimTime = 0; }
+    if (gameActive && otherPlayers[id]) {
+        otherPlayers[id].isAttacking = true;
+        otherPlayers[id].attackAnimTime = 0;
+    }
+});
+
+// YENİ: Hasar alma efekti
+socket.on('playerDamaged', (data) => {
+    if (!gameActive) return;
+    myHealth -= data.damage;
+    // Kısa kırmızı parlama efekti
+    rabbitVisualGroup.children.forEach(child => {
+        if (child.material && child.material.color) {
+            child.material.emissive = new THREE.Color(0xff0000);
+            child.material.emissiveIntensity = 0.8;
+            setTimeout(() => {
+                if (child.material) {
+                    child.material.emissive = new THREE.Color(0x000000);
+                    child.material.emissiveIntensity = 0;
+                }
+            }, 200);
+        }
+    });
+    // Geri savrulma
+    const kbAngle = data.knockbackAngle;
+    rabbit.position.x += Math.sin(kbAngle) * 1.5;
+    rabbit.position.z += Math.cos(kbAngle) * 1.5;
+    if (myHealth <= 0) {
+        // Ölünce 3 saniye bekle ve lobiye dön
+        gameActive = false;
+        alert('Öldünüz! Lobiye dönülüyor.');
+        location.reload();
+    }
 });
 
 socket.on('playerDisconnected', (id) => {
-    if (otherPlayers[id]) { scene.remove(otherPlayers[id].mesh); delete otherPlayers[id]; }
+    if (otherPlayers[id]) {
+        scene.remove(otherPlayers[id].mesh);
+        delete otherPlayers[id];
+    }
 });
 
 // KONTROLLER VE KAMERA
@@ -353,7 +393,23 @@ document.getElementById('attack-button').addEventListener('touchstart', (e) => {
         if (isOnlineMode) socket.emit('playerAttack'); 
         const rabbitWorldPos = new THREE.Vector3(); rabbit.getWorldPosition(rabbitWorldPos);
         const dummyWorldPos = new THREE.Vector3(); dummy.getWorldPosition(dummyWorldPos);
-        if (rabbitWorldPos.distanceTo(dummyWorldPos) < 2.5) swayDummy(); 
+        if (rabbitWorldPos.distanceTo(dummyWorldPos) < 2.5) swayDummy();
+
+        // YENİ: Diğer oyunculara vurma kontrolü
+        if (isOnlineMode && gameActive) {
+            Object.keys(otherPlayers).forEach((id) => {
+                const otherPos = otherPlayers[id].mesh.position;
+                const dist = rabbit.position.distanceTo(otherPos);
+                if (dist < 2.0) {
+                    // Açıyı hesapla ve sunucuya ilet
+                    const angle = Math.atan2(
+                        otherPos.x - rabbit.position.x,
+                        otherPos.z - rabbit.position.z
+                    );
+                    socket.emit('playerHit', { targetId: id, angle: angle });
+                }
+            });
+        }
     } 
 });
 
@@ -417,17 +473,33 @@ function animate() {
         }
 
         // --- KRİTİK DÜZELTME: DİNAMİK YERÇEKİMİ VE PLATFORM KONTROLÜ ---
-        // Karakterin o an basabileceği en yüksek zemini buluyoruz (Zemin 0, blok üstleri daha yüksek)
         const currentFloorY = getFloorY(rabbit.position.x, rabbit.position.y, rabbit.position.z);
 
         velocityY -= gravity * 60 * deltaTime;
         rabbit.position.y += velocityY * deltaTime;
 
-        // Karakter altına denk gelen zeminin altına düşmeye çalışırsa basmış say
         if (rabbit.position.y <= currentFloorY) { 
             rabbit.position.y = currentFloorY; 
             velocityY = 0; 
             jumpCount = 0; 
+        }
+
+        // YENİ: Diğer oyuncularla çarpışma (iteme)
+        if (isOnlineMode) {
+            Object.keys(otherPlayers).forEach((id) => {
+                const other = otherPlayers[id].mesh;
+                const dist = rabbit.position.distanceTo(other.position);
+                if (dist < 1.2 && dist > 0.01) {
+                    // Birbirinden uzaklaştır
+                    const angle = Math.atan2(rabbit.position.x - other.position.x, rabbit.position.z - other.position.z);
+                    const pushX = Math.sin(angle) * 0.05;
+                    const pushZ = Math.cos(angle) * 0.05;
+                    rabbit.position.x += pushX;
+                    rabbit.position.z += pushZ;
+                    other.position.x -= pushX;
+                    other.position.z -= pushZ;
+                }
+            });
         }
 
         if (hasMoved || isAttacking) {
