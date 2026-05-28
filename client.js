@@ -36,7 +36,7 @@ floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// HARİTAYA EKLENEN YENİ NESNELER (Kutular ve Engeller)
+// HARİTADAKİ RENKLİ KUTULAR
 const obstacles = [];
 function createCube(x, y, z, w, h, d, color) {
     const geo = new THREE.BoxGeometry(w, h, d);
@@ -46,16 +46,15 @@ function createCube(x, y, z, w, h, d, color) {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
-    obstacles.push(mesh); // Fizik kontrolü için listeye ekle
+    obstacles.push(mesh);
 }
 
-// Haritaya rastgele tırmanma kutuları ekleyelim
-createCube(5, 1, -5, 2, 2, 2, 0xff9800);   // Turuncu Büyük Kutu
-createCube(-7, 0.5, -3, 3, 1, 3, 0x00bcd4); // Turkuaz Geniş Kutu
-createCube(0, 1.5, -12, 4, 3, 4, 0x9c27b0); // Mor Yüksek Kutu
-createCube(8, 0.5, 6, 2, 1, 2, 0xffeb3b);   // Sarı Küçük Kutu
+createCube(5, 1, -5, 2, 2, 2, 0xff9800);   
+createCube(-7, 0.5, -3, 3, 1, 3, 0x00bcd4); 
+createCube(0, 1.5, -12, 4, 3, 4, 0x9c27b0); 
+createCube(8, 0.5, 6, 2, 1, 2, 0xffeb3b);   
 
-// 6. ANA KARAKTER (Geçici 3D Küp Tavşan)
+// 6. ANA KARAKTER
 const geometry = new THREE.BoxGeometry(1, 1, 1);
 const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
 const rabbit = new THREE.Mesh(geometry, material);
@@ -63,12 +62,11 @@ rabbit.position.set(0, 0.5, 0);
 rabbit.castShadow = true;
 scene.add(rabbit);
 
-// YENİ EK FİZİK DEĞİŞKENLERİ
+// FİZİK VE YERÇEKİMİ DEĞİŞKENLERİ (Hassasiyetleri Optimize Edildi)
 let velocityY = 0;
-let isGrounded = true;
 let jumpCount = 0;
-const gravity = 0.012;
-const jumpForce = 0.28;
+const gravity = 0.014;
+const jumpForce = 0.32;
 
 // 7. SABİT JOYSTICK HAREKET SİSTEMİ
 const zone = document.getElementById('joystick-zone');
@@ -147,15 +145,27 @@ window.addEventListener('touchend', (e) => {
     if (e.touches.length === 0) isTurningCamera = false;
 });
 
-// --- YENİ EKLENEN KISIM: 2 KEZ ZIPLAMA (DOUBLE JUMP) TETİKLEYİCİSİ ---
-const jumpButton = document.getElementById('jump-button');
-jumpButton.addEventListener('touchstart', (e) => {
-    e.preventDefault(); // Sayfanın kaymasını engelle
+// --- DÜZELTİLEN KISIM: KESİN VE YAKINLAŞMAYAN ZIPLAMA FONKSİYONU ---
+function executeJump() {
     if (jumpCount < 2) {
         velocityY = jumpForce;
-        isGrounded = false;
         jumpCount++;
+        console.log("Zıplama Tetiklendi! Mevcut Zıplama Sayısı:", jumpCount);
     }
+}
+
+const jumpButton = document.getElementById('jump-button');
+
+// Mobil dokunmatik ekranlar için zıplatma ve yakınlaşmayı durdurma
+jumpButton.addEventListener('touchstart', (e) => {
+    e.preventDefault(); // Tarayıcının ekranı büyütmesini tamamen engeller
+    executeJump();
+});
+
+// Ne olur ne olmaz tıklama event'ini de sağlama alalım
+jumpButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    executeJump();
 });
 
 // 8. EKRAN YENİLEME VE ANİMASYON DÖNGÜSÜ
@@ -166,7 +176,7 @@ const cameraHeight = 6;
 function animate() {
     requestAnimationFrame(animate);
 
-    // YÜRÜME AYARLARI
+    // YÜRÜME
     if (joystickActive && (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05)) {
         const forwardX = Math.sin(cameraAngleY);
         const forwardZ = Math.cos(cameraAngleY);
@@ -181,16 +191,15 @@ function animate() {
         rabbit.rotation.y = Math.atan2(directionX, directionZ);
     }
 
-    // YENİ EK FİZİK VE YERÇEKİMİ SİSTEMİ
-    velocityY -= gravity; // Karakteri hep aşağı çek
+    // YERÇEKİMİ UYGULAMASI
+    velocityY -= gravity; 
     rabbit.position.y += velocityY;
 
-    // Basit Yer Çekimi Sınırı (Çimenlerin altına düşmesin)
+    // Zemine basma kontrolü
     if (rabbit.position.y <= 0.5) {
         rabbit.position.y = 0.5;
         velocityY = 0;
-        isGrounded = true;
-        jumpCount = 0; // Yere basınca zıplama hakkı sıfırlanır
+        jumpCount = 0; // Yere basınca zıplama hakkı tamamen sıfırlanır
     }
 
     // KAMERANIN TAKİBİ
