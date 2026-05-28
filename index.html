@@ -33,6 +33,33 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             touch-action: none;
         }
+
+        /* ZIPLAMA BUTONU TASARIMI */
+        #jump-button {
+            position: absolute;
+            bottom: 50px;
+            right: 40px;
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 3px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            color: white;
+            font-family: sans-serif;
+            font-weight: bold;
+            font-size: 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            touch-action: none;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+        }
+        #jump-button:active {
+            background: rgba(255, 255, 255, 0.6);
+            transform: scale(0.95);
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="/socket.io/socket.io.js"></script>
@@ -44,6 +71,8 @@
     <div id="joystick-zone">
         <div id="joystick-stick"></div>
     </div>
+
+    <div id="jump-button">JUMP</div>
 
     <script src="client.js"></script>
 </body>
