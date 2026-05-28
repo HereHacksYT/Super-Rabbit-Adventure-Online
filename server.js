@@ -4,7 +4,6 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 
-// Statik dosyaları ana klasörden sun
 app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
@@ -100,6 +99,13 @@ io.on('connection', (socket) => {
     socket.on('playerAttack', () => {
         if (currentRoom && rooms[currentRoom] && rooms[currentRoom].isStarted) {
             socket.to(currentRoom).emit('playerAttacked', socket.id);
+        }
+    });
+
+    // Sadece itme (hasarsız)
+    socket.on('playerKnockback', (data) => {
+        if (currentRoom && rooms[currentRoom] && rooms[currentRoom].isStarted) {
+            io.to(data.targetId).emit('knockback', data.angle);
         }
     });
 
