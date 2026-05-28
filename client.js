@@ -1,4 +1,4 @@
-// client.js - ÇARPIŞMA SİSTEMİ VE HIT TAMAMEN DÜZELTİLMİŞ SÜRÜM
+// client.js - BLOK ÜSTÜNE BASMA VE YANDAN ÇARPIŞMA TAMAMEN DÜZELTİLMİŞ SÜRÜM
 
 const socket = io();
 const clock = new THREE.Clock();
@@ -131,31 +131,55 @@ scene.add(rabbit);
 let otherPlayers = {};
 let isAttacking = false, attackAnimTime = 0;
 
-// --- KESİN ÇÖZÜM: YENİLENEN ÇARPIŞMA MOTORU ---
-// Bu fonksiyon artık grubun dünya matrisini güncelleyerek her bloğun gerçek yerini milimetrik yakalar.
+// --- DÜZELTİLEN YATAY ÇARPIŞMA KONTROLÜ ---
 function checkCollision(newX, newY, newZ) {
     if (!gameActive) return false;
     
-    // Tavşan için dinamik bir çarpışma kutusu (Hitbox)
     const playerBox = new THREE.Box3(
-        new THREE.Vector3(newX - 0.3, newY + 0.05, newZ - 0.3), 
-        new THREE.Vector3(newX + 0.3, newY + 1.1, newZ + 0.3)
+        new THREE.Vector3(newX - 0.28, newY + 0.15, newZ - 0.28), 
+        new THREE.Vector3(newX + 0.28, newY + 1.1, newZ + 0.28)
     );
 
-    // Grup koordinat matrisini zorla güncelliyoruz ki blokların yerini doğru versin
     gameplayGroup.updateMatrixWorld(true);
 
     for (let i = 0; i < obstacles.length; i++) {
-        const obs = obstacles[i];
-        
-        // Her bloğun sahnedeki gerçek koordinat kutusunu çıkarıyoruz
-        const obstacleBox = new THREE.Box3().setFromObject(obs);
-        
+        const obstacleBox = new THREE.Box3().setFromObject(obstacles[i]);
         if (playerBox.intersectsBox(obstacleBox)) {
-            return true; // Çarpışma var! İçinden geçmeyi engelle.
+            // Eğer bloğun üst yüzeyine çok yakınsak yan çarpışma sayma (üstte kalmaya izin ver)
+            if (newY >= obstacleBox.max.y - 0.2) continue;
+            return true; 
         }
     }
     return false;
+}
+
+// --- YENİ: DİKEY KONTROL MOTORU (ÜSTÜNDE DURMA VE ÇÖKMEYİ ENGELLEME) ---
+function getFloorY(pX, pY, pZ) {
+    gameplayGroup.updateMatrixWorld(true);
+    let highestCeil = 0;
+
+    // Karakterin bastığı dikey izdüşüm kutusu
+    const playerFeetBox = new THREE.Box3(
+        new THREE.Vector3(pX - 0.25, pY, pZ - 0.25),
+        new THREE.Vector3(pX + 0.25, pY + 0.5, pZ + 0.25)
+    );
+
+    for (let i = 0; i < obstacles.length; i++) {
+        const obstacleBox = new THREE.Box3().setFromObject(obstacles[i]);
+        
+        // Yatayda bloğun sınırları içindeysek ve bloğun üstüne yakınsak
+        if (pX + 0.25 >= obstacleBox.min.x && pX - 0.25 <= obstacleBox.max.x &&
+            pZ + 0.25 >= obstacleBox.min.z && pZ - 0.25 <= obstacleBox.max.z) {
+            
+            // Eğer tavşan bloğun tavanından aşağı doğru sızmaya çalışıyorsa yakala
+            if (pY >= obstacleBox.max.y - 0.4) {
+                if (obstacleBox.max.y > highestCeil) {
+                    highestCeil = obstacleBox.max.y;
+                }
+            }
+        }
+    }
+    return highestCeil;
 }
 
 let velocityY = 0, jumpCount = 0;
@@ -175,27 +199,15 @@ window.playSolo = function() {
     gameplayGroup.visible = true;
     rabbit.position.set(0, 0, 0);
     rabbit.rotation.y = 0;
-    
-    // Dünya matrisini oyun başında bir kere tazele
     gameplayGroup.updateMatrixWorld(true);
 }
 
-window.createRoom = function() {
-    isOnlineMode = true;
-    socket.emit('createRoom', { maxPlayers: 4 });
-}
-
+window.createRoom = function() { isOnlineMode = true; socket.emit('createRoom', { maxPlayers: 4 }); }
 window.joinRoom = function() {
     const code = document.getElementById('room-code-input').value.trim();
-    if(code.length === 5) {
-        isOnlineMode = true;
-        socket.emit('joinRoom', code);
-    }
+    if(code.length === 5) { isOnlineMode = true; socket.emit('joinRoom', code); }
 }
-
-window.hostStartGame = function() {
-    socket.emit('startGameSignal');
-}
+window.hostStartGame = function() { socket.emit('startGameSignal'); }
 
 // NETWORK DİNLEYİCİLERİ
 socket.on('roomCreated', (data) => { setupLobbyUI(data); });
@@ -220,7 +232,6 @@ function setupLobbyUI(data) {
 
     gameplayGroup.visible = false;
     lobbyGroup.visible = true;
-
     rabbit.position.set(padPositions[0].x, 0.2, padPositions[0].z);
 
     Object.keys(otherPlayers).forEach(id => scene.remove(otherPlayers[id].mesh));
@@ -254,15 +265,8 @@ socket.on('gameStartedAtAll', (allPlayers) => {
     Object.keys(otherPlayers).forEach(id => scene.remove(otherPlayers[id].mesh));
     otherPlayers = {};
 
-    Object.keys(allPlayers).forEach((id) => {
-        if (id !== socket.id) {
-            addOtherPlayer(id, 0, 0, 0);
-        }
-    });
-
+    Object.keys(allPlayers).forEach((id) => { if (id !== socket.id) addOtherPlayer(id, 0, 0, 0); });
     gameActive = true;
-    
-    // Maç başladığında blokların yerini tarayıcıya zorla ezberletiyoruz
     gameplayGroup.updateMatrixWorld(true);
 });
 
@@ -289,7 +293,7 @@ socket.on('playerDisconnected', (id) => {
     if (otherPlayers[id]) { scene.remove(otherPlayers[id].mesh); delete otherPlayers[id]; }
 });
 
-// JOYSTICK VE DOKUNMA SİSTEMLERİ
+// KONTROLLER VE KAMERA
 const zone = document.getElementById('joystick-zone'), stick = document.getElementById('joystick-stick'), maxRadius = 35;
 let joystickActive = false, moveX = 0, moveZ = 0;
 
@@ -312,9 +316,7 @@ function handleJoystick(clientX, clientY) {
     moveX = deltaX / maxRadius; moveZ = deltaY / maxRadius;
 }
 
-// KAMERA SİSTEMİ
 let cameraAngleY = 0, cameraAngleX = 0.3, cameraDistance = 5, touchStartX = 0, touchStartY = 0, isTurningCamera = false;
-
 window.addEventListener('touchstart', (e) => {
     const jBtn = document.getElementById('jump-button'), aBtn = document.getElementById('attack-button');
     if (e.touches.length === 1 && !zone.contains(e.target) && !jBtn.contains(e.target) && !aBtn.contains(e.target)) {
@@ -336,25 +338,22 @@ window.addEventListener('touchmove', (e) => {
 }, { passive: true });
 window.addEventListener('touchend', () => { isTurningCamera = false; });
 
-document.getElementById('jump-button').addEventListener('touchstart', (e) => { e.preventDefault(); if (gameActive && jumpCount < 2) { velocityY = jumpForce; jumpCount++; } });
+document.getElementById('jump-button').addEventListener('touchstart', (e) => { 
+    e.preventDefault(); 
+    if (gameActive && jumpCount < 2) { 
+        velocityY = jumpForce; 
+        jumpCount++; 
+    } 
+});
 
-// VURMA (HIT) TETİKLEYİCİSİ
 document.getElementById('attack-button').addEventListener('touchstart', (e) => { 
     e.preventDefault(); 
     if (gameActive && !isAttacking) { 
-        isAttacking = true; 
-        attackAnimTime = 0; 
+        isAttacking = true; attackAnimTime = 0; 
         if (isOnlineMode) socket.emit('playerAttack'); 
-        
-        const rabbitWorldPos = new THREE.Vector3();
-        rabbit.getWorldPosition(rabbitWorldPos);
-        
-        const dummyWorldPos = new THREE.Vector3();
-        dummy.getWorldPosition(dummyWorldPos);
-        
-        if (rabbitWorldPos.distanceTo(dummyWorldPos) < 2.5) {
-            swayDummy(); 
-        } 
+        const rabbitWorldPos = new THREE.Vector3(); rabbit.getWorldPosition(rabbitWorldPos);
+        const dummyWorldPos = new THREE.Vector3(); dummy.getWorldPosition(dummyWorldPos);
+        if (rabbitWorldPos.distanceTo(dummyWorldPos) < 2.5) swayDummy(); 
     } 
 });
 
@@ -365,17 +364,14 @@ function animate() {
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
 
-    // Lobi Dönüşleri
+    // Lobi Dönüş Ayarları
     if (isOnlineMode && !gameActive) {
         rabbit.rotation.y += 1.2 * deltaTime;
-        Object.keys(otherPlayers).forEach((id) => {
-            otherPlayers[id].mesh.rotation.y += 1.2 * deltaTime;
-        });
-        camera.position.set(0, 3.5, 43); 
-        camera.lookAt(0, 1.2, 50);
+        Object.keys(otherPlayers).forEach((id) => { otherPlayers[id].mesh.rotation.y += 1.2 * deltaTime; });
+        camera.position.set(0, 3.5, 43); camera.lookAt(0, 1.2, 50);
     }
 
-    // Oyun İçi Dinamikler
+    // Oyun İçi Fizik Motoru
     if (gameActive) {
         if (joystickActive && (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05)) {
             const forwardX = Math.sin(cameraAngleY), forwardZ = Math.cos(cameraAngleY);
@@ -386,7 +382,6 @@ function animate() {
             const nextX = rabbit.position.x + dirX * 9.0 * deltaTime;
             const nextZ = rabbit.position.z + dirZ * 9.0 * deltaTime;
             
-            // Çarpışma kontrolü gerçek koordinatlarla yapılıyor
             if (!checkCollision(nextX, rabbit.position.y, rabbit.position.z)) rabbit.position.x = nextX;
             if (!checkCollision(rabbit.position.x, rabbit.position.y, nextZ)) rabbit.position.z = nextZ;
             
@@ -402,42 +397,44 @@ function animate() {
             footFL.position.y = 0.08; footFR.position.y = 0.08; footBL.position.y = 0.08; footBR.position.y = 0.08;
         }
 
+        // Animasyon Tetikleyicileri (Hit)
         if (isAttacking) {
-            attackAnimTime += 12 * deltaTime; 
-            const factor = Math.sin(attackAnimTime * Math.PI); 
-            if (attackAnimTime <= 1.0) {
-                rabbitVisualGroup.position.z = factor * 0.5; head.position.z = 0.1 + factor * 0.25; head.rotation.x = factor * 0.4;
-            } else {
-                isAttacking = false; rabbitVisualGroup.position.z = 0; head.position.z = 0.1; head.rotation.x = 0;
-            }
+            attackAnimTime += 12 * deltaTime; const factor = Math.sin(attackAnimTime * Math.PI); 
+            if (attackAnimTime <= 1.0) { rabbitVisualGroup.position.z = factor * 0.5; head.position.z = 0.1 + factor * 0.25; head.rotation.x = factor * 0.4; } 
+            else { isAttacking = false; rabbitVisualGroup.position.z = 0; head.position.z = 0.1; head.rotation.x = 0; }
         }
-
         Object.keys(otherPlayers).forEach((id) => {
             const p = otherPlayers[id];
             if (p.isAttacking) {
-                p.attackAnimTime += 12 * deltaTime;
-                const factor = Math.sin(p.attackAnimTime * Math.PI);
-                if (p.attackAnimTime <= 1.0) {
-                    p.visual.position.z = factor * 0.5; p.head.position.z = 0.1 + factor * 0.25; p.head.rotation.x = factor * 0.4;
-                } else { p.isAttacking = false; p.visual.position.z = 0; p.head.position.z = 0.1; p.head.rotation.x = 0; }
+                p.attackAnimTime += 12 * deltaTime; const factor = Math.sin(p.attackAnimTime * Math.PI);
+                if (p.attackAnimTime <= 1.0) { p.visual.position.z = factor * 0.5; p.head.position.z = 0.1 + factor * 0.25; p.head.rotation.x = factor * 0.4; } 
+                else { p.isAttacking = false; p.visual.position.z = 0; p.head.position.z = 0.1; p.head.rotation.x = 0; }
             }
         });
-
         if (isDummyHit) {
-            dummySwayTime += 7 * deltaTime;
-            dummySwayAngle = Math.sin(dummySwayTime * 2.0) * 5 * Math.pow(0.90, dummySwayTime);
-            dummy.rotation.z = dummySwayAngle * (Math.PI / 180);
+            dummySwayTime += 7 * deltaTime; dummySwayAngle = Math.sin(dummySwayTime * 2.0) * 5 * Math.pow(0.90, dummySwayTime); dummy.rotation.z = dummySwayAngle * (Math.PI / 180);
             if (Math.abs(dummySwayAngle) < 0.02) { isDummyHit = false; dummy.rotation.z = 0; }
         }
 
+        // --- KRİTİK DÜZELTME: DİNAMİK YERÇEKİMİ VE PLATFORM KONTROLÜ ---
+        // Karakterin o an basabileceği en yüksek zemini buluyoruz (Zemin 0, blok üstleri daha yüksek)
+        const currentFloorY = getFloorY(rabbit.position.x, rabbit.position.y, rabbit.position.z);
+
         velocityY -= gravity * 60 * deltaTime;
         rabbit.position.y += velocityY * deltaTime;
-        if (rabbit.position.y <= 0) { rabbit.position.y = 0; velocityY = 0; jumpCount = 0; }
+
+        // Karakter altına denk gelen zeminin altına düşmeye çalışırsa basmış say
+        if (rabbit.position.y <= currentFloorY) { 
+            rabbit.position.y = currentFloorY; 
+            velocityY = 0; 
+            jumpCount = 0; 
+        }
 
         if (hasMoved || isAttacking) {
             socket.emit('playerMovement', { x: rabbit.position.x, y: rabbit.position.y, z: rabbit.position.z, ry: rabbit.rotation.y });
         }
 
+        // Kamera Takip Sistemi
         camera.position.x = rabbit.position.x - Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
         camera.position.z = rabbit.position.z - Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
         camera.position.y = rabbit.position.y + Math.sin(cameraAngleX) * cameraDistance;
