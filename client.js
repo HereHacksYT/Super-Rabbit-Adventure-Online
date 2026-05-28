@@ -62,7 +62,7 @@ rabbit.position.set(0, 0.5, 0);
 rabbit.castShadow = true;
 scene.add(rabbit);
 
-// FİZİK VE YERÇEKİMİ DEĞİŞKENLERİ (Hassasiyetleri Optimize Edildi)
+// FİZİK VE YERÇEKİMİ DEĞİŞKENLERİ
 let velocityY = 0;
 let jumpCount = 0;
 const gravity = 0.014;
@@ -145,24 +145,21 @@ window.addEventListener('touchend', (e) => {
     if (e.touches.length === 0) isTurningCamera = false;
 });
 
-// --- DÜZELTİLEN KISIM: KESİN VE YAKINLAŞMAYAN ZIPLAMA FONKSİYONU ---
+// 2 KEZ ZIPLAMA FONKSİYONU
 function executeJump() {
     if (jumpCount < 2) {
         velocityY = jumpForce;
         jumpCount++;
-        console.log("Zıplama Tetiklendi! Mevcut Zıplama Sayısı:", jumpCount);
     }
 }
 
 const jumpButton = document.getElementById('jump-button');
 
-// Mobil dokunmatik ekranlar için zıplatma ve yakınlaşmayı durdurma
 jumpButton.addEventListener('touchstart', (e) => {
-    e.preventDefault(); // Tarayıcının ekranı büyütmesini tamamen engeller
+    e.preventDefault(); 
     executeJump();
 });
 
-// Ne olur ne olmaz tıklama event'ini de sağlama alalım
 jumpButton.addEventListener('click', (e) => {
     e.preventDefault();
     executeJump();
@@ -176,15 +173,16 @@ const cameraHeight = 6;
 function animate() {
     requestAnimationFrame(animate);
 
-    // YÜRÜME
+    // YÜRÜME (SAĞ-SOL YÖNÜ DÜZELTİLDİ)
     if (joystickActive && (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05)) {
         const forwardX = Math.sin(cameraAngleY);
         const forwardZ = Math.cos(cameraAngleY);
         const rightX = Math.sin(cameraAngleY + Math.PI / 2);
         const rightZ = Math.cos(cameraAngleY + Math.PI / 2);
 
-        const directionX = (forwardX * -moveZ) + (rightX * moveX);
-        const directionZ = (forwardZ * -moveZ) + (rightZ * moveX);
+        // moveX işaretleri kameraya göre sağ-solu düzeltecek şekilde simetrisi alındı:
+        const directionX = (forwardX * -moveZ) - (rightX * moveX);
+        const directionZ = (forwardZ * -moveZ) - (rightZ * moveX);
 
         rabbit.position.x += directionX * speed;
         rabbit.position.z += directionZ * speed;
@@ -195,11 +193,10 @@ function animate() {
     velocityY -= gravity; 
     rabbit.position.y += velocityY;
 
-    // Zemine basma kontrolü
     if (rabbit.position.y <= 0.5) {
         rabbit.position.y = 0.5;
         velocityY = 0;
-        jumpCount = 0; // Yere basınca zıplama hakkı tamamen sıfırlanır
+        jumpCount = 0; 
     }
 
     // KAMERANIN TAKİBİ
