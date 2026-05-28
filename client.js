@@ -1,4 +1,4 @@
-// client.js - BLOK ÜSTÜ HAREKET, BÜYÜK AYAKLAR VE 360° DÖNEN KAMERA SİSTEMİ
+// client.js - PINCH-TO-ZOOM KAMERA VE KAFA ATMA ANİMASYONU DAHİL SİSTEM
 
 // 1. ONLINE SUNUCU BAĞLANTISI
 const socket = io();
@@ -52,7 +52,7 @@ function createCube(x, y, z, w, h, d, color) {
     const geo = new THREE.BoxGeometry(w, h, d);
     const mat = new THREE.MeshStandardMaterial({ color: color });
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(x, y / 2, z); // Merkez hizalamasını tabana göre ayarlamak için y/2
+    mesh.position.set(x, y / 2, z); 
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
@@ -61,11 +61,10 @@ function createCube(x, y, z, w, h, d, color) {
     obstacles.push(mesh); 
 }
 
-// Renkli platform blokları (Yerden yükseklikleri ve konumları)
-createCube(5, 2, -8, 2, 2, 2, 0xff9800);     // Turuncu Blok (Yüzey Y = 2)
-createCube(-7, 1, -3, 3, 1, 3, 0x00bcd4);    // Turkuaz Blok (Yüzey Y = 1)
-createCube(0, 3, -15, 4, 3, 4, 0x9c27b0);    // Mor Blok (Yüzey Y = 3)
-createCube(8, 1, 6, 2, 1, 2, 0xffeb3b);      // Sarı Blok (Yüzey Y = 1)
+createCube(5, 2, -8, 2, 2, 2, 0xff9800);     
+createCube(-7, 1, -3, 3, 1, 3, 0x00bcd4);    
+createCube(0, 3, -15, 4, 3, 4, 0x9c27b0);    
+createCube(8, 1, 6, 2, 1, 2, 0xffeb3b);      
 
 // SALLANAN DUMMY (KUKLA)
 const dummyGeometry = new THREE.BoxGeometry(1, 2.5, 1);
@@ -143,8 +142,8 @@ const tail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), bodyMat);
 tail.position.set(0, 0.25, -0.4); 
 rabbitVisualGroup.add(tail);
 
-// --- 2. AYAKLAR BÜYÜTÜLDÜ VE DIŞARI ALINDI (GÖRÜNÜR YAPILDI) ---
-const footGeo = new THREE.BoxGeometry(0.24, 0.16, 0.34); // Ölçüler belirginleştirildi
+// Ayaklar
+const footGeo = new THREE.BoxGeometry(0.24, 0.16, 0.34); 
 const footMat = new THREE.MeshStandardMaterial({ color: 0xdddddd }); 
 const createFoot = (x, z) => {
     const foot = new THREE.Mesh(footGeo, footMat);
@@ -153,13 +152,12 @@ const createFoot = (x, z) => {
     rabbit.add(foot);
     return foot;
 };
-// Genişlik (X) 0.22'den 0.32'ye çıkarıldı, böylece gövdenin altından dışarı taşıp görünüyorlar!
 const footFL = createFoot(-0.32, 0.22); 
 const footFR = createFoot(0.32, 0.22);  
 const footBL = createFoot(-0.32, -0.22); 
 const footBR = createFoot(0.32, -0.22);  
 
-// VURMA EFEKTİ
+// VURMA EFEKTİ (Halkası)
 const attackGeometry = new THREE.RingGeometry(0.2, 0.8, 16);
 const attackMaterial = new THREE.MeshBasicMaterial({ color: 0xff1111, transparent: true, opacity: 0, side: THREE.DoubleSide });
 const attackEffect = new THREE.Mesh(attackGeometry, attackMaterial);
@@ -169,21 +167,19 @@ attackEffect.rotation.x = Math.PI / 2;
 let isAttacking = false;
 let attackAnimTime = 0;
 
-// --- 1. GÜNCELLENEN ÇARPIŞMA SİSTEMİ (BLOK ÜSTÜNDE HAREKET ETMEK İÇİN) ---
+// ÇARPIŞMA (COLLISION) KONTROLÜ
 function checkCollision(newX, newY, newZ) {
     const playerBox = new THREE.Box3(
-        new THREE.Vector3(newX - 0.35, newY + 0.1, newZ - 0.4), // Alt tabanı biraz yukarı kaldırdık
+        new THREE.Vector3(newX - 0.35, newY + 0.1, newZ - 0.4), 
         new THREE.Vector3(newX + 0.35, newY + 1.1, newZ + 0.4)
     );
     for (let i = 0; i < obstacles.length; i++) {
         const obstacleBox = new THREE.Box3().setFromObject(obstacles[i]);
-        
-        // Eğer tavşanın ayak tabanı bloğun üst yüzeyine çok yakın veya üstündeyse çarpışma sayma!
         if (playerBox.intersectsBox(obstacleBox)) {
             if (newY >= obstacleBox.max.y - 0.15) {
                 continue; 
             }
-            return true; // Eğer yan duvara çarptıysa hareketi engelle
+            return true; 
         }
     }
     return false; 
@@ -258,23 +254,55 @@ function handleJoystick(clientX, clientY) {
     moveX = deltaX / maxRadius; moveZ = deltaY / maxRadius;
 }
 
-// --- 3. GÜNCELLENEN KAMERA DÖNDÜRME SİSTEMİ (SAĞ-SOL & AŞAĞI-YUKARI) ---
-let cameraAngleY = 0; // Yatay dönme (Sağ-Sol)
-let cameraAngleX = 0.4; // Dikey dönme açısı (Aşağı-Yukarı başlangıcı)
+// --- GÜNCELLENEN KAMERA DÖNDÜRME VE YAKINLAŞTIRMA (ZOOM) SİSTEMİ ---
+let cameraAngleY = 0; 
+let cameraAngleX = 0.4; 
+let cameraDistance = 7.5; // Kamera başlangıç uzaklığı
 let touchStartX = 0, touchStartY = 0;
+let startTouchDistance = 0; // Pinch zoom için iki parmak arası mesafe takipçisi
 let isTurningCamera = false;
+let isZooming = false;
 
 window.addEventListener('touchstart', (e) => {
     const jumpBtn = document.getElementById('jump-button');
     const attackBtn = document.getElementById('attack-button');
-    if (!zone.contains(e.target) && !jumpBtn.contains(e.target) && !attackBtn.contains(e.target)) {
+    
+    // EĞER ÇİFT PARMAK VARSA (PINCH-TO-ZOOM BAŞLANGICI)
+    if (e.touches.length === 2 && !zone.contains(e.target) && !jumpBtn.contains(e.target) && !attackBtn.contains(e.target)) {
+        isZooming = true;
+        isTurningCamera = false;
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        startTouchDistance = Math.sqrt(dx * dx + dy * dy); // İki parmak arası ilk mesafe
+        return;
+    }
+
+    // TEK PARMAK VARSA VE BUTONLARDA DEĞİLSE (DÖNDÜRME)
+    if (e.touches.length === 1 && !zone.contains(e.target) && !jumpBtn.contains(e.target) && !attackBtn.contains(e.target)) {
         isTurningCamera = true;
         touchStartX = e.touches[0].clientX;
-        touchStartY = e.touches[0].clientY; // Dikey takip başlangıcı
+        touchStartY = e.touches[0].clientY; 
     }
 }, { passive: true });
 
 window.addEventListener('touchmove', (e) => {
+    // 1. PINCH ZOOM ÇALIŞIYORSA
+    if (isZooming && e.touches.length === 2) {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const currentDistance = Math.sqrt(dx * dx + dy * dy);
+        
+        const distanceDelta = startTouchDistance - currentDistance;
+        cameraDistance += distanceDelta * 0.03; // Yakınlaşma hızı ayarı
+        
+        // Kamera sınırları: En fazla 3 birim yakınlaşsın, en fazla 15 birim uzaklaşsın
+        cameraDistance = Math.max(3.0, Math.min(15.0, cameraDistance)); 
+        
+        startTouchDistance = currentDistance;
+        return;
+    }
+
+    // 2. TEK PARMAK ÇEVİRME ÇALIŞIYORSA
     if (!isTurningCamera) return;
     const jumpBtn = document.getElementById('jump-button');
     const attackBtn = document.getElementById('attack-button');
@@ -283,10 +311,8 @@ window.addEventListener('touchmove', (e) => {
             let deltaX = e.touches[i].clientX - touchStartX;
             let deltaY = e.touches[i].clientY - touchStartY;
             
-            cameraAngleY -= deltaX * 0.005; // Sağ-Sol hassasiyeti
-            cameraAngleX += deltaY * 0.005; // Aşağı-Yukarı hassasiyeti
-            
-            // Kameranın takla atıp ters dönmemesi için dikey sınır (Kelepçe) koyuyoruz:
+            cameraAngleY -= deltaX * 0.005; 
+            cameraAngleX += deltaY * 0.005; 
             cameraAngleX = Math.max(0.1, Math.min(1.2, cameraAngleX)); 
             
             touchStartX = e.touches[0].clientX;
@@ -297,10 +323,11 @@ window.addEventListener('touchmove', (e) => {
 }, { passive: true });
 
 window.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) isZooming = false;
     if (e.touches.length === 0) isTurningCamera = false;
 });
 
-// BUTON TETİKLEYİCİLERİ
+// ZIPLAMA VE VURMA TETİKLEYİCİLERİ
 function executeJump() {
     if (jumpCount < 2) {
         velocityY = jumpForce;
@@ -329,7 +356,6 @@ attackButton.addEventListener('click', (e) => { e.preventDefault(); executeAttac
 
 // 8. OYUN DÖNGÜSÜ VE ANİMASYONLAR
 const speed = 0.15;
-const cameraDistance = 7.5; // Karakterden olan uzaklık sabiti    
 let legWiggle = 0;
 
 function animate() {
@@ -350,8 +376,8 @@ function animate() {
         
         rabbit.rotation.y = Math.atan2(directionX, directionZ);
 
-        // Büyük Ayaklar Yürüme Yaylanması
-        if (jumpCount === 0) { 
+        // Ayaklar Yürüme Yaylanması
+        if (jumpCount === 0 && !isAttacking) { 
             legWiggle += 0.25;
             footFL.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12;
             footBR.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12;
@@ -359,26 +385,38 @@ function animate() {
             footBL.position.y = 0.08 + Math.abs(Math.cos(legWiggle)) * 0.12;
         }
     } else {
-        if (jumpCount === 0) {
+        if (jumpCount === 0 && !isAttacking) {
             footFL.position.y = 0.08; footFR.position.y = 0.08;
             footBL.position.y = 0.08; footBR.position.y = 0.08;
         }
     }
 
-    // VURUŞ EFEKTİ
+    // --- KAFA ATMA ANİMASYONU MOTORU (GÜNCELLENDİ) ---
     if (isAttacking) {
-        attackAnimTime += 0.15;
-        const attackOffsetX = Math.sin(rabbit.rotation.y) * 1.0;
-        const attackOffsetZ = Math.cos(rabbit.rotation.y) * 1.0;
-        
-        attackEffect.position.set(rabbit.position.x + attackOffsetX, rabbit.position.y, rabbit.position.z + attackOffsetZ);
-        attackEffect.scale.set(attackAnimTime, attackAnimTime, attackAnimTime); 
+        attackAnimTime += 0.2; // Kafa atma hızı ayarı
 
-        const opacity = Math.max(0, 1 - (attackAnimTime / 2));
-        attackMaterial.opacity = opacity;
+        // Sinüs dalgası ile kafa atma hareketi oluşturma:
+        // Önce ileri hızlıca uzayacak, sonra geri çekilecek.
+        const headButtFactor = Math.sin(attackAnimTime * Math.PI); 
 
-        if (attackAnimTime >= 2.0) { 
+        if (attackAnimTime <= 1.0) {
+            // Görsel grubu (kafa ve gövdeyi) ileri doğru (Z ekseninde) fırlat ve kafayı öne bük
+            rabbitVisualGroup.position.z = headButtFactor * 0.5; // İleri uzama miktarı
+            head.position.z = 0.1 + headButtFactor * 0.25;      // Kafayı ekstra öne çıkar
+            head.rotation.x = headButtFactor * 0.4;             // Kafayı aşağı/öne doğru bük (Kafa Atma)
+            
+            // Efekt halkasını da kafa atışıyla senkronize şekilde öne koy
+            const attackOffsetX = Math.sin(rabbit.rotation.y) * (1.0 + rabbitVisualGroup.position.z);
+            const attackOffsetZ = Math.cos(rabbit.rotation.y) * (1.0 + rabbitVisualGroup.position.z);
+            attackEffect.position.set(rabbit.position.x + attackOffsetX, rabbit.position.y, rabbit.position.z + attackOffsetZ);
+            attackEffect.scale.set(attackAnimTime * 1.5, attackAnimTime * 1.5, attackAnimTime * 1.5);
+            attackMaterial.opacity = 1.0 - attackAnimTime;
+        } else {
+            // Animasyon tamamlandı, her şeyi sıfırla
             isAttacking = false;
+            rabbitVisualGroup.position.z = 0;
+            head.position.z = 0.1;
+            head.rotation.x = 0;
             attackMaterial.opacity = 0;
         }
     }
@@ -411,20 +449,22 @@ function animate() {
         rabbit.position.y = potentialNextY;
     }
     
-    rabbitVisualGroup.scale.x += (1.0 - rabbitVisualGroup.scale.x) * 0.15;
-    rabbitVisualGroup.scale.y += (1.0 - rabbitVisualGroup.scale.y) * 0.15;
-    rabbitVisualGroup.scale.z += (1.0 - rabbitVisualGroup.scale.z) * 0.15;
+    // Ölçek sönümleme (Yalnızca kafa atmıyorken esneklik uygulasın)
+    if (!isAttacking) {
+        rabbitVisualGroup.scale.x += (1.0 - rabbitVisualGroup.scale.x) * 0.15;
+        rabbitVisualGroup.scale.y += (1.0 - rabbitVisualGroup.scale.y) * 0.15;
+        rabbitVisualGroup.scale.z += (1.0 - rabbitVisualGroup.scale.z) * 0.15;
+    }
 
     if (jumpCount > 0) {
-        if (velocityY > 0) {
+        if (velocityY > 0 && !isAttacking) {
             rabbitVisualGroup.scale.set(0.9, 1.15, 0.9); 
         }
         footFL.position.y = 0.15; footFR.position.y = 0.15;
         footBL.position.y = 0.15; footBR.position.y = 0.15;
     }
 
-    // --- DİKEY AÇILI (AŞAĞI-YUKARI) KAMERA MATEMATİĞİ ---
-    // Küresel koordinat (Spherical) hesaplaması ile kamera hem dikey hem yatay yay çizer
+    // DİKEY VE YATAY HAREKETLİ KAMERA MATEMATİĞİ
     camera.position.x = rabbit.position.x - Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
     camera.position.z = rabbit.position.z - Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
     camera.position.y = rabbit.position.y + Math.sin(cameraAngleX) * cameraDistance;
