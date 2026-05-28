@@ -4,10 +4,10 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 let rooms = {};
@@ -96,31 +96,47 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Sadece saldırı animasyonu için (hasar yok)
     socket.on('playerAttack', () => {
         if (currentRoom && rooms[currentRoom] && rooms[currentRoom].isStarted) {
             socket.to(currentRoom).emit('playerAttacked', socket.id);
         }
     });
 
-    // YENİ: Vurma ve hasar iletimi
-    socket.on('playerHit', (data) => {
-        if (currentRoom && rooms[currentRoom] && rooms[currentRoom].isStarted) {
-            io.to(data.targetId).emit('playerDamaged', {
-                attackerId: socket.id,
-                damage: 20,
-                knockbackAngle: data.angle
-            });
-        }
-    });
-
     socket.on('disconnect', () => {
         if (currentRoom && rooms[currentRoom]) {
-            delete rooms[currentRoom].players[socket.id];
+            // Host çıkarsa ve oyun başlamışsa herkesi at
+            if (rooms[currentRoom].hostId === socket.id && rooms[currentRoom].isStarted) {
+                io.to(currentRoom).emit('hostDisconnected');
+                // Odadaki tüm kullanıcıları odadan çıkar
+                const socketsInRoom = io.sockets.adapter.rooms.get(currentRoom);
+                if (socketsInRoom) {
+                    socketsInRoom.forEach((socketId) => {
+                        const socketToKick = io.sockets.sockets.get(socketId);
+                        if (socketToKick) socketToKick.leave(currentRoom);
+                    });
+                }
+                delete rooms[currentRoom];
+            } else {
+                // Normal oyuncu çıkışı
+                delete rooms[currentRoom].players[socket.id];
 
-            if (rooms[currentRoom].hostId === socket.id) {
-                const remainingIds = Object.keys(rooms[currentRoom].players);
-                if (remainingIds.length > 0) {
-                    rooms[currentRoom].hostId = remainingIds[0];
+                if (rooms[currentRoom].hostId === socket.id) {
+                    // Host çıktı ama oyun başlamamıştı, yeni host ata
+                    const remainingIds = Object.keys(rooms[currentRoom].players);
+                    if (remainingIds.length > 0) {
+                        rooms[currentRoom].hostId = remainingIds[0];
+                        io.to(currentRoom).emit('roomUpdate', {
+                            roomCode: currentRoom,
+                            players: rooms[currentRoom].players,
+                            hostId: rooms[currentRoom].hostId,
+                            maxPlayers: rooms[currentRoom].maxPlayers
+                        });
+                    } else {
+                        delete rooms[currentRoom];
+                    }
+                } else {
+                    io.to(currentRoom).emit('playerDisconnected', socket.id);
                     io.to(currentRoom).emit('roomUpdate', {
                         roomCode: currentRoom,
                         players: rooms[currentRoom].players,
@@ -128,19 +144,6 @@ io.on('connection', (socket) => {
                         maxPlayers: rooms[currentRoom].maxPlayers
                     });
                 }
-            } else {
-                io.to(currentRoom).emit('roomUpdate', {
-                    roomCode: currentRoom,
-                    players: rooms[currentRoom].players,
-                    hostId: rooms[currentRoom].hostId,
-                    maxPlayers: rooms[currentRoom].maxPlayers
-                });
-            }
-
-            socket.to(currentRoom).emit('playerDisconnected', socket.id);
-
-            if (Object.keys(rooms[currentRoom].players).length === 0) {
-                delete rooms[currentRoom];
             }
         }
     });
