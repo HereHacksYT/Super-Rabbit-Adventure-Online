@@ -1,4 +1,4 @@
-// client.js - ÇARPIŞMA VE VURMA HATALARI DÜZELTİLMİŞ SÜRÜM
+// client.js - ÇARPIŞMA SİSTEMİ VE HIT TAMAMEN DÜZELTİLMİŞ SÜRÜM
 
 const socket = io();
 const clock = new THREE.Clock();
@@ -33,7 +33,7 @@ const floor = new THREE.Mesh(floorGeo, floorMat);
 floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
 gameplayGroup.add(floor);
 
-// BLOKLAR VE HİTBOX DÜZELTMESİ
+// BLOKLAR VE HITBOX LISTESI
 const obstacles = [];
 function createCube(x, y, z, w, h, d, color) {
     const geo = new THREE.BoxGeometry(w, h, d);
@@ -41,7 +41,7 @@ function createCube(x, y, z, w, h, d, color) {
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, y / 2, z); mesh.castShadow = true; mesh.receiveShadow = true;
     gameplayGroup.add(mesh); 
-    obstacles.push(mesh); // Fizik motoru için listeye ekle
+    obstacles.push(mesh); 
 }
 createCube(5, 2, -8, 2, 2, 2, 0xff9800);
 createCube(-7, 1, -3, 3, 1, 3, 0x00bcd4);
@@ -131,24 +131,28 @@ scene.add(rabbit);
 let otherPlayers = {};
 let isAttacking = false, attackAnimTime = 0;
 
-// --- DÜZELTİLEN ÇARPIŞMA MOTORU ---
+// --- KESİN ÇÖZÜM: YENİLENEN ÇARPIŞMA MOTORU ---
+// Bu fonksiyon artık grubun dünya matrisini güncelleyerek her bloğun gerçek yerini milimetrik yakalar.
 function checkCollision(newX, newY, newZ) {
     if (!gameActive) return false;
     
-    // Tavşan için güncel bir çarpan kutusu oluşturuyoruz
+    // Tavşan için dinamik bir çarpışma kutusu (Hitbox)
     const playerBox = new THREE.Box3(
-        new THREE.Vector3(newX - 0.35, newY + 0.05, newZ - 0.35), 
-        new THREE.Vector3(newX + 0.35, newY + 1.2, newZ + 0.35)
+        new THREE.Vector3(newX - 0.3, newY + 0.05, newZ - 0.3), 
+        new THREE.Vector3(newX + 0.3, newY + 1.1, newZ + 0.3)
     );
+
+    // Grup koordinat matrisini zorla güncelliyoruz ki blokların yerini doğru versin
+    gameplayGroup.updateMatrixWorld(true);
 
     for (let i = 0; i < obstacles.length; i++) {
         const obs = obstacles[i];
         
-        // KRİTİK DÜZELTME: Grup içindeki nesnelerin dünya koordinatlarını tam hesaplıyoruz
+        // Her bloğun sahnedeki gerçek koordinat kutusunu çıkarıyoruz
         const obstacleBox = new THREE.Box3().setFromObject(obs);
         
         if (playerBox.intersectsBox(obstacleBox)) {
-            return true; // İçinden geçmeyi engelle!
+            return true; // Çarpışma var! İçinden geçmeyi engelle.
         }
     }
     return false;
@@ -171,6 +175,9 @@ window.playSolo = function() {
     gameplayGroup.visible = true;
     rabbit.position.set(0, 0, 0);
     rabbit.rotation.y = 0;
+    
+    // Dünya matrisini oyun başında bir kere tazele
+    gameplayGroup.updateMatrixWorld(true);
 }
 
 window.createRoom = function() {
@@ -254,6 +261,9 @@ socket.on('gameStartedAtAll', (allPlayers) => {
     });
 
     gameActive = true;
+    
+    // Maç başladığında blokların yerini tarayıcıya zorla ezberletiyoruz
+    gameplayGroup.updateMatrixWorld(true);
 });
 
 function addOtherPlayer(id, x, y, z) {
@@ -328,7 +338,7 @@ window.addEventListener('touchend', () => { isTurningCamera = false; });
 
 document.getElementById('jump-button').addEventListener('touchstart', (e) => { e.preventDefault(); if (gameActive && jumpCount < 2) { velocityY = jumpForce; jumpCount++; } });
 
-// --- DÜZELTİLEN VURMA (HIT) TETİKLEYİCİSİ ---
+// VURMA (HIT) TETİKLEYİCİSİ
 document.getElementById('attack-button').addEventListener('touchstart', (e) => { 
     e.preventDefault(); 
     if (gameActive && !isAttacking) { 
@@ -336,14 +346,12 @@ document.getElementById('attack-button').addEventListener('touchstart', (e) => {
         attackAnimTime = 0; 
         if (isOnlineMode) socket.emit('playerAttack'); 
         
-        // KRİTİK DÜZELTME: Mesafe kontrolünü dünya koordinatı üzerinden hatasız yapıyoruz
         const rabbitWorldPos = new THREE.Vector3();
         rabbit.getWorldPosition(rabbitWorldPos);
         
         const dummyWorldPos = new THREE.Vector3();
         dummy.getWorldPosition(dummyWorldPos);
         
-        // Mesafe 2.5 birimden azsa kuklayı sallat
         if (rabbitWorldPos.distanceTo(dummyWorldPos) < 2.5) {
             swayDummy(); 
         } 
@@ -367,7 +375,7 @@ function animate() {
         camera.lookAt(0, 1.2, 50);
     }
 
-    // Oyun Aktifse Çalışacak Dinamikler
+    // Oyun İçi Dinamikler
     if (gameActive) {
         if (joystickActive && (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05)) {
             const forwardX = Math.sin(cameraAngleY), forwardZ = Math.cos(cameraAngleY);
@@ -378,7 +386,7 @@ function animate() {
             const nextX = rabbit.position.x + dirX * 9.0 * deltaTime;
             const nextZ = rabbit.position.z + dirZ * 9.0 * deltaTime;
             
-            // Çarpışma kontrolü artık tam çalışıyor!
+            // Çarpışma kontrolü gerçek koordinatlarla yapılıyor
             if (!checkCollision(nextX, rabbit.position.y, rabbit.position.z)) rabbit.position.x = nextX;
             if (!checkCollision(rabbit.position.x, rabbit.position.y, nextZ)) rabbit.position.z = nextZ;
             
@@ -394,7 +402,6 @@ function animate() {
             footFL.position.y = 0.08; footFR.position.y = 0.08; footBL.position.y = 0.08; footBR.position.y = 0.08;
         }
 
-        // Kendi Vurma Animasyonumuz
         if (isAttacking) {
             attackAnimTime += 12 * deltaTime; 
             const factor = Math.sin(attackAnimTime * Math.PI); 
@@ -405,7 +412,6 @@ function animate() {
             }
         }
 
-        // Diğer Oyuncuların Vurma Animasyonu
         Object.keys(otherPlayers).forEach((id) => {
             const p = otherPlayers[id];
             if (p.isAttacking) {
@@ -417,7 +423,6 @@ function animate() {
             }
         });
 
-        // Kuklanın Sallanma Fiziği
         if (isDummyHit) {
             dummySwayTime += 7 * deltaTime;
             dummySwayAngle = Math.sin(dummySwayTime * 2.0) * 5 * Math.pow(0.90, dummySwayTime);
@@ -425,7 +430,6 @@ function animate() {
             if (Math.abs(dummySwayAngle) < 0.02) { isDummyHit = false; dummy.rotation.z = 0; }
         }
 
-        // Yerçekimi
         velocityY -= gravity * 60 * deltaTime;
         rabbit.position.y += velocityY * deltaTime;
         if (rabbit.position.y <= 0) { rabbit.position.y = 0; velocityY = 0; jumpCount = 0; }
@@ -434,7 +438,6 @@ function animate() {
             socket.emit('playerMovement', { x: rabbit.position.x, y: rabbit.position.y, z: rabbit.position.z, ry: rabbit.rotation.y });
         }
 
-        // Kamera Takip
         camera.position.x = rabbit.position.x - Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
         camera.position.z = rabbit.position.z - Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
         camera.position.y = rabbit.position.y + Math.sin(cameraAngleX) * cameraDistance;
