@@ -36,7 +36,7 @@ floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// HARİTADAKİ RENKLİ KUTULAR
+// HARİTADAKİ RENKLİ KUTULAR (Çarpışma listesine ekleniyor)
 const obstacles = [];
 function createCube(x, y, z, w, h, d, color) {
     const geo = new THREE.BoxGeometry(w, h, d);
@@ -46,9 +46,13 @@ function createCube(x, y, z, w, h, d, color) {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     scene.add(mesh);
+    
+    // Çarpışmaları hesaplamak için her kutunun sınır alanını oluşturuyoruz
+    mesh.geometry.computeBoundingBox();
     obstacles.push(mesh);
 }
 
+// Etraftaki bloklar
 createCube(5, 1, -5, 2, 2, 2, 0xff9800);   
 createCube(-7, 0.5, -3, 3, 1, 3, 0x00bcd4); 
 createCube(0, 1.5, -12, 4, 3, 4, 0x9c27b0); 
@@ -61,6 +65,27 @@ const rabbit = new THREE.Mesh(geometry, material);
 rabbit.position.set(0, 0.5, 0);
 rabbit.castShadow = true;
 scene.add(rabbit);
+
+// ÇARPIŞMA KONTROL FONKSİYONU (Yeni eklendi)
+// Karakterin gitmek istediği yeni pozisyonda bir bloğa çarpıp çarpmayacağını kontrol eder
+function checkCollision(newX, newY, newZ) {
+    // Karakterin boyutlarına göre sanal bir sınır kutusu (Bounding Box) oluşturuyoruz
+    const playerBox = new THREE.Box3(
+        new THREE.Vector3(newX - 0.5, newY - 0.5, newZ - 0.5),
+        new THREE.Vector3(newX + 0.5, newY + 0.5, newZ + 0.5)
+    );
+
+    // Haritadaki tüm blokları tek tek kontrol et
+    for (let i = 0; i < obstacles.length; i++) {
+        const obstacleBox = new THREE.Box3().setFromObject(obstacles[i]);
+        
+        // Eğer karakterin kutusu ile bloğun kutusu iç içe giriyorsa çarpışma vardır!
+        if (playerBox.intersectsBox(obstacleBox)) {
+            return true; 
+        }
+    }
+    return false; // Çarpışma yoksa yürümeye izin ver
+}
 
 // FİZİK VE YERÇEKİMİ DEĞİŞKENLERİ
 let velocityY = 0;
@@ -173,26 +198,50 @@ const cameraHeight = 6;
 function animate() {
     requestAnimationFrame(animate);
 
-    // YÜRÜME (SAĞ-SOL YÖNÜ DÜZELTİLDİ)
+    // YÜRÜME KONTROLÜ (Çarpışma filtresi eklendi)
     if (joystickActive && (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05)) {
         const forwardX = Math.sin(cameraAngleY);
         const forwardZ = Math.cos(cameraAngleY);
         const rightX = Math.sin(cameraAngleY + Math.PI / 2);
         const rightZ = Math.cos(cameraAngleY + Math.PI / 2);
 
-        // moveX işaretleri kameraya göre sağ-solu düzeltecek şekilde simetrisi alındı:
         const directionX = (forwardX * -moveZ) - (rightX * moveX);
         const directionZ = (forwardZ * -moveZ) - (rightZ * moveX);
 
-        rabbit.position.x += directionX * speed;
-        rabbit.position.z += directionZ * speed;
+        // Karakterin bir sonraki adımda olacağı pozisyonu hesapla
+        const nextX = rabbit.position.x + directionX * speed;
+        const nextZ = rabbit.position.z + directionZ * speed;
+
+        // X ve Z ekseninde ayrı ayrı çarpışma kontrolü yapıyoruz ki duvara sürünerek yürüyebilsin
+        if (!checkCollision(nextX, rabbit.position.y, rabbit.position.z)) {
+            rabbit.position.x = nextX;
+        }
+        if (!checkCollision(rabbit.position.x, rabbit.position.y, nextZ)) {
+            rabbit.position.z = nextZ;
+        }
+
         rabbit.rotation.y = Math.atan2(directionX, directionZ);
     }
 
-    // YERÇEKİMİ UYGULAMASI
+    // YERÇEKİMİ VE DÜŞEY ÇARPIŞMA UYGULAMASI
     velocityY -= gravity; 
-    rabbit.position.y += velocityY;
+    const nextY = rabbit.position.y + velocityY;
 
+    // Havada bir bloğun üstüne basıyor mu ya da alttan kafasını vuruyor mu kontrolü
+    if (checkCollision(rabbit.position.x, nextY, rabbit.position.z)) {
+        if (velocityY < 0) {
+            // Blok üstüne düştüyse: Hızı sıfırla, zıplama hakkını yenile
+            velocityY = 0;
+            jumpCount = 0;
+        } else {
+            // Blok altına kafasını vurduysa: Kafayı çarpıp aşağı düşmeye başlasın
+            velocityY = -0.02;
+        }
+    } else {
+        rabbit.position.y = nextY;
+    }
+
+    // Tabandaki yeşil zemine basma kontrolü
     if (rabbit.position.y <= 0.5) {
         rabbit.position.y = 0.5;
         velocityY = 0;
