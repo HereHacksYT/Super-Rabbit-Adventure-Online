@@ -138,17 +138,6 @@ function updateHealthBar() {
     else document.getElementById('health-bar-fill').style.background = 'linear-gradient(90deg, #f44336, #ff5722)';
 }
 
-// DEBUG HASAR FONKSİYONU (Canavar yokken test için)
-window.takeDamage = function(amount) {
-    if (!gameActive || isDead) return;
-    myHealth -= amount;
-    updateHealthBar();
-    if (myHealth <= 0) {
-        myHealth = 0;
-        die();
-    }
-};
-
 function die() {
     if (isDead) return;
     isDead = true;
@@ -181,7 +170,6 @@ function respawn() {
     jumpCount = 0;
 }
 
-// Çarpışma kontrolleri
 function checkCollision(newX, newY, newZ) {
     if (!gameActive) return false;
     const playerBox = new THREE.Box3(
@@ -217,7 +205,6 @@ function getFloorY(pX, pY, pZ) {
 let velocityY = 0, jumpCount = 0;
 const gravity = 0.8, jumpForce = 18;
 
-// MOD TETİKLEYİCİLERİ
 window.playSolo = function() {
     isOnlineMode = false;
     gameActive = true;
@@ -225,7 +212,6 @@ window.playSolo = function() {
     document.getElementById('controls-ui').style.display = 'block';
     document.getElementById('game-info-ui').style.display = 'block';
     document.getElementById('health-bar-container').style.display = 'block';
-    document.getElementById('damage-test-btn').style.display = 'block';
     document.getElementById('game-room-title').innerText = "TEK OYUNCULU";
     document.getElementById('game-player-count').innerText = "1";
     lobbyGroup.visible = false;
@@ -281,7 +267,6 @@ socket.on('gameStartedAtAll', (allPlayers) => {
     document.getElementById('controls-ui').style.display = 'block';
     document.getElementById('game-info-ui').style.display = 'block';
     document.getElementById('health-bar-container').style.display = 'block';
-    document.getElementById('damage-test-btn').style.display = 'block';
     const currentCode = document.getElementById('ui-room-code').innerText;
     document.getElementById('game-room-title').innerText = "ODA: " + currentCode;
     document.getElementById('game-player-count').innerText = Object.keys(allPlayers).length;
@@ -329,6 +314,13 @@ socket.on('playerAttacked', (id) => {
     }
 });
 
+// Sadece itme, hasar yok
+socket.on('knockback', (angle) => {
+    if (!gameActive || isDead) return;
+    rabbit.position.x += Math.sin(angle) * 2.0;
+    rabbit.position.z += Math.cos(angle) * 2.0;
+});
+
 socket.on('playerDisconnected', (id) => {
     if (otherPlayers[id]) {
         scene.remove(otherPlayers[id].mesh);
@@ -336,7 +328,6 @@ socket.on('playerDisconnected', (id) => {
     }
 });
 
-// Host çıkarsa lobiye dön
 socket.on('hostDisconnected', () => {
     alert('Oda sahibi oyundan ayrıldı. Lobiye dönülüyor.');
     location.reload();
@@ -403,6 +394,21 @@ document.getElementById('attack-button').addEventListener('touchstart', (e) => {
         const rabbitWorldPos = new THREE.Vector3(); rabbit.getWorldPosition(rabbitWorldPos);
         const dummyWorldPos = new THREE.Vector3(); dummy.getWorldPosition(dummyWorldPos);
         if (rabbitWorldPos.distanceTo(dummyWorldPos) < 2.5) swayDummy();
+
+        // Diğer oyunculara vurma (sadece itme)
+        if (isOnlineMode && gameActive) {
+            Object.keys(otherPlayers).forEach((id) => {
+                const otherPos = otherPlayers[id].mesh.position;
+                const dist = rabbit.position.distanceTo(otherPos);
+                if (dist < 2.0) {
+                    const angle = Math.atan2(
+                        otherPos.x - rabbit.position.x,
+                        otherPos.z - rabbit.position.z
+                    );
+                    socket.emit('playerKnockback', { targetId: id, angle: angle });
+                }
+            });
+        }
     }
 });
 
@@ -471,7 +477,6 @@ function animate() {
             jumpCount = 0;
         }
 
-        // Oyuncular arası çarpışma (hasarsız)
         if (isOnlineMode) {
             Object.keys(otherPlayers).forEach((id) => {
                 const other = otherPlayers[id].mesh;
