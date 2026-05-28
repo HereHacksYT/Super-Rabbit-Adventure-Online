@@ -8,10 +8,10 @@ let isDead = false;
 let respawnTimer = null;
 let respawnCountdown = 15;
 
-// 3D SAHNE AYARLARI
+// 3D SAHNE
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB);
-scene.fog = new THREE.Fog(0x87CEEB, 30, 80);
+scene.fog = new THREE.Fog(0x87CEEB, 40, 120);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -22,75 +22,158 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
 // IŞIK
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+const ambientLight = new THREE.AmbientLight(0xfff5e6, 0.7);
 scene.add(ambientLight);
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-dirLight.position.set(20, 30, 20);
-dirLight.castShadow = true;
-dirLight.shadow.mapSize.width = 1024;
-dirLight.shadow.mapSize.height = 1024;
-scene.add(dirLight);
+const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.0);
+sunLight.position.set(50, 80, 40);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 2048;
+sunLight.shadow.mapSize.height = 2048;
+scene.add(sunLight);
 
 const gameplayGroup = new THREE.Group();
 scene.add(gameplayGroup);
+const obstacles = [];
 
-// Yeşil zemin (düz, geniş)
-const groundGeo = new THREE.PlaneGeometry(25, 25);
+// --- ZEMİN ---
+const groundGeo = new THREE.CircleGeometry(20, 64);
 const groundMat = new THREE.MeshStandardMaterial({ color: 0x7ec850, roughness: 0.9 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
-const obstacles = [];
-
-// Birkaç basit ahşap platform (üzerine zıplamak için)
-function createPlatform(x, y, z) {
-    const geo = new THREE.BoxGeometry(2, 0.3, 2);
-    const mat = new THREE.MeshStandardMaterial({ color: 0xc49a6c, roughness: 0.7 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(x, y, z);
-    mesh.castShadow = true; mesh.receiveShadow = true;
-    gameplayGroup.add(mesh);
-    obstacles.push(mesh);
+// --- BLOK BLOK YÜKSELEN KAYALIK (Minecraft tarzı) ---
+function createBlockCliff(x, z, width, depth, height) {
+    const blockSize = 1.0;
+    const cols = Math.round(width / blockSize);
+    const rows = Math.round(depth / blockSize);
+    const layers = Math.round(height / blockSize);
+    for (let l = 0; l < layers; l++) {
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const geo = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
+                const mat = new THREE.MeshStandardMaterial({ color: 0x9b8c7c, roughness: 0.6 });
+                const block = new THREE.Mesh(geo, mat);
+                block.position.set(
+                    x + c * blockSize - width/2 + blockSize/2,
+                    l * blockSize + blockSize/2,
+                    z + r * blockSize - depth/2 + blockSize/2
+                );
+                block.castShadow = true;
+                block.receiveShadow = true;
+                gameplayGroup.add(block);
+                if (l === layers - 1) obstacles.push(block);
+            }
+        }
+    }
 }
-createPlatform(3, 0.8, 3);
-createPlatform(-3, 1.2, -3);
-createPlatform(4, 1.5, -4);
 
-// Etrafa birkaç ağaç (sadece gövde, basit)
-function createSimpleTree(x, z) {
+// 3 farklı kayalık
+createBlockCliff(-5, -6, 2, 2, 3);
+createBlockCliff(6, -5, 2, 2, 2);
+createBlockCliff(-6, 6, 2, 2, 4);
+createBlockCliff(6, 6, 3, 2, 2);
+
+// --- AHŞAP EV ---
+function createWoodenHouse(x, z, rotY = 0) {
     const group = new THREE.Group();
-    const trunkGeo = new THREE.CylinderGeometry(0.2, 0.3, 2.5, 8);
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.7 });
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0xc49a6c, roughness: 0.7 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6 });
+    
+    // Gövde
+    const bodyGeo = new THREE.BoxGeometry(2.5, 2.0, 2.5);
+    const body = new THREE.Mesh(bodyGeo, woodMat);
+    body.position.y = 1.0;
+    body.castShadow = true; body.receiveShadow = true;
+    group.add(body);
+    
+    // Çatı (üçgen)
+    const roofGeo = new THREE.ConeGeometry(1.8, 1.0, 4);
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.y = 2.5;
+    roof.rotation.y = Math.PI / 4;
+    roof.castShadow = true; roof.receiveShadow = true;
+    group.add(roof);
+    
+    // Kapı
+    const doorGeo = new THREE.BoxGeometry(0.6, 1.2, 0.1);
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.5 });
+    const door = new THREE.Mesh(doorGeo, doorMat);
+    door.position.set(0, 0.6, 1.3);
+    group.add(door);
+    
+    group.position.set(x, 0, z);
+    group.rotation.y = rotY;
+    gameplayGroup.add(group);
+    obstacles.push(group);
+    return group;
+}
+
+// 3 ahşap ev
+createWoodenHouse(-6, -5, 0.2);
+createWoodenHouse(7, 4, -0.3);
+createWoodenHouse(-6, 7, 0.5);
+
+// --- BÜYÜK AĞAÇ (merkez) ---
+function createBigTree(x, z, scale = 1) {
+    const group = new THREE.Group();
+    const trunkGeo = new THREE.CylinderGeometry(0.3 * scale, 0.45 * scale, 3.0 * scale, 16);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.55 });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-    trunk.position.y = 1.25;
+    trunk.position.y = 1.5 * scale;
     trunk.castShadow = true; trunk.receiveShadow = true;
     group.add(trunk);
-    const leafGeo = new THREE.SphereGeometry(0.8, 8, 8);
-    const leafMat = new THREE.MeshStandardMaterial({ color: 0x4a8f29, roughness: 0.4 });
-    const leaf = new THREE.Mesh(leafGeo, leafMat);
-    leaf.position.y = 2.5;
-    leaf.castShadow = true; leaf.receiveShadow = true;
-    group.add(leaf);
+    const leafMat = new THREE.MeshStandardMaterial({ color: 0x3d7a1c, roughness: 0.35 });
+    for (let i = 0; i < 4; i++) {
+        const sGeo = new THREE.SphereGeometry(0.85 * scale - i * 0.12, 16, 12);
+        const s = new THREE.Mesh(sGeo, leafMat);
+        s.position.set((Math.random() - 0.5) * 0.6 * scale, 2.4 * scale + i * 0.55 * scale, (Math.random() - 0.5) * 0.6 * scale);
+        s.castShadow = true; s.receiveShadow = true;
+        group.add(s);
+    }
     group.position.set(x, 0, z);
     gameplayGroup.add(group);
     obstacles.push(trunk);
+    return group;
 }
-createSimpleTree(-6, -6);
-createSimpleTree(6, -6);
-createSimpleTree(-6, 6);
-createSimpleTree(6, 6);
-createSimpleTree(0, -7);
-createSimpleTree(0, 7);
-createSimpleTree(-7, 0);
-createSimpleTree(7, 0);
+createBigTree(0, 0, 1.3);
 
-// MODEL FABRİKASI (tavşan)
+// --- GÖLET (ağacın sağ altında) ---
+function createPond(x, z, radius = 1.5) {
+    const pondGeo = new THREE.CircleGeometry(radius, 48);
+    const pondMat = new THREE.MeshStandardMaterial({ color: 0x4499dd, roughness: 0.1, metalness: 0.4, transparent: true, opacity: 0.7 });
+    const pond = new THREE.Mesh(pondGeo, pondMat);
+    pond.rotation.x = -Math.PI / 2;
+    pond.position.set(x, 0.04, z);
+    gameplayGroup.add(pond);
+    // Taşlar
+    for (let i = 0; i < 16; i++) {
+        const angle = (i / 16) * Math.PI * 2;
+        const stoneGeo = new THREE.SphereGeometry(0.2, 6, 4);
+        const stoneMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.5 });
+        const stone = new THREE.Mesh(stoneGeo, stoneMat);
+        stone.position.set(x + Math.cos(angle) * radius, 0.1, z + Math.sin(angle) * radius);
+        stone.castShadow = true; stone.receiveShadow = true;
+        gameplayGroup.add(stone);
+    }
+}
+createPond(2, -2, 1.5);
+
+// --- ETRAFTA AĞAÇLAR ---
+createBigTree(-9, -9, 0.8);
+createBigTree(10, -8, 0.75);
+createBigTree(-8, 10, 0.85);
+createBigTree(9, 9, 0.8);
+createBigTree(-10, 2, 0.7);
+createBigTree(11, -2, 0.75);
+
+// --- MODEL FABRİKASI (TAVŞAN) ---
 const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
 const otherBodyMat = new THREE.MeshStandardMaterial({ color: 0xddf0ff });
 const noseMat = new THREE.MeshStandardMaterial({ color: 0xffaaaa });
 const eyeMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+
 function createRabbitModel(isLocal = false) {
     const group = new THREE.Group(); const visualGroup = new THREE.Group(); group.add(visualGroup);
     const currentMat = isLocal ? bodyMat : otherBodyMat;
@@ -111,6 +194,7 @@ function createRabbitModel(isLocal = false) {
     const fBR = new THREE.Mesh(footGeo, footMat); fBR.position.set(0.32, -0.08, -0.22); group.add(fBR);
     return { mesh: group, visual: visualGroup, head: head, feet: [fFL, fFR, fBL, fBR] };
 }
+
 const localPlayer = createRabbitModel(true);
 const rabbit = localPlayer.mesh; const rabbitVisualGroup = localPlayer.visual; const head = localPlayer.head;
 const [footFL, footFR, footBL, footBR] = localPlayer.feet;
@@ -128,6 +212,7 @@ function updateHealthBar() {
     else if (percent > 30) document.getElementById('health-bar-fill').style.background = 'linear-gradient(90deg, #ff9800, #ffc107)';
     else document.getElementById('health-bar-fill').style.background = 'linear-gradient(90deg, #f44336, #ff5722)';
 }
+
 function die() {
     if (isDead) return;
     isDead = true; gameActive = false; rabbit.visible = false;
@@ -135,6 +220,7 @@ function die() {
     respawnCountdown = 15; document.getElementById('countdown-display').innerText = respawnCountdown;
     respawnTimer = setInterval(() => { respawnCountdown--; document.getElementById('countdown-display').innerText = respawnCountdown; if (respawnCountdown <= 0) { clearInterval(respawnTimer); respawn(); } }, 1000);
 }
+
 function respawn() {
     isDead = false; gameActive = true; rabbit.visible = true;
     rabbit.position.set(0, 0, 0); rabbit.rotation.y = 0;
@@ -155,6 +241,7 @@ function checkCollision(newX, newY, newZ) {
     }
     return false;
 }
+
 function getFloorY(pX, pY, pZ) {
     gameplayGroup.updateMatrixWorld(true);
     let highestCeil = 0;
@@ -168,6 +255,7 @@ function getFloorY(pX, pY, pZ) {
     }
     return highestCeil;
 }
+
 let velocityY = 0, jumpCount = 0;
 const gravity = 0.8, jumpForce = 18;
 
@@ -179,17 +267,33 @@ window.playSolo = function() {
     document.getElementById('health-bar-container').style.display = 'block';
     document.getElementById('game-room-title').innerText = "TEK OYUNCULU";
     document.getElementById('game-player-count').innerText = "1";
-    lobbyGroup.visible = false; gameplayGroup.visible = true;
+    gameplayGroup.visible = true;
     rabbit.position.set(0, 0, 0); rabbit.rotation.y = 0;
     myHealth = maxHealth; updateHealthBar();
     gameplayGroup.updateMatrixWorld(true);
 };
+
 window.createRoom = function() { isOnlineMode = true; socket.emit('createRoom', { maxPlayers: 4 }); };
 window.joinRoom = function() { const code = document.getElementById('room-code-input').value.trim(); if(code.length === 5) { isOnlineMode = true; socket.emit('joinRoom', code); } };
 window.hostStartGame = function() { socket.emit('startGameSignal'); };
 
 socket.on('roomCreated', (d) => { setupLobbyUI(d); });
 socket.on('roomUpdate', (d) => { setupLobbyUI(d); });
+
+// Lobi için geçici bir grup
+const lobbyGroup = new THREE.Group();
+scene.add(lobbyGroup);
+const pads = [];
+const padPositions = [{ x: 0, z: 47.5 }, { x: -3.5, z: 49.5 }, { x: 3.5, z: 49.5 }, { x: 0, z: 52.0 }];
+for (let i = 0; i < 4; i++) {
+    const padGeo = new THREE.CylinderGeometry(1.2, 1.3, 0.2, 24);
+    const padMat = new THREE.MeshStandardMaterial({ color: 0x00e5ff, transparent: true, opacity: 0.6, roughness: 0.1 });
+    const pad = new THREE.Mesh(padGeo, padMat);
+    pad.position.set(padPositions[i].x, 0.1, padPositions[i].z);
+    lobbyGroup.add(pad);
+    pads.push(pad);
+}
+
 function setupLobbyUI(d) {
     maxPlayersLimit = d.maxPlayers;
     document.getElementById('main-menu').style.display = 'none';
@@ -200,12 +304,13 @@ function setupLobbyUI(d) {
     if (d.hostId === socket.id) { document.getElementById('ui-start-btn').style.display = 'block'; document.getElementById('ui-waiting-msg').style.display = 'none'; }
     else { document.getElementById('ui-start-btn').style.display = 'none'; document.getElementById('ui-waiting-msg').style.display = 'block'; }
     gameplayGroup.visible = false; lobbyGroup.visible = true;
-    rabbit.position.set(padPos[0].x, 0.2, padPos[0].z);
+    rabbit.position.set(padPositions[0].x, 0.2, padPositions[0].z);
     Object.keys(otherPlayers).forEach(id => scene.remove(otherPlayers[id].mesh));
     otherPlayers = {};
     let pi = 1;
-    Object.keys(d.players).forEach((id) => { if (id !== socket.id && pi < 4) { const pos = padPos[pi]; addOtherPlayer(id, pos.x, 0.2, pos.z); pi++; } });
+    Object.keys(d.players).forEach((id) => { if (id !== socket.id && pi < 4) { const pos = padPositions[pi]; addOtherPlayer(id, pos.x, 0.2, pos.z); pi++; } });
 }
+
 socket.on('gameStartedAtAll', (ap) => {
     document.getElementById('lobby-ui').style.display = 'none';
     document.getElementById('controls-ui').style.display = 'block';
@@ -222,12 +327,14 @@ socket.on('gameStartedAtAll', (ap) => {
     gameActive = true; isDead = false;
     gameplayGroup.updateMatrixWorld(true);
 });
+
 function addOtherPlayer(id, x, y, z) {
     if (otherPlayers[id]) return;
     const md = createRabbitModel(false);
     md.mesh.position.set(x, y, z); scene.add(md.mesh);
     otherPlayers[id] = { mesh: md.mesh, visual: md.visual, head: md.head, isAttacking: false, attackAnimTime: 0 };
 }
+
 socket.on('playerMoved', (pi) => { if (gameActive && otherPlayers[pi.id]) { otherPlayers[pi.id].mesh.position.set(pi.x, pi.y, pi.z); otherPlayers[pi.id].mesh.rotation.y = pi.ry; } });
 socket.on('playerAttacked', (id) => { if (gameActive && otherPlayers[id]) { otherPlayers[id].isAttacking = true; otherPlayers[id].attackAnimTime = 0; } });
 socket.on('knockback', (angle) => { if (!gameActive || isDead) return; rabbit.position.x += Math.sin(angle) * 2.0; rabbit.position.z += Math.cos(angle) * 2.0; socket.emit('playerMovement', { x: rabbit.position.x, y: rabbit.position.y, z: rabbit.position.z, ry: rabbit.rotation.y }); });
@@ -240,6 +347,7 @@ let joystickActive = false, moveX = 0, moveZ = 0;
 zone.addEventListener('touchstart', (e) => { if(!gameActive || isDead) return; joystickActive = true; handleJoystick(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
 window.addEventListener('touchmove', (e) => { if (joystickActive && gameActive && !isDead) { for (let i = 0; i < e.touches.length; i++) { if (zone.contains(e.touches[i].target)) { handleJoystick(e.touches[i].clientX, e.touches[i].clientY); break; } } } }, { passive: true });
 zone.addEventListener('touchend', () => { joystickActive = false; stick.style.transform = 'translate(0px, 0px)'; moveX = 0; moveZ = 0; });
+
 function handleJoystick(cx, cy) {
     const zr = zone.getBoundingClientRect();
     let dx = cx - (zr.left + zr.width / 2), dy = cy - (zr.top + zr.height / 2);
@@ -248,6 +356,7 @@ function handleJoystick(cx, cy) {
     stick.style.transform = `translate(${dx}px, ${dy}px)`;
     moveX = dx / maxRadius; moveZ = dy / maxRadius;
 }
+
 let cameraAngleY = 0, cameraAngleX = 0.4, cameraDistance = 6, touchStartX = 0, touchStartY = 0, isTurningCamera = false;
 window.addEventListener('touchstart', (e) => {
     const jBtn = document.getElementById('jump-button'), aBtn = document.getElementById('attack-button');
@@ -265,6 +374,7 @@ window.addEventListener('touchmove', (e) => {
     }
 }, { passive: true });
 window.addEventListener('touchend', () => { isTurningCamera = false; });
+
 document.getElementById('jump-button').addEventListener('touchstart', (e) => { e.preventDefault(); if (gameActive && !isDead && jumpCount < 2) { velocityY = jumpForce; jumpCount++; } });
 document.getElementById('attack-button').addEventListener('touchstart', (e) => {
     e.preventDefault();
