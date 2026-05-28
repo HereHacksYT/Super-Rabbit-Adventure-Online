@@ -1,4 +1,4 @@
-// client.js - SÜPER BEAR LOBİ TASARIMLI SÜRÜM
+// client.js - ÇARPIŞMA VE VURMA HATALARI DÜZELTİLMİŞ SÜRÜM
 
 const socket = io();
 const clock = new THREE.Clock();
@@ -9,7 +9,7 @@ let maxPlayersLimit = 4;
 
 // 3D SAHNE AYARLARI
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1a1a); // Lobi için koyu arka plan
+scene.background = new THREE.Color(0x1a1a1a); 
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -33,34 +33,37 @@ const floor = new THREE.Mesh(floorGeo, floorMat);
 floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
 gameplayGroup.add(floor);
 
+// BLOKLAR VE HİTBOX DÜZELTMESİ
 const obstacles = [];
 function createCube(x, y, z, w, h, d, color) {
     const geo = new THREE.BoxGeometry(w, h, d);
     const mat = new THREE.MeshStandardMaterial({ color: color });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(x, y / 2, z); mesh.castShadow = true; mesh.receiveShadow = true;
-    gameplayGroup.add(mesh); mesh.geometry.computeBoundingBox(); obstacles.push(mesh);
+    gameplayGroup.add(mesh); 
+    obstacles.push(mesh); // Fizik motoru için listeye ekle
 }
 createCube(5, 2, -8, 2, 2, 2, 0xff9800);
 createCube(-7, 1, -3, 3, 1, 3, 0x00bcd4);
 createCube(0, 3, -15, 4, 3, 4, 0x9c27b0);
 createCube(8, 1, 6, 2, 1, 2, 0xffeb3b);
 
+// Sallanan Kukla (Vurma Hedefi)
 const dummyGeo = new THREE.BoxGeometry(1, 2.5, 1);
 const dummyMat = new THREE.MeshStandardMaterial({ color: 0xe67e22 });
 const dummy = new THREE.Mesh(dummyGeo, dummyMat);
-dummy.position.set(0, 1.25, -5); dummy.castShadow = true; dummy.geometry.computeBoundingBox();
-gameplayGroup.add(dummy); obstacles.push(dummy);
+dummy.position.set(0, 1.25, -5); dummy.castShadow = true; 
+gameplayGroup.add(dummy); 
+obstacles.push(dummy);
 
-let isDummyHit = false, dummySwayTime = 0;
+let isDummyHit = false, dummySwayTime = 0, dummySwayAngle = 0;
 function swayDummy() { isDummyHit = true; dummySwayTime = 0; }
 
 
-// --- YENİ: SÜPER BEAR ADVENTURE MAVİ LOBİ ODASI ---
+// --- SÜPER BEAR ADVENTURE MAVİ LOBİ ODASI ---
 const lobbyGroup = new THREE.Group();
 scene.add(lobbyGroup);
 
-// Büyük Mavi Silindir Duvar (Cam Efekti)
 const cylinderGeo = new THREE.CylinderGeometry(12, 12, 15, 32, 1, true);
 const cylinderMat = new THREE.MeshStandardMaterial({ 
     color: 0x00a2ff, transparent: true, opacity: 0.25, side: THREE.DoubleSide, roughness: 0.2, metalness: 0.1 
@@ -69,20 +72,18 @@ const lobbyRoom = new THREE.Mesh(cylinderGeo, cylinderMat);
 lobbyRoom.position.set(0, 7.5, 50);
 lobbyGroup.add(lobbyRoom);
 
-// Lobinin Parlayan Mavi Tabanı
 const lobbyFloorGeo = new THREE.CylinderGeometry(12, 12, 0.5, 32);
 const lobbyFloorMat = new THREE.MeshStandardMaterial({ color: 0x0d47a1, roughness: 0.5 });
 const lobbyFloorMesh = new THREE.Mesh(lobbyFloorGeo, lobbyFloorMat);
 lobbyFloorMesh.position.set(0, -0.25, 50);
 lobbyGroup.add(lobbyFloorMesh);
 
-// Oyuncuların Basacağı 4 Adet Yuvarlak Platform Basamağı (Super Bear Tarzı)
 const pads = [];
 const padPositions = [
-    { x: 0, z: 47.5 },    // Ortadaki (Kurucu)
-    { x: -3.5, z: 49.5 }, // Sol
-    { x: 3.5, z: 49.5 },  // Sağ
-    { x: 0, z: 52.0 }     // Arka
+    { x: 0, z: 47.5 },    
+    { x: -3.5, z: 49.5 }, 
+    { x: 3.5, z: 49.5 },  
+    { x: 0, z: 52.0 }     
 ];
 
 for (let i = 0; i < 4; i++) {
@@ -130,15 +131,24 @@ scene.add(rabbit);
 let otherPlayers = {};
 let isAttacking = false, attackAnimTime = 0;
 
-// FİZİK VE ÇARPIŞMALAR
+// --- DÜZELTİLEN ÇARPIŞMA MOTORU ---
 function checkCollision(newX, newY, newZ) {
-    if(!gameActive) return false;
-    const playerBox = new THREE.Box3(new THREE.Vector3(newX - 0.35, newY + 0.1, newZ - 0.4), new THREE.Vector3(newX + 0.35, newY + 1.1, newZ + 0.4));
+    if (!gameActive) return false;
+    
+    // Tavşan için güncel bir çarpan kutusu oluşturuyoruz
+    const playerBox = new THREE.Box3(
+        new THREE.Vector3(newX - 0.35, newY + 0.05, newZ - 0.35), 
+        new THREE.Vector3(newX + 0.35, newY + 1.2, newZ + 0.35)
+    );
+
     for (let i = 0; i < obstacles.length; i++) {
-        const obstacleBox = new THREE.Box3().setFromObject(obstacles[i]);
+        const obs = obstacles[i];
+        
+        // KRİTİK DÜZELTME: Grup içindeki nesnelerin dünya koordinatlarını tam hesaplıyoruz
+        const obstacleBox = new THREE.Box3().setFromObject(obs);
+        
         if (playerBox.intersectsBox(obstacleBox)) {
-            if (newY >= obstacleBox.max.y - 0.15) continue;
-            return true;
+            return true; // İçinden geçmeyi engelle!
         }
     }
     return false;
@@ -147,7 +157,7 @@ function checkCollision(newX, newY, newZ) {
 let velocityY = 0, jumpCount = 0;
 const gravity = 0.8, jumpForce = 18;
 
-// MOD DEĞİŞİM TETİKLEYİCİLERİ
+// MOD TETİKLEYİCİLERİ
 window.playSolo = function() {
     isOnlineMode = false;
     gameActive = true;
@@ -157,7 +167,7 @@ window.playSolo = function() {
     document.getElementById('game-room-title').innerText = "TEK OYUNCULU";
     document.getElementById('game-player-count').innerText = "1";
     
-    lobbyGroup.visible = false; // Lobi odasını gizle
+    lobbyGroup.visible = false; 
     gameplayGroup.visible = true;
     rabbit.position.set(0, 0, 0);
     rabbit.rotation.y = 0;
@@ -180,14 +190,9 @@ window.hostStartGame = function() {
     socket.emit('startGameSignal');
 }
 
-// NETWORK ALICILARI
-socket.on('roomCreated', (data) => {
-    setupLobbyUI(data);
-});
-
-socket.on('roomUpdate', (data) => {
-    setupLobbyUI(data);
-});
+// NETWORK DİNLEYİCİLERİ
+socket.on('roomCreated', (data) => { setupLobbyUI(data); });
+socket.on('roomUpdate', (data) => { setupLobbyUI(data); });
 
 function setupLobbyUI(data) {
     maxPlayersLimit = data.maxPlayers;
@@ -206,14 +211,11 @@ function setupLobbyUI(data) {
         document.getElementById('ui-waiting-msg').style.display = 'block';
     }
 
-    // Dünyaları Ayarla (Lobi Odası Görünsün, Maç Dünyası Gizlensin)
     gameplayGroup.visible = false;
     lobbyGroup.visible = true;
 
-    // Kendimizi ilk platform basamağına koyuyoruz
     rabbit.position.set(padPositions[0].x, 0.2, padPositions[0].z);
 
-    // Diğer oyuncuları temizle ve sırayla basamaklara diz
     Object.keys(otherPlayers).forEach(id => scene.remove(otherPlayers[id].mesh));
     otherPlayers = {};
 
@@ -236,11 +238,9 @@ socket.on('gameStartedAtAll', (allPlayers) => {
     document.getElementById('game-room-title').innerText = "ODA: " + currentCode;
     document.getElementById('game-player-count').innerText = Object.keys(allPlayers).length;
 
-    // Maç Dünyasını Aç, Lobi Odasını Kapat
     lobbyGroup.visible = false;
     gameplayGroup.visible = true;
 
-    // Herkesi asıl haritaya indir
     rabbit.position.set(0, 0, 0);
     rabbit.rotation.y = 0;
 
@@ -271,11 +271,15 @@ socket.on('playerMoved', (playerInfo) => {
     }
 });
 
+socket.on('playerAttacked', (id) => {
+    if (gameActive && otherPlayers[id]) { otherPlayers[id].isAttacking = true; otherPlayers[id].attackAnimTime = 0; }
+});
+
 socket.on('playerDisconnected', (id) => {
     if (otherPlayers[id]) { scene.remove(otherPlayers[id].mesh); delete otherPlayers[id]; }
 });
 
-// JOYSTICK VE DOKUNMA MOTORU
+// JOYSTICK VE DOKUNMA SİSTEMLERİ
 const zone = document.getElementById('joystick-zone'), stick = document.getElementById('joystick-stick'), maxRadius = 35;
 let joystickActive = false, moveX = 0, moveZ = 0;
 
@@ -323,36 +327,47 @@ window.addEventListener('touchmove', (e) => {
 window.addEventListener('touchend', () => { isTurningCamera = false; });
 
 document.getElementById('jump-button').addEventListener('touchstart', (e) => { e.preventDefault(); if (gameActive && jumpCount < 2) { velocityY = jumpForce; jumpCount++; } });
+
+// --- DÜZELTİLEN VURMA (HIT) TETİKLEYİCİSİ ---
 document.getElementById('attack-button').addEventListener('touchstart', (e) => { 
     e.preventDefault(); 
     if (gameActive && !isAttacking) { 
-        isAttacking = true; attackAnimTime = 0; 
-        socket.emit('playerAttack'); 
-        if (rabbit.position.distanceTo(dummy.position) < 2.5) swayDummy(); 
+        isAttacking = true; 
+        attackAnimTime = 0; 
+        if (isOnlineMode) socket.emit('playerAttack'); 
+        
+        // KRİTİK DÜZELTME: Mesafe kontrolünü dünya koordinatı üzerinden hatasız yapıyoruz
+        const rabbitWorldPos = new THREE.Vector3();
+        rabbit.getWorldPosition(rabbitWorldPos);
+        
+        const dummyWorldPos = new THREE.Vector3();
+        dummy.getWorldPosition(dummyWorldPos);
+        
+        // Mesafe 2.5 birimden azsa kuklayı sallat
+        if (rabbitWorldPos.distanceTo(dummyWorldPos) < 2.5) {
+            swayDummy(); 
+        } 
     } 
 });
 
-// ANIMATE (DÖNGÜ)
+// ANA ANIMASYON DÖNGÜSÜ
 let legWiggle = 0;
 function animate() {
     requestAnimationFrame(animate);
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
 
-    // --- LOBİDEYKEN TOPLU DÖNÜŞ VE SABİT KAMERA SİSTEMİ ---
+    // Lobi Dönüşleri
     if (isOnlineMode && !gameActive) {
-        // Tüm oyuncuları kendi ekseninde senkronize fırıl fırıl döndür
         rabbit.rotation.y += 1.2 * deltaTime;
         Object.keys(otherPlayers).forEach((id) => {
             otherPlayers[id].mesh.rotation.y += 1.2 * deltaTime;
         });
-
-        // Kamerayı tam Super Bear tarzı lobi açısına sabitle
         camera.position.set(0, 3.5, 43); 
         camera.lookAt(0, 1.2, 50);
     }
 
-    // NORMAL OYUN MOTORU (Maç Başlayınca Çalışır)
+    // Oyun Aktifse Çalışacak Dinamikler
     if (gameActive) {
         if (joystickActive && (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05)) {
             const forwardX = Math.sin(cameraAngleY), forwardZ = Math.cos(cameraAngleY);
@@ -363,6 +378,7 @@ function animate() {
             const nextX = rabbit.position.x + dirX * 9.0 * deltaTime;
             const nextZ = rabbit.position.z + dirZ * 9.0 * deltaTime;
             
+            // Çarpışma kontrolü artık tam çalışıyor!
             if (!checkCollision(nextX, rabbit.position.y, rabbit.position.z)) rabbit.position.x = nextX;
             if (!checkCollision(rabbit.position.x, rabbit.position.y, nextZ)) rabbit.position.z = nextZ;
             
@@ -378,7 +394,38 @@ function animate() {
             footFL.position.y = 0.08; footFR.position.y = 0.08; footBL.position.y = 0.08; footBR.position.y = 0.08;
         }
 
-        // Yerçekimi ve Düşüş
+        // Kendi Vurma Animasyonumuz
+        if (isAttacking) {
+            attackAnimTime += 12 * deltaTime; 
+            const factor = Math.sin(attackAnimTime * Math.PI); 
+            if (attackAnimTime <= 1.0) {
+                rabbitVisualGroup.position.z = factor * 0.5; head.position.z = 0.1 + factor * 0.25; head.rotation.x = factor * 0.4;
+            } else {
+                isAttacking = false; rabbitVisualGroup.position.z = 0; head.position.z = 0.1; head.rotation.x = 0;
+            }
+        }
+
+        // Diğer Oyuncuların Vurma Animasyonu
+        Object.keys(otherPlayers).forEach((id) => {
+            const p = otherPlayers[id];
+            if (p.isAttacking) {
+                p.attackAnimTime += 12 * deltaTime;
+                const factor = Math.sin(p.attackAnimTime * Math.PI);
+                if (p.attackAnimTime <= 1.0) {
+                    p.visual.position.z = factor * 0.5; p.head.position.z = 0.1 + factor * 0.25; p.head.rotation.x = factor * 0.4;
+                } else { p.isAttacking = false; p.visual.position.z = 0; p.head.position.z = 0.1; p.head.rotation.x = 0; }
+            }
+        });
+
+        // Kuklanın Sallanma Fiziği
+        if (isDummyHit) {
+            dummySwayTime += 7 * deltaTime;
+            dummySwayAngle = Math.sin(dummySwayTime * 2.0) * 5 * Math.pow(0.90, dummySwayTime);
+            dummy.rotation.z = dummySwayAngle * (Math.PI / 180);
+            if (Math.abs(dummySwayAngle) < 0.02) { isDummyHit = false; dummy.rotation.z = 0; }
+        }
+
+        // Yerçekimi
         velocityY -= gravity * 60 * deltaTime;
         rabbit.position.y += velocityY * deltaTime;
         if (rabbit.position.y <= 0) { rabbit.position.y = 0; velocityY = 0; jumpCount = 0; }
