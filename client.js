@@ -10,8 +10,6 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa0a0a0);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 7, 10);
-camera.lookAt(0, 0, 0);
 
 // 3. RENDERER (EKRANA ÇİZİCİ) AYARI
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -44,7 +42,7 @@ rabbit.position.y = 0.5;
 rabbit.castShadow = true;
 scene.add(rabbit);
 
-// 7. SABİT JOYSTICK HAREKET SİSTEMİ (DÜZELTİLEN KISIM)
+// 7. SABİT JOYSTICK HAREKET SİSTEMİ
 const zone = document.getElementById('joystick-zone');
 const stick = document.getElementById('joystick-stick');
 
@@ -55,7 +53,6 @@ let moveZ = 0;
 const maxRadius = 35; 
 
 function handleJoystick(clientX, clientY) {
-    // Merkez noktasını her dokunuşta anlık ve doğru hesapla
     const zoneRect = zone.getBoundingClientRect();
     const centerX = zoneRect.left + zoneRect.width / 2;
     const centerY = zoneRect.top + zoneRect.height / 2;
@@ -72,48 +69,93 @@ function handleJoystick(clientX, clientY) {
 
     stick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
 
-    // Buradaki değerlerin 0 kalmaması için hassasiyeti artırdık
     moveX = deltaX / maxRadius;
     moveZ = deltaY / maxRadius;
 }
 
-// Dokunma Etkinlikleri
 zone.addEventListener('touchstart', (e) => {
     joystickActive = true;
     handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
 });
 
 window.addEventListener('touchmove', (e) => {
-    if (!joystickActive) return;
-    handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
+    if (joystickActive) {
+        handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
+    }
 });
 
-window.addEventListener('touchend', () => {
+zone.addEventListener('touchend', () => {
     joystickActive = false;
     stick.style.transform = 'translate(0px, 0px)';
     moveX = 0;
     moveZ = 0;
 });
 
+// --- YENİ EKLENEN KISIM: EKRANI SÜRÜKLEYEREK KAMERAYI ÇEVİRME ---
+let cameraAngleY = 0; // Kameranın küp etrafındaki dönüş açısı
+let touchStartX = 0;
+let isTurningCamera = false;
+
+window.addEventListener('touchstart', (e) => {
+    // Eğer dokunulan yer sol alttaki joystick alanı DEĞİLSE, kamera çevirmedir
+    if (!zone.contains(e.target)) {
+        isTurningCamera = true;
+        touchStartX = e.touches[0].clientX;
+    }
+});
+
+window.addEventListener('touchmove', (e) => {
+    if (!isTurningCamera) return;
+    
+    // Joystick dışındaki parmak hareketini bul
+    for (let i = 0; i < e.touches.length; i++) {
+        if (!zone.contains(e.touches[i].target)) {
+            let deltaX = e.touches[i].clientX - touchStartX;
+            cameraAngleY -= deltaX * 0.005; // Çevirme hassasiyeti
+            touchStartX = e.touches[i].clientX;
+            break;
+        }
+    }
+});
+
+window.addEventListener('touchend', (e) => {
+    if (e.touches.length === 0) {
+        isTurningCamera = false;
+    }
+});
+// -----------------------------------------------------------------
+
 // 8. EKRAN YENİLEME VE ANİMASYON DÖNGÜSÜ
 const speed = 0.15;
+const cameraDistance = 10; // Kameranın küpe uzaklığı
+const cameraHeight = 6;    // Kameranın yüksekliği
 
 function animate() {
     requestAnimationFrame(animate);
 
     if (joystickActive && (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05)) {
-        // Küpü gerçekten dünyada ilerleten kodlar:
-        rabbit.position.x += moveX * speed;
-        rabbit.position.z += moveZ * speed;
+        // Kameranın baktığı açıya göre hareket yönünü hesapla
+        // Böylece kamera nereye bakarsa ileri basınca oraya gider
+        const forwardX = Math.sin(cameraAngleY);
+        const forwardZ = Math.cos(cameraAngleY);
+        const rightX = Math.sin(cameraAngleY + Math.PI / 2);
+        const rightZ = Math.cos(cameraAngleY + Math.PI / 2);
+
+        // Küpü kameranın açısına göre yürüten matematik:
+        const directionX = (forwardX * -moveZ) + (rightX * moveX);
+        const directionZ = (forwardZ * -moveZ) + (rightZ * moveX);
+
+        rabbit.position.x += directionX * speed;
+        rabbit.position.z += directionZ * speed;
         
-        // Sadece dönmekle kalmasın, o yöne baksın
-        rabbit.rotation.y = Math.atan2(-moveX, -moveZ);
+        // Karakter yürüdüğü yöne baksın
+        rabbit.rotation.y = Math.atan2(directionX, directionZ);
     }
 
-    // KAMERA ARKAMIZDAN GELİYOR
-    camera.position.x = rabbit.position.x;
-    camera.position.y = rabbit.position.y + 7;
-    camera.position.z = rabbit.position.z + 10;
+    // KAMERAYI KÜPÜN ETRAFINDAN DÖNDÜREREK TAKİP ETTİRME
+    camera.position.x = rabbit.position.x - Math.sin(cameraAngleY) * cameraDistance;
+    camera.position.z = rabbit.position.z - Math.cos(cameraAngleY) * cameraDistance;
+    camera.position.y = rabbit.position.y + cameraHeight;
     camera.lookAt(rabbit.position);
 
     renderer.render(scene, camera);
