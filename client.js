@@ -13,7 +13,7 @@ const teleportCooldown = 3;
 // 3D SAHNE AYARLARI
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB);
-scene.fog = new THREE.Fog(0x87CEEB, 150, 400);
+scene.fog = new THREE.Fog(0x87CEEB, 100, 350);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -29,12 +29,12 @@ document.getElementById('canvas-container').appendChild(renderer.domElement);
 const ambientLight = new THREE.AmbientLight(0xfff5e6, 0.6);
 scene.add(ambientLight);
 const sunLight = new THREE.DirectionalLight(0xfff5e6, 0.9);
-sunLight.position.set(200, 250, 200);
+sunLight.position.set(100, 120, 80);
 sunLight.castShadow = true;
-sunLight.shadow.camera.left = -200;
-sunLight.shadow.camera.right = 200;
-sunLight.shadow.camera.top = 200;
-sunLight.shadow.camera.bottom = -200;
+sunLight.shadow.camera.left = -150;
+sunLight.shadow.camera.right = 150;
+sunLight.shadow.camera.top = 150;
+sunLight.shadow.camera.bottom = -150;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
 sunLight.shadow.bias = -0.0005;
@@ -46,7 +46,7 @@ scene.add(gameplayGroup);
 const obstacles = [];
 const portals = [];
 
-// --- ADA İNŞA YARDIMCILARI ---
+// --- YARDIMCI FONKSİYONLAR ---
 function createGround(x, z, radius, color = 0x7ba428, roughness = 0.9) {
     const geo = new THREE.CircleGeometry(radius, 64);
     const mat = new THREE.MeshStandardMaterial({ color: color, roughness: roughness });
@@ -56,6 +56,28 @@ function createGround(x, z, radius, color = 0x7ba428, roughness = 0.9) {
     mesh.receiveShadow = true;
     gameplayGroup.add(mesh);
     return mesh;
+}
+
+function createHill(x, z, radius, height, color = 0x7ba428) {
+    const geo = new THREE.ConeGeometry(radius, height, 16, 4);
+    const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.9 });
+    const hill = new THREE.Mesh(geo, mat);
+    hill.position.set(x, height / 2, z);
+    hill.receiveShadow = true; hill.castShadow = true;
+    gameplayGroup.add(hill);
+    obstacles.push(hill);
+    return hill;
+}
+
+function createRockPlatform(x, z, radius = 0.9, height = 0.6) {
+    const geo = new THREE.CylinderGeometry(radius, radius * 1.1, height, 8);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.5, metalness: 0.2 });
+    const rock = new THREE.Mesh(geo, mat);
+    rock.position.set(x, height / 2, z);
+    rock.castShadow = true; rock.receiveShadow = true;
+    gameplayGroup.add(rock);
+    obstacles.push(rock);
+    return rock;
 }
 
 function createTree(x, z, scale = 1, type = 'round') {
@@ -120,29 +142,72 @@ function createFlower(x, z, color = 0xffaa88) {
     return group;
 }
 
-function createPond(x, z, radius = 1.8) {
+function createRiverSegment(x1, z1, x2, z2) {
+    const dx = x2 - x1, dz = z2 - z1;
+    const length = Math.sqrt(dx * dx + dz * dz);
+    const angle = Math.atan2(dx, dz);
+    const geo = new THREE.BoxGeometry(1.2, 0.1, length);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x4499dd, roughness: 0.1, metalness: 0.5, transparent: true, opacity: 0.7 });
+    const water = new THREE.Mesh(geo, mat);
+    water.position.set((x1 + x2) / 2, 0.06, (z1 + z2) / 2);
+    water.rotation.y = angle;
+    water.receiveShadow = true;
+    gameplayGroup.add(water);
+    return water;
+}
+
+function createRiverRock(x, z) {
+    const geo = new THREE.SphereGeometry(0.15 + Math.random() * 0.2, 4);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.5 });
+    const rock = new THREE.Mesh(geo, mat);
+    rock.position.set(x, 0.05, z);
+    rock.castShadow = true; rock.receiveShadow = true;
+    gameplayGroup.add(rock);
+}
+
+function createWoodenBridge(x, z, rotY = 0, length = 4) {
     const group = new THREE.Group();
-    const pondGeo = new THREE.CircleGeometry(radius, 32);
-    const pondMat = new THREE.MeshStandardMaterial({ color: 0x3399ff, roughness: 0.1, metalness: 0.4, transparent: true, opacity: 0.7 });
-    const pond = new THREE.Mesh(pondGeo, pondMat);
-    pond.rotation.x = -Math.PI / 2; pond.position.y = 0.05;
-    group.add(pond);
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.7 });
+    // Korkuluklar
+    for (let side = -1; side <= 1; side += 2) {
+        const railGeo = new THREE.BoxGeometry(length, 0.08, 0.15);
+        const rail = new THREE.Mesh(railGeo, woodMat);
+        rail.position.set(0, 0.5, side * 0.5); rail.castShadow = true; rail.receiveShadow = true;
+        group.add(rail);
+        for (let j = 0; j < 3; j++) {
+            const postGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.6, 4);
+            const post = new THREE.Mesh(postGeo, woodMat);
+            post.position.set(-length / 2 + j * (length / 2), 0.3, side * 0.5);
+            post.castShadow = true;
+            group.add(post);
+        }
+    }
+    // Tabandan tahtalar
+    for (let i = 0; i < length * 2; i++) {
+        const slatGeo = new THREE.BoxGeometry(0.25, 0.05, 1.0);
+        const slat = new THREE.Mesh(slatGeo, woodMat);
+        slat.position.set(-length / 2 + i * 0.5 + 0.25, 0.12, 0);
+        slat.castShadow = true; slat.receiveShadow = true;
+        group.add(slat);
+    }
     group.position.set(x, 0, z);
+    group.rotation.y = rotY;
     gameplayGroup.add(group);
+    obstacles.push(group);
     return group;
 }
 
 function createPortal(x, z, targetX, targetZ, color = 0x00ffff) {
     const group = new THREE.Group();
-    const ringGeo = new THREE.TorusGeometry(1.0, 0.15, 16, 32);
+    const ringGeo = new THREE.TorusGeometry(0.9, 0.12, 16, 32);
     const ringMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.8, roughness: 0.2 });
     const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = Math.PI / 2; ring.position.y = 1.2;
+    ring.rotation.x = Math.PI / 2; ring.position.y = 1.1;
     group.add(ring);
-    const pillarGeo = new THREE.CylinderGeometry(0.3, 0.3, 2.5, 8);
-    const pillarMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0.3 });
+    const pillarGeo = new THREE.CylinderGeometry(0.25, 0.25, 2.2, 8);
+    const pillarMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.3, transparent: true, opacity: 0.25 });
     const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-    pillar.position.y = 1.25;
+    pillar.position.y = 1.1;
     group.add(pillar);
     group.position.set(x, 0, z);
     gameplayGroup.add(group);
@@ -150,7 +215,96 @@ function createPortal(x, z, targetX, targetZ, color = 0x00ffff) {
     return group;
 }
 
-function createBench(x, z, rotY = 0) {
+function createMushroom(x, z, scale = 1, color = 0xff5555) {
+    const group = new THREE.Group();
+    const stemGeo = new THREE.CylinderGeometry(0.2 * scale, 0.25 * scale, 1.5 * scale, 8);
+    const stemMat = new THREE.MeshStandardMaterial({ color: 0xf5e6d3, roughness: 0.6 });
+    const stem = new THREE.Mesh(stemGeo, stemMat);
+    stem.position.y = 0.75 * scale; stem.castShadow = true; stem.receiveShadow = true;
+    group.add(stem);
+    const capGeo = new THREE.SphereGeometry(0.6 * scale, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2);
+    const capMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3 });
+    const cap = new THREE.Mesh(capGeo, capMat);
+    cap.position.y = 1.5 * scale; cap.castShadow = true;
+    group.add(cap);
+    group.position.set(x, 0, z);
+    gameplayGroup.add(group);
+    obstacles.push(stem);
+    return group;
+}
+
+// ========== BAŞLANGIÇ ADASI (Super Bear Adventure Hub) ==========
+// Ana zemin (yuvarlak, hafif engebeli)
+createGround(0, 0, 24, 0x8cc63e, 0.85);
+
+// Tepeler ve yükseltiler (platform hissi)
+createHill(-6, -6, 2.5, 1.2, 0x7ba428);
+createHill(7, -5, 2.8, 1.0, 0x7ba428);
+createHill(-7, 7, 3.0, 1.3, 0x7ba428);
+createHill(8, 8, 2.5, 0.9, 0x7ba428);
+createHill(0, -8, 3.5, 1.5, 0x7ba428);
+
+// Taş platformlar (üzerine zıplanabilir)
+createRockPlatform(-3, -3, 0.9, 0.7);
+createRockPlatform(4, -2, 0.8, 0.6);
+createRockPlatform(-5, 5, 1.0, 0.8);
+createRockPlatform(5, 4, 0.9, 0.7);
+createRockPlatform(0, -5, 1.0, 0.9);
+createRockPlatform(3, 7, 0.8, 0.6);
+createRockPlatform(-4, -7, 0.9, 0.7);
+
+// Nehir ve şelale (adadan geçen dere)
+const riverPoints = [
+    [-8, -10], [-4, -7], [0, -4], [3, -1], [5, 3], [6, 7], [7, 10]
+];
+for (let i = 0; i < riverPoints.length - 1; i++) {
+    createRiverSegment(riverPoints[i][0], riverPoints[i][1], riverPoints[i + 1][0], riverPoints[i + 1][1]);
+}
+// Nehir kenarı taşları
+for (let i = 0; i < 40; i++) {
+    const t = i / 40;
+    const idx = Math.floor(t * (riverPoints.length - 1));
+    const frac = t * (riverPoints.length - 1) - idx;
+    const x = riverPoints[idx][0] + (riverPoints[Math.min(idx + 1, riverPoints.length - 1)][0] - riverPoints[idx][0]) * frac;
+    const z = riverPoints[idx][1] + (riverPoints[Math.min(idx + 1, riverPoints.length - 1)][1] - riverPoints[idx][1]) * frac;
+    const side = (Math.random() > 0.5 ? 1 : -1) * (0.8 + Math.random() * 0.6);
+    const perpX = -(riverPoints[Math.min(idx + 1, riverPoints.length - 1)][0] - riverPoints[idx][0]) / Math.max(Math.abs(riverPoints[Math.min(idx + 1, riverPoints.length - 1)][0] - riverPoints[idx][0]), 0.1);
+    const perpZ = (riverPoints[Math.min(idx + 1, riverPoints.length - 1)][1] - riverPoints[idx][1]) / Math.max(Math.abs(riverPoints[Math.min(idx + 1, riverPoints.length - 1)][1] - riverPoints[idx][1]), 0.1);
+    createRiverRock(x + perpX * side * 1.5, z + perpZ * side * 1.5);
+}
+
+// Köprü (nehrin üstünde)
+createWoodenBridge(2, 2, 0.6, 4.5);
+
+// Ağaçlar
+createTree(-9, -9, 0.9, 'round');
+createTree(10, -8, 0.85, 'cone');
+createTree(-8, 10, 0.95, 'round');
+createTree(9, 9, 0.9, 'cone');
+createTree(-10, 2, 0.8, 'round');
+createTree(11, -2, 0.85, 'cone');
+createTree(2, -11, 0.9, 'round');
+createTree(-2, 11, 0.85, 'cone');
+
+// Mantarlar
+createMushroom(-3, -1, 0.9, 0xff6666);
+createMushroom(6, -4, 0.8, 0xffaa44);
+createMushroom(-6, 2, 1.0, 0xff44ff);
+
+// Çalılar ve çiçekler
+for (let i = 0; i < 30; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 6 + Math.random() * 14;
+    createBush(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.6 + Math.random() * 0.8);
+}
+for (let i = 0; i < 50; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 5 + Math.random() * 16;
+    createFlower(Math.cos(angle) * radius, Math.sin(angle) * radius, [0xffaa88, 0xffcc44, 0xff6699, 0xff8844][Math.floor(Math.random() * 4)]);
+}
+
+// Banklar
+createBench = function(x, z, rotY = 0) {
     const group = new THREE.Group();
     const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.7 });
     const seatGeo = new THREE.BoxGeometry(1.4, 0.1, 0.5);
@@ -173,65 +327,33 @@ function createBench(x, z, rotY = 0) {
     gameplayGroup.add(group);
     obstacles.push(group);
     return group;
-}
-
-function createMushroomHouse(x, z, colorRoof = 0xff4444) {
-    const group = new THREE.Group();
-    const bodyGeo = new THREE.CylinderGeometry(1.0, 1.2, 2.0, 12);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf5f0e0, roughness: 0.6 });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 1.0; body.castShadow = true; body.receiveShadow = true;
-    group.add(body);
-    const roofGeo = new THREE.SphereGeometry(1.3, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-    const roofMat = new THREE.MeshStandardMaterial({ color: colorRoof, roughness: 0.3, metalness: 0.1 });
-    const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = 2.0; roof.castShadow = true; roof.receiveShadow = true;
-    group.add(roof);
-    group.position.set(x, 0, z);
-    gameplayGroup.add(group);
-    obstacles.push(group);
-    return group;
-}
-
-// --- 1. BAŞLANGIÇ ADASI (Super Bear Adventure Hub) ---
-createGround(0, 0, 22, 0x8cc63e, 0.85);
-createPond(0, 0, 1.8);
-createTree(-5, -4, 0.9, 'round');
-createTree(6, -3, 0.85, 'round');
-createTree(-6, 5, 0.95, 'cone');
-createTree(7, 6, 0.9, 'cone');
-createBush(-3, -6, 0.8);
-createBush(4, -5, 0.7);
-createBush(-4, 6, 0.8);
-createFlower(2, 2, 0xffaa88);
-createFlower(-2, -2, 0xffcc44);
-createFlower(3, -3, 0xff6699);
-createFlower(-3, 3, 0xff8844);
+};
 createBench(5, 5, -0.5);
 createBench(-5, -5, 0.7);
-createMushroomHouse(8, -7, 0xffaa44);
-createMushroomHouse(-8, 8, 0xff66aa);
 
 // Portallar (diğer adalara)
-createPortal(0, -16, 0, -250, 0xff8844);   // Güney -> Çöl
-createPortal(16, 0, 250, 0, 0x44ff44);     // Doğu -> Mantar
-createPortal(-16, 0, -250, 0, 0xff4444);   // Batı -> Volkan
-createPortal(0, 16, 0, 250, 0x44ffff);     // Kuzey -> Kar
-createPortal(12, -12, 180, -180, 0xcc44ff); // GD -> Kristal
-createPortal(-12, 12, -180, 180, 0xffaa00); // KB -> Harabe
+createPortal(0, -18, 0, -250, 0xff8844);   // Güney -> Çöl
+createPortal(18, 0, 250, 0, 0x44ff44);     // Doğu -> Mantar
+createPortal(-18, 0, -250, 0, 0xff4444);   // Batı -> Volkan
+createPortal(0, 18, 0, 250, 0x44ffff);     // Kuzey -> Kar
+createPortal(13, -13, 180, -180, 0xcc44ff); // GD -> Kristal
+createPortal(-13, 13, -180, 180, 0xffaa00); // KB -> Harabe
 
-// --- 2. KAR ADASI (Kuzey, z = 250) ---
+// ========== DİĞER ADALAR (hafif engebeli) ==========
+// --- 2. KAR ADASI ---
 const snowX = 0, snowZ = 250;
 createGround(snowX, snowZ, 25, 0xe0f0ff, 0.6);
-for (let i = 0; i < 20; i++) {
+createHill(snowX + 5, snowZ - 5, 4, 2, 0xd0e8ff);
+createHill(snowX - 7, snowZ + 4, 3.5, 1.5, 0xd0e8ff);
+for (let i = 0; i < 15; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const r = 5 + Math.random() * 18;
+    const r = 5 + Math.random() * 16;
     const tree = createTree(snowX + Math.cos(angle) * r, snowZ + Math.sin(angle) * r, 0.8 + Math.random() * 0.6, 'cone');
     tree.children[0].material.color.set(0x6B4226);
 }
-for (let i = 0; i < 30; i++) {
+for (let i = 0; i < 25; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const r = 8 + Math.random() * 17;
+    const r = 8 + Math.random() * 14;
     const iceGeo = new THREE.IcosahedronGeometry(0.3 + Math.random() * 0.5, 0);
     const iceMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, roughness: 0.1, metalness: 0.3 });
     const ice = new THREE.Mesh(iceGeo, iceMat);
@@ -240,14 +362,16 @@ for (let i = 0; i < 30; i++) {
     gameplayGroup.add(ice);
     obstacles.push(ice);
 }
-createPortal(snowX, snowZ - 16, 0, 10, 0x44ffff); // Geri dönüş
+createPortal(snowX, snowZ - 16, 0, 10, 0x44ffff);
 
-// --- 3. ÇÖL ADASI (Güney, z = -250) ---
+// --- 3. ÇÖL ADASI ---
 const desertX = 0, desertZ = -250;
 createGround(desertX, desertZ, 28, 0xedc9af, 0.9);
-for (let i = 0; i < 12; i++) {
+createHill(desertX + 3, desertZ - 3, 5, 2.5, 0xddb89a);
+createHill(desertX - 6, desertZ + 5, 4, 2, 0xddb89a);
+for (let i = 0; i < 10; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const r = 8 + Math.random() * 18;
+    const r = 8 + Math.random() * 16;
     const cactusGroup = new THREE.Group();
     const trunkGeo = new THREE.CylinderGeometry(0.2, 0.25, 2.5, 8);
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a7c3f, roughness: 0.7 });
@@ -269,12 +393,14 @@ for (let i = 0; i < 12; i++) {
 }
 createPortal(desertX, desertZ + 16, 0, -10, 0xff8844);
 
-// --- 4. MANTAR ADASI (Doğu, x = 250) ---
+// --- 4. MANTAR ADASI ---
 const mushX = 250, mushZ = 0;
 createGround(mushX, mushZ, 25, 0x7a5c8a, 0.85);
-for (let i = 0; i < 20; i++) {
+createHill(mushX - 4, mushZ - 4, 3, 1.5, 0x6a4c7a);
+createHill(mushX + 6, mushZ + 5, 3.5, 1.8, 0x6a4c7a);
+for (let i = 0; i < 18; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const r = 5 + Math.random() * 18;
+    const r = 5 + Math.random() * 16;
     const stemGeo = new THREE.CylinderGeometry(0.3, 0.4, 2.0 + Math.random() * 2.5, 8);
     const stemMat = new THREE.MeshStandardMaterial({ color: 0xf5e6d3, roughness: 0.6 });
     const stem = new THREE.Mesh(stemGeo, stemMat);
@@ -291,21 +417,23 @@ for (let i = 0; i < 20; i++) {
 }
 createPortal(mushX - 16, mushZ, 10, 0, 0x44ff44);
 
-// --- 5. VOLKAN ADASI (Batı, x = -250) ---
+// --- 5. VOLKAN ADASI ---
 const volcX = -250, volcZ = 0;
 createGround(volcX, volcZ, 25, 0x3a3a3a, 0.8);
-for (let i = 0; i < 6; i++) {
-    const angle = (i / 6) * Math.PI * 2;
+createHill(volcX + 5, volcZ - 5, 4, 2, 0x2a2a2a);
+createHill(volcX - 7, volcZ + 4, 3.5, 1.5, 0x2a2a2a);
+for (let i = 0; i < 5; i++) {
+    const angle = (i / 5) * Math.PI * 2;
     const r = 12 + Math.random() * 10;
-    const poolGeo = new THREE.CircleGeometry(2 + Math.random() * 2.5, 32);
+    const poolGeo = new THREE.CircleGeometry(2 + Math.random() * 2, 32);
     const poolMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.9, roughness: 0.2 });
     const pool = new THREE.Mesh(poolGeo, poolMat);
     pool.rotation.x = -Math.PI / 2; pool.position.set(volcX + Math.cos(angle) * r, 0.05, volcZ + Math.sin(angle) * r);
     gameplayGroup.add(pool);
 }
-for (let i = 0; i < 25; i++) {
+for (let i = 0; i < 20; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const r = 8 + Math.random() * 15;
+    const r = 8 + Math.random() * 14;
     const rockGeo = new THREE.IcosahedronGeometry(0.6 + Math.random() * 1.0, 0);
     const rockMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
     const rock = new THREE.Mesh(rockGeo, rockMat);
@@ -316,12 +444,13 @@ for (let i = 0; i < 25; i++) {
 }
 createPortal(volcX + 16, volcZ, -10, 0, 0xff4444);
 
-// --- 6. KRİSTAL ADASI (GD, x = 180, z = -180) ---
+// --- 6. KRİSTAL ADASI ---
 const crystalX = 180, crystalZ = -180;
 createGround(crystalX, crystalZ, 22, 0x2a1a3a, 0.7);
-for (let i = 0; i < 30; i++) {
+createHill(crystalX - 3, crystalZ + 3, 3, 1.5, 0x1a0a2a);
+for (let i = 0; i < 25; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const r = 5 + Math.random() * 15;
+    const r = 5 + Math.random() * 14;
     const crystalGeo = new THREE.OctahedronGeometry(0.4 + Math.random() * 0.7, 0);
     const crystalMat = new THREE.MeshStandardMaterial({ color: 0xcc88ff, roughness: 0.2, metalness: 0.4, emissive: 0x220044, emissiveIntensity: 0.5 });
     const crystal = new THREE.Mesh(crystalGeo, crystalMat);
@@ -333,12 +462,13 @@ for (let i = 0; i < 30; i++) {
 }
 createPortal(crystalX - 12, crystalZ + 12, 10, -10, 0xcc44ff);
 
-// --- 7. HARABE ADASI (KB, x = -180, z = 180) ---
+// --- 7. HARABE ADASI ---
 const ruinX = -180, ruinZ = 180;
 createGround(ruinX, ruinZ, 22, 0x8b7d6b, 0.9);
-for (let i = 0; i < 12; i++) {
-    const angle = (i / 12) * Math.PI * 2;
-    const r = 10 + Math.random() * 10;
+createHill(ruinX + 4, ruinZ - 4, 3.5, 1.8, 0x7b6d5b);
+for (let i = 0; i < 10; i++) {
+    const angle = (i / 10) * Math.PI * 2;
+    const r = 10 + Math.random() * 9;
     const pillarGeo = new THREE.CylinderGeometry(0.4, 0.5, 3.0 + Math.random() * 2.5, 8);
     const pillarMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.7 });
     const pillar = new THREE.Mesh(pillarGeo, pillarMat);
