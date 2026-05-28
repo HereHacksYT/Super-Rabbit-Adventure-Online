@@ -2,83 +2,92 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Super Rabbit Adventure (Online)</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; user-select: none; touch-action: none; }
-        #canvas-container { width: 100vw; height: 100vh; }
+        /* Sayfanın dışarı taşmasını ve kaydırılmasını tamamen engelle */
+        html, body { 
+            margin: 0; 
+            padding: 0; 
+            width: 100%; 
+            height: 100%; 
+            overflow: hidden; 
+            background-color: #000; 
+            user-select: none; 
+            -webkit-user-select: none; 
+            touch-action: none; 
+        }
+        
+        #canvas-container { 
+            width: 100%; 
+            height: 100%; 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+        }
         
         /* JOYSTICK TASARIMI */
         #joystick-zone {
             position: absolute;
-            bottom: 40px;
-            left: 40px;
-            width: 120px;
-            height: 120px;
+            bottom: 30px;
+            left: 30px;
+            width: 110px;
+            height: 110px;
             background: rgba(255, 255, 255, 0.2);
             border: 3px solid rgba(255, 255, 255, 0.4);
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 10;
+            z-index: 20;
             touch-action: none;
         }
         #joystick-stick {
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            height: 45px;
             background: rgba(255, 255, 255, 0.8);
             border-radius: 50%;
             position: absolute;
             touch-action: none;
         }
 
-        /* AKSİYON BUTONLARI KONTEYNERI (Sağ Alt) */
+        /* AKSİYON BUTONLARI KONTEYNERI (Sağ Alt - Güvenli Alan) */
         #action-buttons {
             position: absolute;
-            bottom: 40px;
-            right: 40px;
+            bottom: 30px;
+            right: 30px;
             display: flex;
-            gap: 20px;
+            gap: 15px;
             align-items: flex-end;
-            z-index: 10;
+            z-index: 20;
+            touch-action: none;
         }
 
         /* ZIPLAMA VE VURMA BUTONLARININ ORTAK CSS'i */
         .game-button {
-            width: 80px;
-            height: 80px;
+            width: 75px;
+            height: 75px;
             background: rgba(255, 255, 255, 0.3);
             border: 3px solid rgba(255, 255, 255, 0.6);
             border-radius: 50%;
             color: white;
             font-family: sans-serif;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 15px;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            touch-action: manipulation;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            touch-action: none;
             user-select: none;
             -webkit-user-select: none;
             text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
         }
-        .game-button:active {
-            background: rgba(255, 255, 255, 0.6);
-            transform: scale(0.95);
-        }
-
+        
         /* VURMA BUTONUNA ÖZEL KIRMIZI TASARIM */
         #attack-button {
-            width: 70px;  /* Biraz daha küçük yapalım */
-            height: 70px;
-            background: rgba(255, 60, 60, 0.3);
-            border-color: rgba(255, 100, 100, 0.6);
-            margin-bottom: 5px; /* JUMP'ın yanında durması için */
-        }
-        #attack-button:active {
-            background: rgba(255, 60, 60, 0.6);
+            background: rgba(255, 60, 60, 0.4);
+            border-color: rgba(255, 100, 100, 0.7);
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
