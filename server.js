@@ -4,7 +4,19 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 
+// "Cannot GET" hatasını çözmek için public klasörünün yolunu garantiye alıyoruz
+app.use(express.static(path.join(__dirname)))); 
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Eğer doğrudan ana dizine (/) istek atılırsa index.html dosyasını zorla gönder
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'), (err) => {
+        if (err) {
+            // Eğer index.html public klasörünün içindeyse orayı dener:
+            res.sendFile(path.join(__dirname, 'public', 'index.html'));
+        }
+    });
+});
 
 // Bağlı olan tüm online oyuncuları tutan liste
 let players = {};
