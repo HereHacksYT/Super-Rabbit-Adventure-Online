@@ -8,15 +8,21 @@
         body, html { margin: 0; padding: 0; overflow: hidden; width: 100%; height: 100%; user-select: none; background-color: #000; }
         #canvas-container { width: 100%; height: 100%; display: block; }
         
-        /* SUPER BEAR TARZI LOBİ PANELİ */
-        #lobby-container {
+        /* ANA GİRİŞ PANELİ */
+        #lobby-container, #waiting-container {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: linear-gradient(135deg, #1e3c72, #2a5298);
             z-index: 1000; display: flex; flex-direction: column;
             align-items: center; justify-content: center; font-family: 'Arial', sans-serif; color: white;
         }
-        .lobby-box { background: rgba(0, 0, 0, 0.6); padding: 30px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 300px; }
+        
+        /* BEKLEME LOBİSİ (SONRADAN AÇILACAK) */
+        #waiting-container { background: linear-gradient(135deg, #2c3e50, #3498db); display: none; }
+
+        .lobby-box { background: rgba(0, 0, 0, 0.8); padding: 30px; border-radius: 15px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); width: 300px; }
         h1 { margin-bottom: 20px; font-size: 28px; text-shadow: 2px 2px 4px rgba(0,0,0,0.6); }
+        h2 { font-size: 24px; margin-bottom: 10px; }
+        
         .lobby-btn {
             background: #ff9800; color: white; border: none; padding: 12px 20px;
             font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer;
@@ -25,17 +31,17 @@
         .lobby-btn:active { transform: translateY(4px); box-shadow: none; }
         .room-input {
             width: 90%; padding: 10px; font-size: 18px; text-align: center;
-            border-radius: 8px; border: 2px solid #ccc; margin-top: 10px; text-transform: uppercase;
+            border-radius: 8px; border: 2px solid #ccc; margin-top: 10px; color: black;
         }
         
-        /* ODA BİLGİSİ EKRANI */
+        /* OYUN İÇİ ODA PANELİ */
         #room-info {
             position: absolute; top: 15px; left: 15px; background: rgba(0,0,0,0.7);
             color: #fff; padding: 10px 15px; font-family: Arial; font-weight: bold;
             border-radius: 8px; z-index: 100; pointer-events: none; font-size: 14px;
         }
 
-        /* MOBİL MOBİL BUTONLAR */
+        /* MOBİL BUTONLAR */
         #joystick-zone { position: absolute; bottom: 40px; left: 40px; width: 110px; height: 110px; background: rgba(255,255,255,0.2); border-radius: 50%; z-index: 10; touch-action: none; }
         #joystick-stick { position: absolute; top: 35px; left: 35px; width: 40px; height: 40px; background: #fff; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
         .action-btn { position: absolute; width: 70px; height: 70px; border-radius: 50%; border: none; color: white; font-weight: bold; font-size: 14px; z-index: 10; box-shadow: 0 6px 0 rgba(0,0,0,0.3); }
@@ -51,15 +57,27 @@
     <div id="lobby-container">
         <div class="lobby-box">
             <h1>RABBIT ONLINE</h1>
+            <button class="lobby-btn" style="background:#9c27b0; box-shadow: 0 4px 0 #4a148c;" onclick="playSolo()">TEK OYNA</button>
             <button class="lobby-btn" onclick="createRoom()">ODA OLUŞTUR</button>
-            <hr style="border: 1px solid rgba(255,255,255,0.2); margin: 20px 0;">
-            <input type="text" id="room-code-input" class="room-input" placeholder="ODA KODU GİR" maxlength="5">
+            <hr style="border: 1px solid rgba(255,255,255,0.2); margin: 15px 0;">
+            <input type="number" id="room-code-input" class="room-input" placeholder="5 HANELİ KOD GİR" oninput="if(this.value.length > 5) this.value = this.value.slice(0,5);">
             <button class="lobby-btn" style="background:#4caf50; box-shadow: 0 4px 0 #1b5e20;" onclick="joinRoom()">ODAYA KATIL</button>
         </div>
     </div>
 
+    <div id="waiting-container">
+        <div class="lobby-box">
+            <h2>BEKLEME ODASI</h2>
+            <div style="font-size: 32px; font-weight: bold; color: #ff9800; margin: 15px 0; letter-spacing: 2px;" id="waiting-code-text">00000</div>
+            <p style="font-size: 16px; color: #e0e0e0;" id="waiting-status-text">Oyuncular bekleniyor...</p>
+            <p style="font-size: 18px; font-weight: bold;">Toplam Oyuncu: <span id="waiting-count-text">1</span></p>
+            
+            <button class="lobby-btn" id="start-game-btn" style="background:#e91e63; box-shadow: 0 4px 0 #880e4f; display: none;" onclick="hostStartGame()">OYUNU BAŞLAT</button>
+        </div>
+    </div>
+
     <div id="room-info" style="display: none;">
-        ODA KODU: <span id="current-room-text" style="color: #ff9800;">-----</span><br>
+        MOD: <span id="current-room-text" style="color: #ff9800;">-----</span><br>
         ODADAKİLER: <span id="player-count-text">1</span>
     </div>
 
