@@ -4,63 +4,88 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 
-// Bütün dosyalar aynı yerde olduğu için doğrudan bulunduğumuz klasörü servis ediyoruz
 app.use(express.static(__dirname));
 
-// Ana sayfaya girildiğinde direkt yanındaki index.html'i açmasını söylüyoruz
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// MULTIPLAYER (ONLINE) OYUNCU LİSTESİ
-let players = {};
+// Odaları ve o odadaki oyuncuları tutan büyük hafıza
+let rooms = {}; 
 
 io.on('connection', (socket) => {
-    console.log('Yeni bir oyuncu bağlandı! ID:', socket.id);
+    let currentRoom = null;
 
-    // Yeni gelen oyuncunun başlangıç verileri
-    players[socket.id] = {
-        id: socket.id,
-        x: 0,
-        y: 0,
-        z: 0,
-        ry: 0,
-        isAttacking: false
-    };
+    // 1. ODA OLUŞTURMA İŞLEMİ
+    socket.on('createRoom', () => {
+        // Rastgele 5 harfli oda kodu üret (Örn: ABCDE)
+        const roomCode = Math.random().toString(36).substring(2, 7).toUpperCase();
+        rooms[roomCode] = {};
+        
+        currentRoom = roomCode;
+        socket.join(roomCode);
+        
+        // Oluşturan oyuncuyu ekle
+        rooms[roomCode][socket.id] = { id: socket.id, x: 0, y: 0, z: 0, ry: 0, isAttacking: false };
+        
+        socket.emit('roomJoined', { roomCode: roomCode, players: rooms[roomCode] });
+    });
 
-    // Yeni gelene mevcut herkesi gönder
-    socket.emit('currentPlayers', players);
+    // 2. ODAYA KATILMA İŞLEMİ
+    socket.on('joinRoom', (roomCode) => {
+        roomCode = roomCode.toUpperCase();
+        
+        if (rooms[roomCode]) {
+            currentRoom = roomCode;
+            socket.join(roomCode);
+            
+            // Yeni oyuncuyu oda listesine kaydet
+            rooms[roomCode][socket.id] = { id: socket.id, x: 0, y: 0, z: 0, ry: 0, isAttacking: false };
+            
+            // Kendisine odadaki eski oyuncuları yolla
+            socket.emit('roomJoined', { roomCode: roomCode, players: rooms[roomCode] });
+            
+            // Odadaki diğer kişilere yeni birinin geldiğini bildir
+            socket.to(roomCode).emit('newPlayer', rooms[roomCode][socket.id]);
+        } else {
+            socket.emit('roomError', 'Oda bulunamadı! Kod yanlış olabilir.');
+        }
+    });
 
-    // Diğerlerine yeni birinin geldiğini bildir
-    socket.broadcast.emit('newPlayer', players[socket.id]);
-
-    // Hareket verilerini senkronize et
+    // 3. HAREKET SENKRONİZASYONU (Sadece aynı odadakilere)
     socket.on('playerMovement', (movementData) => {
-        if (players[socket.id]) {
-            players[socket.id].x = movementData.x;
-            players[socket.id].y = movementData.y;
-            players[socket.id].z = movementData.z;
-            players[socket.id].ry = movementData.ry;
-            socket.broadcast.emit('playerMoved', players[socket.id]);
+        if (currentRoom && rooms[currentRoom] && rooms[currentRoom][socket.id]) {
+            rooms[currentRoom][socket.id].x = movementData.x;
+            rooms[currentRoom][socket.id].y = movementData.y;
+            rooms[currentRoom][socket.id].z = movementData.z;
+            rooms[currentRoom][socket.id].ry = movementData.ry;
+            
+            socket.to(currentRoom).emit('playerMoved', rooms[currentRoom][socket.id]);
         }
     });
 
-    // Kafa atma animasyonunu senkronize et
+    // 4. KAFA ATMA SENKRONİZASYONU (Sadece aynı odadakilere)
     socket.on('playerAttack', () => {
-        if (players[socket.id]) {
-            socket.broadcast.emit('playerAttacked', socket.id);
+        if (currentRoom) {
+            socket.to(currentRoom).emit('playerAttacked', socket.id);
         }
     });
 
-    // Çıkış işlemi
+    // 5. OYUNDAN ÇIKMA DURUMU
     socket.on('disconnect', () => {
-        console.log('Oyuncu ayrıldı! ID:', socket.id);
-        delete players[socket.id];
-        io.emit('playerDisconnected', socket.id);
+        if (currentRoom && rooms[currentRoom] && rooms[currentRoom][socket.id]) {
+            delete rooms[currentRoom][socket.id];
+            socket.to(currentRoom).emit('playerDisconnected', socket.id);
+            
+            // Odada hiç kimse kalmadıysa odayı tamamen silerek sunucuyu rahatlatıyoruz
+            if (Object.keys(rooms[currentRoom]).length === 0) {
+                delete rooms[currentRoom];
+            }
+        }
     });
 });
 
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
-    console.log(`Sunucu ${PORT} portunda sorunsuz başladı!`);
+    console.log(`Lobili sunucu ${PORT} portunda aktif!`);
 });
