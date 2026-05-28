@@ -10,54 +10,199 @@ let respawnCountdown = 15;
 
 // 3D SAHNE AYARLARI
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1a1a);
+scene.background = new THREE.Color(0x87CEEB); // Gök mavisi gökyüzü
+scene.fog = new THREE.Fog(0x87CEEB, 20, 80); // Hafif sis
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-// IŞIKLANDIRMA
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); scene.add(ambientLight);
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); dirLight.position.set(10, 30, 10); dirLight.castShadow = true; scene.add(dirLight);
+// IŞIKLANDIRMA (daha canlı)
+const ambientLight = new THREE.AmbientLight(0xfff5e6, 0.8); scene.add(ambientLight);
+const sunLight = new THREE.DirectionalLight(0xfff0dd, 1.0);
+sunLight.position.set(30, 40, 20);
+sunLight.castShadow = true;
+sunLight.shadow.camera.left = -30; sunLight.shadow.camera.right = 30;
+sunLight.shadow.camera.top = 30; sunLight.shadow.camera.bottom = -30;
+sunLight.shadow.mapSize.width = 1024; sunLight.shadow.mapSize.height = 1024;
+scene.add(sunLight);
 
-// --- ASIL OYUN DÜNYASI ---
+// --- ASIL OYUN DÜNYASI (Köy Meydanı) ---
 const gameplayGroup = new THREE.Group();
 scene.add(gameplayGroup);
 
-const floorGeo = new THREE.PlaneGeometry(60, 60);
-const floorMat = new THREE.MeshStandardMaterial({ color: 0x4caf50 });
-const floor = new THREE.Mesh(floorGeo, floorMat);
-floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
-gameplayGroup.add(floor);
+// Ana zemin (çimen)
+const groundGeo = new THREE.CircleGeometry(30, 64);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x6daa2e, roughness: 0.9 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+gameplayGroup.add(ground);
 
+// İç bölge (daha açık yeşil)
+const innerGroundGeo = new THREE.CircleGeometry(20, 64);
+const innerGroundMat = new THREE.MeshStandardMaterial({ color: 0x8cc63e, roughness: 0.8 });
+const innerGround = new THREE.Mesh(innerGroundGeo, innerGroundMat);
+innerGround.rotation.x = -Math.PI / 2;
+innerGround.position.y = 0.01;
+innerGround.receiveShadow = true;
+gameplayGroup.add(innerGround);
+
+// Çarpışma listesi
 const obstacles = [];
-function createCube(x, y, z, w, h, d, color) {
-    const geo = new THREE.BoxGeometry(w, h, d);
-    const mat = new THREE.MeshStandardMaterial({ color: color });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(x, y / 2, z); mesh.castShadow = true; mesh.receiveShadow = true;
-    gameplayGroup.add(mesh);
-    obstacles.push(mesh);
+
+// --- YARDIMCI FONKSİYONLAR ---
+function createTree(x, z, scale = 1) {
+    const group = new THREE.Group();
+    // Gövde
+    const trunkGeo = new THREE.CylinderGeometry(0.2 * scale, 0.3 * scale, 1.5 * scale, 8);
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.7 });
+    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    trunk.position.y = 0.75 * scale;
+    trunk.castShadow = true; trunk.receiveShadow = true;
+    group.add(trunk);
+    // Yapraklar (üç katman)
+    for (let i = 0; i < 3; i++) {
+        const leafGeo = new THREE.ConeGeometry(0.6 * scale - i * 0.1, 0.7 * scale, 8);
+        const leafMat = new THREE.MeshStandardMaterial({ color: i === 0 ? 0x3a7d20 : 0x4a8f29, roughness: 0.5 });
+        const leaf = new THREE.Mesh(leafGeo, leafMat);
+        leaf.position.y = 1.2 * scale + i * 0.5 * scale;
+        leaf.castShadow = true; leaf.receiveShadow = true;
+        group.add(leaf);
+    }
+    group.position.set(x, 0, z);
+    gameplayGroup.add(group);
+    // Sadece gövdeyi engele ekle (yapraklar geçilebilir)
+    trunk.userData = { isObstacle: true };
+    trunk.position.copy(group.position.clone().add(new THREE.Vector3(0, 0.75 * scale, 0)));
+    obstacles.push(trunk);
+    return group;
 }
-createCube(5, 2, -8, 2, 2, 2, 0xff9800);
-createCube(-7, 1, -3, 3, 1, 3, 0x00bcd4);
-createCube(0, 3, -15, 4, 3, 4, 0x9c27b0);
-createCube(8, 1, 6, 2, 1, 2, 0xffeb3b);
 
-const dummyGeo = new THREE.BoxGeometry(1, 2.5, 1);
-const dummyMat = new THREE.MeshStandardMaterial({ color: 0xe67e22 });
-const dummy = new THREE.Mesh(dummyGeo, dummyMat);
-dummy.position.set(0, 1.25, -5); dummy.castShadow = true;
-gameplayGroup.add(dummy);
-obstacles.push(dummy);
+function createMushroomHouse(x, z, colorRoof = 0xff4444) {
+    const group = new THREE.Group();
+    // Gövde
+    const bodyGeo = new THREE.CylinderGeometry(1.0, 1.2, 2.0, 12);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf5f0e0, roughness: 0.6 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 1.0; body.castShadow = true; body.receiveShadow = true;
+    group.add(body);
+    // Çatı (mantar)
+    const roofGeo = new THREE.SphereGeometry(1.3, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    const roofMat = new THREE.MeshStandardMaterial({ color: colorRoof, roughness: 0.3, metalness: 0.1 });
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.y = 2.0; roof.castShadow = true; roof.receiveShadow = true;
+    group.add(roof);
+    // Kapı
+    const doorGeo = new THREE.BoxGeometry(0.5, 0.9, 0.1);
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.5 });
+    const door = new THREE.Mesh(doorGeo, doorMat);
+    door.position.set(0, 0.6, 1.25); group.add(door);
+    
+    group.position.set(x, 0, z);
+    gameplayGroup.add(group);
+    // Evin tamamı çarpışmaya dahil
+    obstacles.push(group);
+    return group;
+}
 
-let isDummyHit = false, dummySwayTime = 0, dummySwayAngle = 0;
-function swayDummy() { isDummyHit = true; dummySwayTime = 0; }
+function createFlower(x, z, color = 0xff69b4) {
+    const group = new THREE.Group();
+    const stemGeo = new THREE.CylinderGeometry(0.05, 0.07, 0.5, 6);
+    const stemMat = new THREE.MeshStandardMaterial({ color: 0x228B22 });
+    const stem = new THREE.Mesh(stemGeo, stemMat);
+    stem.position.y = 0.25; group.add(stem);
+    const headGeo = new THREE.SphereGeometry(0.15, 8, 8);
+    const headMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3 });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 0.55; group.add(head);
+    group.position.set(x, 0, z);
+    gameplayGroup.add(group);
+    // Çiçekler engel değil
+    return group;
+}
 
-// --- LOBİ ODASI ---
+function createPond(x, z) {
+    const group = new THREE.Group();
+    const pondGeo = new THREE.CircleGeometry(2.5, 32);
+    const pondMat = new THREE.MeshStandardMaterial({ color: 0x3399ff, roughness: 0.2, metalness: 0.3, transparent: true, opacity: 0.8 });
+    const pond = new THREE.Mesh(pondGeo, pondMat);
+    pond.rotation.x = -Math.PI / 2; pond.position.y = 0.05;
+    group.add(pond);
+    group.position.set(x, 0, z);
+    gameplayGroup.add(group);
+    return group;
+}
+
+function createStonePath(x, z, size = 0.6) {
+    const geo = new THREE.CylinderGeometry(size, size * 1.1, 0.05, 6);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.8 });
+    const stone = new THREE.Mesh(geo, mat);
+    stone.position.set(x, 0.03, z);
+    stone.receiveShadow = true;
+    gameplayGroup.add(stone);
+    return stone;
+}
+
+function createBalloon(x, y, z, color = 0xff0000) {
+    const group = new THREE.Group();
+    const ballGeo = new THREE.SphereGeometry(0.3, 8, 8);
+    const ballMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.2, emissive: color, emissiveIntensity: 0.3 });
+    const ball = new THREE.Mesh(ballGeo, ballMat);
+    group.add(ball);
+    const stringGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.8, 4);
+    const stringMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const string = new THREE.Mesh(stringGeo, stringMat);
+    string.position.y = -0.55; group.add(string);
+    group.position.set(x, y, z);
+    gameplayGroup.add(group);
+    return group;
+}
+
+// --- KÖY MEYDANINI OLUŞTUR ---
+// Ağaçlar (etrafta)
+createTree(-8, -8, 1.0);
+createTree(9, -7, 0.9);
+createTree(-7, 9, 1.1);
+createTree(8, 8, 0.8);
+createTree(0, -11, 1.2);
+createTree(-10, 2, 0.95);
+
+// Mantar evler (merkezden biraz uzak)
+createMushroomHouse(-5, -4, 0xff5555);
+createMushroomHouse(6, 3, 0xff8844);
+
+// Gölet
+createPond(10, -10);
+
+// Çiçekler (dağınık)
+for (let i = 0; i < 30; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 5 + Math.random() * 12;
+    const fx = Math.cos(angle) * radius;
+    const fz = Math.sin(angle) * radius;
+    createFlower(fx, fz, Math.random() > 0.5 ? 0xff69b4 : 0xffd700);
+}
+
+// Taş yol (merkezden evlere doğru)
+for (let i = 0; i < 8; i++) {
+    createStonePath(-2 + i * 0.7, -1.5 + i * 0.4);
+}
+for (let i = 0; i < 8; i++) {
+    createStonePath(3 + i * 0.7, 1.5 - i * 0.3);
+}
+
+// Havada balonlar (süs)
+createBalloon(-3, 4, -3, 0xff6666);
+createBalloon(4, 4.5, -4, 0x66ff66);
+createBalloon(2, 5, 5, 0x6666ff);
+createBalloon(-5, 3.8, 4, 0xffcc00);
+
+// --- LOBİ ODASI (değişmedi) ---
 const lobbyGroup = new THREE.Group();
 scene.add(lobbyGroup);
 
@@ -92,7 +237,7 @@ for (let i = 0; i < 4; i++) {
     pads.push(pad);
 }
 
-// MODEL FABRİKASI
+// MODEL FABRİKASI (değişmedi)
 const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
 const otherBodyMat = new THREE.MeshStandardMaterial({ color: 0xddf0ff });
 const noseMat = new THREE.MeshStandardMaterial({ color: 0xffaaaa });
@@ -146,7 +291,6 @@ function die() {
     document.getElementById('death-screen').style.display = 'flex';
     respawnCountdown = 15;
     document.getElementById('countdown-display').innerText = respawnCountdown;
-    
     respawnTimer = setInterval(() => {
         respawnCountdown--;
         document.getElementById('countdown-display').innerText = respawnCountdown;
@@ -178,9 +322,19 @@ function checkCollision(newX, newY, newZ) {
     );
     gameplayGroup.updateMatrixWorld(true);
     for (let i = 0; i < obstacles.length; i++) {
-        const obstacleBox = new THREE.Box3().setFromObject(obstacles[i]);
+        let obj = obstacles[i];
+        let obstacleBox;
+        if (obj.isMesh) {
+            obstacleBox = new THREE.Box3().setFromObject(obj);
+        } else if (obj.isGroup) {
+            // Group için tüm çocukları kontrol eden bir bounding box hesapla
+            obstacleBox = new THREE.Box3().setFromObject(obj);
+        } else {
+            obstacleBox = new THREE.Box3().setFromObject(obj);
+        }
         if (playerBox.intersectsBox(obstacleBox)) {
-            if (newY >= obstacleBox.max.y - 0.2) continue;
+            // Üstünde durma kontrolü: eğer karakterin altı objenin üst yüzeyine yakınsa engelleme
+            if (newY >= obstacleBox.max.y - 0.3) continue;
             return true;
         }
     }
@@ -191,11 +345,17 @@ function getFloorY(pX, pY, pZ) {
     gameplayGroup.updateMatrixWorld(true);
     let highestCeil = 0;
     for (let i = 0; i < obstacles.length; i++) {
-        const obstacleBox = new THREE.Box3().setFromObject(obstacles[i]);
-        if (pX + 0.25 >= obstacleBox.min.x && pX - 0.25 <= obstacleBox.max.x &&
-            pZ + 0.25 >= obstacleBox.min.z && pZ - 0.25 <= obstacleBox.max.z) {
-            if (pY >= obstacleBox.max.y - 0.4) {
-                if (obstacleBox.max.y > highestCeil) highestCeil = obstacleBox.max.y;
+        let obj = obstacles[i];
+        let box;
+        if (obj.isGroup || obj.isMesh) {
+            box = new THREE.Box3().setFromObject(obj);
+        } else {
+            box = new THREE.Box3().setFromObject(obj);
+        }
+        if (pX + 0.25 >= box.min.x && pX - 0.25 <= box.max.x &&
+            pZ + 0.25 >= box.min.z && pZ - 0.25 <= box.max.z) {
+            if (pY >= box.max.y - 0.4) {
+                if (box.max.y > highestCeil) highestCeil = box.max.y;
             }
         }
     }
@@ -314,13 +474,10 @@ socket.on('playerAttacked', (id) => {
     }
 });
 
-// Knockback: pozisyonu güncelle ve HEMEN sunucuya bildir
 socket.on('knockback', (angle) => {
     if (!gameActive || isDead) return;
     rabbit.position.x += Math.sin(angle) * 2.0;
     rabbit.position.z += Math.cos(angle) * 2.0;
-    
-    // Anında diğer oyunculara yeni pozisyonu gönder
     socket.emit('playerMovement', { 
         x: rabbit.position.x, 
         y: rabbit.position.y, 
@@ -341,7 +498,7 @@ socket.on('hostDisconnected', () => {
     location.reload();
 });
 
-// KONTROLLER
+// KONTROLLER (aynı)
 const zone = document.getElementById('joystick-zone'), stick = document.getElementById('joystick-stick'), maxRadius = 35;
 let joystickActive = false, moveX = 0, moveZ = 0;
 
@@ -399,9 +556,7 @@ document.getElementById('attack-button').addEventListener('touchstart', (e) => {
     if (gameActive && !isDead && !isAttacking) {
         isAttacking = true; attackAnimTime = 0;
         if (isOnlineMode) socket.emit('playerAttack');
-        const rabbitWorldPos = new THREE.Vector3(); rabbit.getWorldPosition(rabbitWorldPos);
-        const dummyWorldPos = new THREE.Vector3(); dummy.getWorldPosition(dummyWorldPos);
-        if (rabbitWorldPos.distanceTo(dummyWorldPos) < 2.5) swayDummy();
+        // Kukla kaldırıldı, o yüzden sallama yok
 
         // Diğer oyunculara vurma (sadece itme)
         if (isOnlineMode && gameActive) {
@@ -471,10 +626,6 @@ function animate() {
                 else { p.isAttacking = false; p.visual.position.z = 0; p.head.position.z = 0.1; p.head.rotation.x = 0; }
             }
         });
-        if (isDummyHit) {
-            dummySwayTime += 7 * deltaTime; dummySwayAngle = Math.sin(dummySwayTime * 2.0) * 5 * Math.pow(0.90, dummySwayTime); dummy.rotation.z = dummySwayAngle * (Math.PI / 180);
-            if (Math.abs(dummySwayAngle) < 0.02) { isDummyHit = false; dummy.rotation.z = 0; }
-        }
 
         const currentFloorY = getFloorY(rabbit.position.x, rabbit.position.y, rabbit.position.z);
         velocityY -= gravity * 60 * deltaTime;
