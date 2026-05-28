@@ -1,29 +1,121 @@
-// 7. EKRAN YENİLEME VE ANİMASYON DÖNGÜSÜ
-const speed = 0.15; // Tavşanın yürüme hızı
+// 1. ONLINE SUNUCU BAĞLANTISI
+const socket = io();
+
+socket.on('connect', () => {
+    console.log('Sunucuya online olarak bağlanıldı! ID:', socket.id);
+});
+
+// 2. 3D SAHNE VE KAMERA AYARLARI
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xa0a0a0);
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 7, 10);
+camera.lookAt(0, 0, 0);
+
+// 3. RENDERER (EKRANA ÇİZİCİ) AYARI
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+// 4. IŞIKLANDIRMA
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(10, 20, 15);
+dirLight.castShadow = true;
+scene.add(dirLight);
+
+// 5. OYUN ZEMİNİ
+const floorGeometry = new THREE.PlaneGeometry(50, 50);
+const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x4caf50 });
+const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+floor.rotation.x = -Math.PI / 2;
+floor.receiveShadow = true;
+scene.add(floor);
+
+// 6. ANA KARAKTER (Geçici 3D Küp Tavşan)
+const geometry = new THREE.BoxGeometry(1, 1, 1);
+const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+const rabbit = new THREE.Mesh(geometry, material);
+rabbit.position.y = 0.5;
+rabbit.castShadow = true;
+scene.add(rabbit);
+
+// 7. SABİT JOYSTICK HAREKET SİVESİ
+const zone = document.getElementById('joystick-zone');
+const stick = document.getElementById('joystick-stick');
+
+let joystickActive = false;
+let moveX = 0;
+let moveZ = 0;
+
+const maxRadius = 35; 
+const zoneRect = zone.getBoundingClientRect();
+const centerX = zoneRect.left + zoneRect.width / 2;
+const centerY = zoneRect.top + zoneRect.height / 2;
+
+function handleJoystick(clientX, clientY) {
+    let deltaX = clientX - centerX;
+    let deltaY = clientY - centerY;
+    let distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    if (distance > maxRadius) {
+        deltaX = (deltaX / distance) * maxRadius;
+        deltaY = (deltaY / distance) * maxRadius;
+        distance = maxRadius;
+    }
+
+    stick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+    moveX = deltaX / maxRadius;
+    moveZ = deltaY / maxRadius;
+}
+
+zone.addEventListener('touchstart', (e) => {
+    joystickActive = true;
+    handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
+});
+
+window.addEventListener('touchmove', (e) => {
+    if (!joystickActive) return;
+    handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
+});
+
+window.addEventListener('touchend', () => {
+    joystickActive = false;
+    stick.style.transform = 'translate(0px, 0px)';
+    moveX = 0;
+    moveZ = 0;
+});
+
+// 8. EKRAN YENİLEME VE ANİMASYON DÖNGÜSÜ
+const speed = 0.15;
 
 function animate() {
     requestAnimationFrame(animate);
 
-    // Joystick hareket ediyorsa küpü çimenlerin üzerinde yürüt
     if (joystickActive) {
         rabbit.position.x += moveX * speed;
         rabbit.position.z += moveZ * speed;
-        
-        // Karakter hareket ettiği yöne doğru hafifçe baksın
         rabbit.rotation.y = Math.atan2(-moveX, -moveZ);
     }
 
-    // --- YENİ EKLENEN KAMERA TAKİP SİSTEMİ ---
-    // Kamera her zaman tavşanın 10 birim arkasında (z) ve 7 birim yukarısında (y) kalsın
+    // KAMERA TAKİP KODU BURADA
     camera.position.x = rabbit.position.x;
     camera.position.y = rabbit.position.y + 7;
     camera.position.z = rabbit.position.z + 10;
-
-    // Kamera her zaman tavşanın olduğu merkeze baksın
     camera.lookAt(rabbit.position);
-    // -----------------------------------------
 
     renderer.render(scene, camera);
 }
 
 animate();
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
