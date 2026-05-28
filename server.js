@@ -30,7 +30,6 @@ io.on('connection', (socket) => {
         currentRoom = roomCode;
         socket.join(roomCode);
 
-        // Başlangıç canı ve hasar durumu
         rooms[roomCode].players[socket.id] = {
             id: socket.id,
             x: 0, y: 0, z: 0, ry: 0,
@@ -103,14 +102,13 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Yeni: Vurma sonucu hasar iletimi
+    // YENİ: Vurma ve hasar iletimi
     socket.on('playerHit', (data) => {
         if (currentRoom && rooms[currentRoom] && rooms[currentRoom].isStarted) {
-            // data.targetId'ye hasarı ve savrulma açısını ilet
             io.to(data.targetId).emit('playerDamaged', {
                 attackerId: socket.id,
                 damage: 20,
-                knockbackAngle: data.angle // saldırganın baktığı yön
+                knockbackAngle: data.angle
             });
         }
     });
