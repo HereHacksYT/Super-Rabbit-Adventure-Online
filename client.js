@@ -129,6 +129,18 @@ scene.add(rabbit);
 let otherPlayers = {};
 let isAttacking = false, attackAnimTime = 0;
 let myHealth = 100;
+let maxHealth = 100;
+
+// Can barını güncelleme fonksiyonu
+function updateHealthBar() {
+    const percent = (myHealth / maxHealth) * 100;
+    document.getElementById('health-bar-fill').style.width = percent + '%';
+    document.getElementById('health-text').innerText = myHealth + '/' + maxHealth;
+    // Can azalınca renk değişsin
+    if (percent > 60) document.getElementById('health-bar-fill').style.background = 'linear-gradient(90deg, #4caf50, #8bc34a)';
+    else if (percent > 30) document.getElementById('health-bar-fill').style.background = 'linear-gradient(90deg, #ff9800, #ffc107)';
+    else document.getElementById('health-bar-fill').style.background = 'linear-gradient(90deg, #f44336, #ff5722)';
+}
 
 // --- DÜZELTİLEN YATAY ÇARPIŞMA KONTROLÜ ---
 function checkCollision(newX, newY, newZ) {
@@ -156,11 +168,6 @@ function getFloorY(pX, pY, pZ) {
     gameplayGroup.updateMatrixWorld(true);
     let highestCeil = 0;
 
-    const playerFeetBox = new THREE.Box3(
-        new THREE.Vector3(pX - 0.25, pY, pZ - 0.25),
-        new THREE.Vector3(pX + 0.25, pY + 0.5, pZ + 0.25)
-    );
-
     for (let i = 0; i < obstacles.length; i++) {
         const obstacleBox = new THREE.Box3().setFromObject(obstacles[i]);
         
@@ -187,6 +194,7 @@ window.playSolo = function() {
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('controls-ui').style.display = 'block';
     document.getElementById('game-info-ui').style.display = 'block';
+    document.getElementById('health-bar-container').style.display = 'block';
     document.getElementById('game-room-title').innerText = "TEK OYUNCULU";
     document.getElementById('game-player-count').innerText = "1";
     
@@ -194,6 +202,8 @@ window.playSolo = function() {
     gameplayGroup.visible = true;
     rabbit.position.set(0, 0, 0);
     rabbit.rotation.y = 0;
+    myHealth = maxHealth;
+    updateHealthBar();
     gameplayGroup.updateMatrixWorld(true);
 }
 
@@ -246,6 +256,7 @@ socket.on('gameStartedAtAll', (allPlayers) => {
     document.getElementById('lobby-ui').style.display = 'none';
     document.getElementById('controls-ui').style.display = 'block';
     document.getElementById('game-info-ui').style.display = 'block';
+    document.getElementById('health-bar-container').style.display = 'block';
     
     const currentCode = document.getElementById('ui-room-code').innerText;
     document.getElementById('game-room-title').innerText = "ODA: " + currentCode;
@@ -256,7 +267,8 @@ socket.on('gameStartedAtAll', (allPlayers) => {
 
     rabbit.position.set(0, 0, 0);
     rabbit.rotation.y = 0;
-    myHealth = 100;
+    myHealth = maxHealth;
+    updateHealthBar();
 
     Object.keys(otherPlayers).forEach(id => scene.remove(otherPlayers[id].mesh));
     otherPlayers = {};
@@ -297,11 +309,13 @@ socket.on('playerAttacked', (id) => {
     }
 });
 
-// YENİ: Hasar alma efekti
+// Hasar alma ve geri savrulma
 socket.on('playerDamaged', (data) => {
     if (!gameActive) return;
     myHealth -= data.damage;
-    // Kısa kırmızı parlama efekti
+    updateHealthBar();
+    
+    // Kırmızı parlama efekti
     rabbitVisualGroup.children.forEach(child => {
         if (child.material && child.material.color) {
             child.material.emissive = new THREE.Color(0xff0000);
@@ -314,12 +328,13 @@ socket.on('playerDamaged', (data) => {
             }, 200);
         }
     });
-    // Geri savrulma
+    
+    // GERİ SAVRULMA (vuranın açısına göre)
     const kbAngle = data.knockbackAngle;
-    rabbit.position.x += Math.sin(kbAngle) * 1.5;
-    rabbit.position.z += Math.cos(kbAngle) * 1.5;
+    rabbit.position.x += Math.sin(kbAngle) * 2.0;
+    rabbit.position.z += Math.cos(kbAngle) * 2.0;
+    
     if (myHealth <= 0) {
-        // Ölünce 3 saniye bekle ve lobiye dön
         gameActive = false;
         alert('Öldünüz! Lobiye dönülüyor.');
         location.reload();
@@ -395,13 +410,12 @@ document.getElementById('attack-button').addEventListener('touchstart', (e) => {
         const dummyWorldPos = new THREE.Vector3(); dummy.getWorldPosition(dummyWorldPos);
         if (rabbitWorldPos.distanceTo(dummyWorldPos) < 2.5) swayDummy();
 
-        // YENİ: Diğer oyunculara vurma kontrolü
+        // DİĞER OYUNCULARA VURMA
         if (isOnlineMode && gameActive) {
             Object.keys(otherPlayers).forEach((id) => {
                 const otherPos = otherPlayers[id].mesh.position;
                 const dist = rabbit.position.distanceTo(otherPos);
                 if (dist < 2.0) {
-                    // Açıyı hesapla ve sunucuya ilet
                     const angle = Math.atan2(
                         otherPos.x - rabbit.position.x,
                         otherPos.z - rabbit.position.z
@@ -472,7 +486,7 @@ function animate() {
             if (Math.abs(dummySwayAngle) < 0.02) { isDummyHit = false; dummy.rotation.z = 0; }
         }
 
-        // --- KRİTİK DÜZELTME: DİNAMİK YERÇEKİMİ VE PLATFORM KONTROLÜ ---
+        // --- DİNAMİK YERÇEKİMİ VE PLATFORM KONTROLÜ ---
         const currentFloorY = getFloorY(rabbit.position.x, rabbit.position.y, rabbit.position.z);
 
         velocityY -= gravity * 60 * deltaTime;
@@ -484,13 +498,12 @@ function animate() {
             jumpCount = 0; 
         }
 
-        // YENİ: Diğer oyuncularla çarpışma (iteme)
+        // DİĞER OYUNCULARLA ÇARPIŞMA (İTME)
         if (isOnlineMode) {
             Object.keys(otherPlayers).forEach((id) => {
                 const other = otherPlayers[id].mesh;
                 const dist = rabbit.position.distanceTo(other.position);
                 if (dist < 1.2 && dist > 0.01) {
-                    // Birbirinden uzaklaştır
                     const angle = Math.atan2(rabbit.position.x - other.position.x, rabbit.position.z - other.position.z);
                     const pushX = Math.sin(angle) * 0.05;
                     const pushZ = Math.cos(angle) * 0.05;
