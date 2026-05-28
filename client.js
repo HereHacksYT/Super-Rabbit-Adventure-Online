@@ -46,7 +46,7 @@ scene.add(gameplayGroup);
 const obstacles = [];
 const portals = [];
 
-// --- YARDIMCI FONKSİYONLAR (YUMUŞAK HATLI) ---
+// --- YARDIMCI FONKSİYONLAR (SADE, TEMİZ) ---
 function createSoftGround(x, z, radius, color = 0x8cc63e) {
     const geo = new THREE.CircleGeometry(radius, 64);
     const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.85 });
@@ -58,40 +58,31 @@ function createSoftGround(x, z, radius, color = 0x8cc63e) {
     return mesh;
 }
 
-function createSoftHill(x, z, radius, height, color = 0x7ba428) {
-    const geo = new THREE.ConeGeometry(radius, height, 32, 8);
-    const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.9 });
-    const hill = new THREE.Mesh(geo, mat);
-    hill.position.set(x, height / 2, z);
-    hill.receiveShadow = true; hill.castShadow = true;
-    gameplayGroup.add(hill);
-    obstacles.push(hill);
-    return hill;
+// Dimdik yükselen kaya platform (cliff)
+function createCliff(x, z, width, depth, height) {
+    const geo = new THREE.BoxGeometry(width, height, depth);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x9b8c7c, roughness: 0.6, metalness: 0.1 });
+    const cliff = new THREE.Mesh(geo, mat);
+    cliff.position.set(x, height / 2, z);
+    cliff.castShadow = true; cliff.receiveShadow = true;
+    gameplayGroup.add(cliff);
+    obstacles.push(cliff);
+    return cliff;
 }
 
-function createSoftRock(x, z, radius = 0.9, height = 0.7) {
-    const geo = new THREE.CylinderGeometry(radius * 0.85, radius, height, 24);
-    const mat = new THREE.MeshStandardMaterial({ color: 0xbbbbbb, roughness: 0.4, metalness: 0.15 });
-    const rock = new THREE.Mesh(geo, mat);
-    rock.position.set(x, height / 2, z);
-    rock.castShadow = true; rock.receiveShadow = true;
-    gameplayGroup.add(rock);
-    obstacles.push(rock);
-    return rock;
-}
-
-function createSoftTree(x, z, scale = 1) {
+// Büyük ağaç
+function createBigTree(x, z, scale = 1) {
     const group = new THREE.Group();
-    const trunkGeo = new THREE.CylinderGeometry(0.28 * scale, 0.38 * scale, 2.5 * scale, 16);
+    const trunkGeo = new THREE.CylinderGeometry(0.3 * scale, 0.4 * scale, 2.8 * scale, 16);
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.6 });
     const trunk = new THREE.Mesh(trunkGeo, trunkMat);
-    trunk.position.y = 1.25 * scale; trunk.castShadow = true; trunk.receiveShadow = true;
+    trunk.position.y = 1.4 * scale; trunk.castShadow = true; trunk.receiveShadow = true;
     group.add(trunk);
     const leafMat = new THREE.MeshStandardMaterial({ color: 0x4a8f29, roughness: 0.35 });
     for (let i = 0; i < 4; i++) {
-        const sGeo = new THREE.SphereGeometry(0.7 * scale - i * 0.1, 16, 12);
+        const sGeo = new THREE.SphereGeometry(0.8 * scale - i * 0.1, 16, 12);
         const s = new THREE.Mesh(sGeo, leafMat);
-        s.position.set((Math.random() - 0.5) * 0.5 * scale, 2.1 * scale + i * 0.5 * scale, (Math.random() - 0.5) * 0.5 * scale);
+        s.position.set((Math.random() - 0.5) * 0.5 * scale, 2.3 * scale + i * 0.5 * scale, (Math.random() - 0.5) * 0.5 * scale);
         s.castShadow = true; s.receiveShadow = true;
         group.add(s);
     }
@@ -101,36 +92,44 @@ function createSoftTree(x, z, scale = 1) {
     return group;
 }
 
-function createSoftBush(x, z, scale = 1) {
+// Mantar ev
+function createMushroomHouse(x, z, colorRoof = 0xff6666) {
     const group = new THREE.Group();
-    const bushMat = new THREE.MeshStandardMaterial({ color: 0x3a6b1e, roughness: 0.55 });
-    for (let i = 0; i < 5; i++) {
-        const sGeo = new THREE.SphereGeometry(0.35 * scale, 8, 6);
-        const s = new THREE.Mesh(sGeo, bushMat);
-        s.position.set((Math.random() - 0.5) * 0.6 * scale, 0.2 * scale, (Math.random() - 0.5) * 0.6 * scale);
-        s.castShadow = true; s.receiveShadow = true;
-        group.add(s);
+    const bodyGeo = new THREE.CylinderGeometry(1.2, 1.4, 2.4, 16);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf5f0e0, roughness: 0.55 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 1.2; body.castShadow = true; body.receiveShadow = true;
+    group.add(body);
+    const roofGeo = new THREE.SphereGeometry(1.5, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+    const roofMat = new THREE.MeshStandardMaterial({ color: colorRoof, roughness: 0.28, metalness: 0.1 });
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.y = 2.4; roof.castShadow = true; roof.receiveShadow = true;
+    group.add(roof);
+    const doorGeo = new THREE.BoxGeometry(0.6, 1.1, 0.15);
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.5 });
+    const door = new THREE.Mesh(doorGeo, doorMat);
+    door.position.set(0, 0.7, 1.45); group.add(door);
+    const windowGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.1, 12);
+    const windowMat = new THREE.MeshStandardMaterial({ color: 0xffffcc, roughness: 0.2 });
+    const winL = new THREE.Mesh(windowGeo, windowMat);
+    winL.rotation.x = Math.PI / 2; winL.position.set(0.7, 1.4, 1.4); group.add(winL);
+    const winR = new THREE.Mesh(windowGeo, windowMat);
+    winR.rotation.x = Math.PI / 2; winR.position.set(-0.7, 1.4, 1.4); group.add(winR);
+    for (let i = 0; i < 8; i++) {
+        const dotGeo = new THREE.SphereGeometry(0.15, 4, 4);
+        const dotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
+        const dot = new THREE.Mesh(dotGeo, dotMat);
+        const angle = (i / 8) * Math.PI * 2;
+        dot.position.set(Math.cos(angle) * 1.0, 2.9, Math.sin(angle) * 1.0);
+        group.add(dot);
     }
     group.position.set(x, 0, z);
     gameplayGroup.add(group);
+    obstacles.push(group);
     return group;
 }
 
-function createSoftFlower(x, z, color = 0xffaa88) {
-    const group = new THREE.Group();
-    const stemGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.5, 8);
-    const stemMat = new THREE.MeshStandardMaterial({ color: 0x228B22 });
-    const stem = new THREE.Mesh(stemGeo, stemMat);
-    stem.position.y = 0.25; group.add(stem);
-    const headGeo = new THREE.SphereGeometry(0.18, 8, 6);
-    const headMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.25 });
-    const head = new THREE.Mesh(headGeo, headMat);
-    head.position.y = 0.6; group.add(head);
-    group.position.set(x, 0, z);
-    gameplayGroup.add(group);
-    return group;
-}
-
+// Taş çevreli gölet
 function createSoftPond(x, z, radius = 2.0) {
     const group = new THREE.Group();
     const pondGeo = new THREE.CircleGeometry(radius, 48);
@@ -140,7 +139,7 @@ function createSoftPond(x, z, radius = 2.0) {
     group.add(pond);
     for (let i = 0; i < 24; i++) {
         const angle = (i / 24) * Math.PI * 2;
-        const stoneGeo = new THREE.SphereGeometry(0.2, 6, 4);
+        const stoneGeo = new THREE.SphereGeometry(0.25, 6, 4);
         const stoneMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.5 });
         const stone = new THREE.Mesh(stoneGeo, stoneMat);
         stone.position.set(Math.cos(angle) * radius, 0.1, Math.sin(angle) * radius);
@@ -152,104 +151,18 @@ function createSoftPond(x, z, radius = 2.0) {
     return group;
 }
 
-function createSoftMushroom(x, z, scale = 1, color = 0xff5555) {
-    const group = new THREE.Group();
-    const stemGeo = new THREE.CylinderGeometry(0.22 * scale, 0.28 * scale, 1.8 * scale, 12);
-    const stemMat = new THREE.MeshStandardMaterial({ color: 0xf5e6d3, roughness: 0.6 });
-    const stem = new THREE.Mesh(stemGeo, stemMat);
-    stem.position.y = 0.9 * scale; stem.castShadow = true; stem.receiveShadow = true;
-    group.add(stem);
-    const capGeo = new THREE.SphereGeometry(0.7 * scale, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2);
-    const capMat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.3 });
-    const cap = new THREE.Mesh(capGeo, capMat);
-    cap.position.y = 1.8 * scale; cap.castShadow = true; cap.receiveShadow = true;
-    group.add(cap);
-    for (let i = 0; i < 6; i++) {
-        const dotGeo = new THREE.SphereGeometry(0.1 * scale, 4, 4);
-        const dotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-        const dot = new THREE.Mesh(dotGeo, dotMat);
-        const angle = (i / 6) * Math.PI * 2;
-        dot.position.set(Math.cos(angle) * 0.45 * scale, 2.05 * scale, Math.sin(angle) * 0.45 * scale);
-        group.add(dot);
-    }
-    group.position.set(x, 0, z);
-    gameplayGroup.add(group);
-    obstacles.push(stem);
-    return group;
-}
-
-function createMushroomHouse(x, z, colorRoof = 0xff6666) {
-    const group = new THREE.Group();
-    const bodyGeo = new THREE.CylinderGeometry(1.1, 1.3, 2.2, 16);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xf5f0e0, roughness: 0.55 });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 1.1; body.castShadow = true; body.receiveShadow = true;
-    group.add(body);
-    const roofGeo = new THREE.SphereGeometry(1.4, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2);
-    const roofMat = new THREE.MeshStandardMaterial({ color: colorRoof, roughness: 0.28, metalness: 0.1 });
-    const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = 2.2; roof.castShadow = true; roof.receiveShadow = true;
-    group.add(roof);
-    const doorGeo = new THREE.BoxGeometry(0.55, 1.0, 0.15);
-    const doorMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.5 });
-    const door = new THREE.Mesh(doorGeo, doorMat);
-    door.position.set(0, 0.65, 1.35); group.add(door);
-    const windowGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.1, 12);
-    const windowMat = new THREE.MeshStandardMaterial({ color: 0xffffcc, roughness: 0.2 });
-    const winL = new THREE.Mesh(windowGeo, windowMat);
-    winL.rotation.x = Math.PI / 2; winL.position.set(0.65, 1.3, 1.3); group.add(winL);
-    const winR = new THREE.Mesh(windowGeo, windowMat);
-    winR.rotation.x = Math.PI / 2; winR.position.set(-0.65, 1.3, 1.3); group.add(winR);
-    for (let i = 0; i < 8; i++) {
-        const dotGeo = new THREE.SphereGeometry(0.14, 4, 4);
-        const dotMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.2 });
-        const dot = new THREE.Mesh(dotGeo, dotMat);
-        const angle = (i / 8) * Math.PI * 2;
-        dot.position.set(Math.cos(angle) * 0.9, 2.7, Math.sin(angle) * 0.9);
-        group.add(dot);
-    }
-    group.position.set(x, 0, z);
-    gameplayGroup.add(group);
-    obstacles.push(group);
-    return group;
-}
-
-function createSoftBench(x, z, rotY = 0) {
-    const group = new THREE.Group();
-    const woodMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.65 });
-    const seatGeo = new THREE.BoxGeometry(1.5, 0.12, 0.55);
-    const seat = new THREE.Mesh(seatGeo, woodMat);
-    seat.position.y = 0.45; seat.castShadow = true; seat.receiveShadow = true;
-    group.add(seat);
-    for (let i = -1; i <= 1; i += 2) {
-        const legGeo = new THREE.CylinderGeometry(0.08, 0.09, 0.45, 8);
-        const leg = new THREE.Mesh(legGeo, woodMat);
-        leg.position.set(i * 0.6, 0.225, 0.15); group.add(leg);
-        const leg2 = new THREE.Mesh(legGeo, woodMat);
-        leg2.position.set(i * 0.6, 0.225, -0.15); group.add(leg2);
-    }
-    const backGeo = new THREE.BoxGeometry(1.5, 0.35, 0.08);
-    const back = new THREE.Mesh(backGeo, woodMat);
-    back.position.set(0, 0.68, -0.22); back.castShadow = true;
-    group.add(back);
-    group.position.set(x, 0, z);
-    group.rotation.y = rotY;
-    gameplayGroup.add(group);
-    obstacles.push(group);
-    return group;
-}
-
+// Portal
 function createPortalRing(x, z, targetX, targetZ, color = 0x00ffff) {
     const group = new THREE.Group();
-    const ringGeo = new THREE.TorusGeometry(0.9, 0.1, 16, 40);
+    const ringGeo = new THREE.TorusGeometry(1.0, 0.12, 16, 40);
     const ringMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.7, roughness: 0.2 });
     const ring = new THREE.Mesh(ringGeo, ringMat);
-    ring.rotation.x = Math.PI / 2; ring.position.y = 1.15;
+    ring.rotation.x = Math.PI / 2; ring.position.y = 1.2;
     group.add(ring);
-    const innerGeo = new THREE.CylinderGeometry(0.2, 0.2, 2.0, 16);
+    const innerGeo = new THREE.CylinderGeometry(0.25, 0.25, 2.2, 16);
     const innerMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.3, transparent: true, opacity: 0.3 });
     const inner = new THREE.Mesh(innerGeo, innerMat);
-    inner.position.y = 1.0;
+    inner.position.y = 1.1;
     group.add(inner);
     group.position.set(x, 0, z);
     gameplayGroup.add(group);
@@ -257,118 +170,77 @@ function createPortalRing(x, z, targetX, targetZ, color = 0x00ffff) {
     return group;
 }
 
-// ============ BAŞLANGIÇ ADASI (SBA'NIN AYNISI) ============
-createSoftGround(0, 0, 22, 0x8cc63e);
-createSoftHill(0, 0, 11, 1.1, 0x8cc63e);
-createSoftHill(-4, -4, 7, 0.8, 0x90c84a);
-createSoftHill(5, 3, 8, 0.9, 0x8bc840);
-createSoftHill(-5, 5, 6, 0.7, 0x92ca4c);
+// ============ BAŞLANGIÇ ADASI (SBA AYNISI, SADE) ============
+createSoftGround(0, 0, 24, 0x8cc63e);
 
 // Merkez büyük ağaç
-createSoftTree(0, 0, 1.3);
+createBigTree(0, 0, 1.3);
 
-// Gölet (ağacın yanında)
-createSoftPond(2, -2, 1.5);
+// Gölet (ağacın hemen yanında)
+createSoftPond(2.5, -2.5, 1.8);
 
-// Üç mantar ev (SBA'daki gibi)
-createMushroomHouse(-6, -5, 0xff6666);
-createMushroomHouse(7, 3, 0xffaa44);
-createMushroomHouse(-6, 6, 0xff66aa);
+// Üç mantar ev
+createMushroomHouse(-7, -6, 0xff6666);
+createMushroomHouse(8, 4, 0xffaa44);
+createMushroomHouse(-7, 7, 0xff66aa);
 
-// Diğer ağaçlar
-createSoftTree(-9, -9, 0.9);
-createSoftTree(10, -8, 0.85);
-createSoftTree(-8, 10, 0.95);
-createSoftTree(9, 9, 0.9);
-createSoftTree(-10, 2, 0.8);
-createSoftTree(11, -2, 0.85);
-createSoftTree(3, -10, 0.9);
-createSoftTree(-3, 10, 0.85);
+// Büyük ağaçlar (etrafa serpiştirilmiş)
+createBigTree(-10, -10, 0.9);
+createBigTree(11, -9, 0.85);
+createBigTree(-9, 11, 0.95);
+createBigTree(10, 10, 0.9);
+createBigTree(-11, 2, 0.8);
+createBigTree(12, -2, 0.85);
+createBigTree(3, -12, 0.9);
+createBigTree(-3, 12, 0.85);
 
-// Küçük mantarlar
-createSoftMushroom(-3, -3, 0.9, 0xff6666);
-createSoftMushroom(5, -4, 0.8, 0xffaa44);
-createSoftMushroom(-5, 3, 1.0, 0xff44ff);
-createSoftMushroom(4, 5, 0.85, 0x66ff66);
-
-// Taş platformlar
-createSoftRock(-4, -5, 0.9, 0.7);
-createSoftRock(5, -3, 0.8, 0.6);
-createSoftRock(-5, 5, 1.0, 0.8);
-createSoftRock(5, 4, 0.9, 0.7);
-createSoftRock(-2, -7, 1.0, 0.9);
-createSoftRock(3, 7, 0.8, 0.6);
-
-// Banklar
-createSoftBench(6, 5, -0.5);
-createSoftBench(-5, -5, 0.7);
-createSoftBench(0, -7, 0.2);
-
-// Çalılar
-for (let i = 0; i < 35; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 6 + Math.random() * 12;
-    createSoftBush(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.6 + Math.random() * 0.8);
-}
-
-// Çiçekler
-for (let i = 0; i < 60; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 5 + Math.random() * 14;
-    createSoftFlower(Math.cos(angle) * radius, Math.sin(angle) * radius, [0xffaa88, 0xffcc44, 0xff6699, 0xff8844, 0xffff66][Math.floor(Math.random() * 5)]);
-}
+// Dimdik yükselen kaya platformlar (cliff)
+createCliff(-5, -8, 2.0, 2.0, 2.5);
+createCliff(6, -5, 2.2, 2.2, 2.0);
+createCliff(-6, 6, 2.0, 2.0, 2.8);
+createCliff(6, 6, 2.5, 2.5, 2.2);
+createCliff(0, -8, 2.5, 2.5, 3.0);
 
 // Portallar
-createPortalRing(0, -16, 0, -250, 0xff8844);
-createPortalRing(16, 0, 250, 0, 0x44ff44);
-createPortalRing(-16, 0, -250, 0, 0xff4444);
-createPortalRing(0, 16, 0, 250, 0x44ffff);
-createPortalRing(12, -12, 180, -180, 0xcc44ff);
-createPortalRing(-12, 12, -180, 180, 0xffaa00);
+createPortalRing(0, -18, 0, -250, 0xff8844);
+createPortalRing(18, 0, 250, 0, 0x44ff44);
+createPortalRing(-18, 0, -250, 0, 0xff4444);
+createPortalRing(0, 18, 0, 250, 0x44ffff);
+createPortalRing(13, -13, 180, -180, 0xcc44ff);
+createPortalRing(-13, 13, -180, 180, 0xffaa00);
 
-// ============ DİĞER ADALAR (kaliteli) ============
+// ============ DİĞER ADALAR (sadeleştirilmiş) ============
 // Kar
 const sx = 0, sz = 250;
-createSoftGround(sx, sz, 25, 0xe0f0ff);
-createSoftHill(sx + 5, sz - 5, 4, 1.8, 0xd0e8ff);
-createSoftHill(sx - 7, sz + 4, 3.5, 1.5, 0xd0e8ff);
-for (let i = 0; i < 15; i++) {
+createSoftGround(sx, sz, 26, 0xe0f0ff);
+createCliff(sx + 6, sz - 6, 2.5, 2.5, 3.5);
+createCliff(sx - 8, sz + 5, 2.0, 2.0, 2.8);
+for (let i = 0; i < 8; i++) {
     const a = Math.random() * Math.PI * 2;
-    const r = 5 + Math.random() * 16;
-    const tree = createSoftTree(sx + Math.cos(a) * r, sz + Math.sin(a) * r, 0.8 + Math.random() * 0.6);
+    const r = 6 + Math.random() * 16;
+    const tree = createBigTree(sx + Math.cos(a) * r, sz + Math.sin(a) * r, 0.8 + Math.random() * 0.5);
     tree.children[0].material.color.set(0x6B4226);
-}
-for (let i = 0; i < 25; i++) {
-    const a = Math.random() * Math.PI * 2;
-    const r = 8 + Math.random() * 14;
-    const iceGeo = new THREE.SphereGeometry(0.3 + Math.random() * 0.5, 6, 4);
-    const iceMat = new THREE.MeshStandardMaterial({ color: 0xaaddff, roughness: 0.1, metalness: 0.3 });
-    const ice = new THREE.Mesh(iceGeo, iceMat);
-    ice.position.set(sx + Math.cos(a) * r, 0.2, sz + Math.sin(a) * r);
-    ice.castShadow = true; ice.receiveShadow = true;
-    gameplayGroup.add(ice);
-    obstacles.push(ice);
 }
 createPortalRing(sx, sz - 16, 0, 10, 0x44ffff);
 
 // Çöl
 const dx = 0, dz = -250;
 createSoftGround(dx, dz, 28, 0xedc9af);
-createSoftHill(dx + 3, dz - 3, 5, 2, 0xddb89a);
-createSoftHill(dx - 6, dz + 5, 4, 1.8, 0xddb89a);
-for (let i = 0; i < 10; i++) {
+createCliff(dx + 4, dz - 4, 2.5, 2.5, 3.0);
+createCliff(dx - 7, dz + 6, 2.0, 2.0, 2.5);
+for (let i = 0; i < 6; i++) {
     const a = Math.random() * Math.PI * 2;
     const r = 8 + Math.random() * 16;
     const cg = new THREE.Group();
-    const tGeo = new THREE.CylinderGeometry(0.2, 0.25, 2.5, 8);
+    const tGeo = new THREE.CylinderGeometry(0.25, 0.3, 3.0, 8);
     const tMat = new THREE.MeshStandardMaterial({ color: 0x4a7c3f, roughness: 0.7 });
     const t = new THREE.Mesh(tGeo, tMat);
-    t.position.y = 1.25; t.castShadow = true; t.receiveShadow = true;
+    t.position.y = 1.5; t.castShadow = true; t.receiveShadow = true;
     cg.add(t);
-    for (let j = 0; j < 3; j++) {
-        const armGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.2, 6);
+    for (let j = 0; j < 2; j++) {
+        const armGeo = new THREE.CylinderGeometry(0.08, 0.1, 1.5, 6);
         const arm = new THREE.Mesh(armGeo, tMat);
-        arm.position.set((Math.random() - 0.5) * 0.6, 1.0 + Math.random() * 1.2, (Math.random() - 0.5) * 0.6);
+        arm.position.set((Math.random() - 0.5) * 0.8, 1.5 + Math.random() * 1.2, (Math.random() - 0.5) * 0.8);
         arm.rotation.z = (Math.random() - 0.5) * 0.8; arm.rotation.x = (Math.random() - 0.5) * 0.8;
         arm.castShadow = true;
         cg.add(arm);
@@ -381,20 +253,19 @@ createPortalRing(dx, dz + 16, 0, -10, 0xff8844);
 
 // Mantar
 const mx = 250, mz = 0;
-createSoftGround(mx, mz, 25, 0x7a5c8a);
-createSoftHill(mx - 4, mz - 4, 3, 1.5, 0x6a4c7a);
-createSoftHill(mx + 6, mz + 5, 3.5, 1.8, 0x6a4c7a);
-for (let i = 0; i < 18; i++) {
+createSoftGround(mx, mz, 26, 0x7a5c8a);
+createCliff(mx - 5, mz - 5, 2.0, 2.0, 2.5);
+for (let i = 0; i < 12; i++) {
     const a = Math.random() * Math.PI * 2;
-    const r = 5 + Math.random() * 16;
-    const stGeo = new THREE.CylinderGeometry(0.3, 0.4, 2.0 + Math.random() * 2.5, 8);
+    const r = 6 + Math.random() * 16;
+    const stGeo = new THREE.CylinderGeometry(0.35, 0.45, 2.5 + Math.random() * 2.5, 8);
     const stMat = new THREE.MeshStandardMaterial({ color: 0xf5e6d3, roughness: 0.6 });
     const st = new THREE.Mesh(stGeo, stMat);
-    st.position.y = 1.2; st.castShadow = true; st.receiveShadow = true;
-    const cpGeo = new THREE.SphereGeometry(0.9 + Math.random() * 0.8, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+    st.position.y = 1.4; st.castShadow = true; st.receiveShadow = true;
+    const cpGeo = new THREE.SphereGeometry(1.0 + Math.random() * 0.8, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2);
     const cpMat = new THREE.MeshStandardMaterial({ color: [0xff5555, 0x55ff55, 0x5555ff, 0xff55ff][Math.floor(Math.random() * 4)], roughness: 0.3 });
     const cp = new THREE.Mesh(cpGeo, cpMat);
-    cp.position.y = st.position.y + 1.5; cp.castShadow = true;
+    cp.position.y = st.position.y + 1.8; cp.castShadow = true;
     const mg = new THREE.Group();
     mg.add(st); mg.add(cp);
     mg.position.set(mx + Math.cos(a) * r, 0, mz + Math.sin(a) * r);
@@ -405,22 +276,21 @@ createPortalRing(mx - 16, mz, 10, 0, 0x44ff44);
 
 // Volkan
 const vx = -250, vz = 0;
-createSoftGround(vx, vz, 25, 0x3a3a3a);
-createSoftHill(vx + 5, vz - 5, 4, 2, 0x2a2a2a);
-createSoftHill(vx - 7, vz + 4, 3.5, 1.5, 0x2a2a2a);
-for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2;
-    const r = 12 + Math.random() * 10;
-    const pGeo = new THREE.CircleGeometry(2 + Math.random() * 2, 32);
+createSoftGround(vx, vz, 26, 0x3a3a3a);
+createCliff(vx + 6, vz - 6, 2.5, 2.5, 3.5);
+for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2;
+    const r = 14 + Math.random() * 8;
+    const pGeo = new THREE.CircleGeometry(2.5 + Math.random() * 2, 32);
     const pMat = new THREE.MeshStandardMaterial({ color: 0xff4400, emissive: 0xff2200, emissiveIntensity: 0.9, roughness: 0.2 });
     const p = new THREE.Mesh(pGeo, pMat);
     p.rotation.x = -Math.PI / 2; p.position.set(vx + Math.cos(a) * r, 0.05, vz + Math.sin(a) * r);
     gameplayGroup.add(p);
 }
-for (let i = 0; i < 20; i++) {
+for (let i = 0; i < 15; i++) {
     const a = Math.random() * Math.PI * 2;
-    const r = 8 + Math.random() * 14;
-    const rGeo = new THREE.SphereGeometry(0.6 + Math.random() * 1.0, 6, 4);
+    const r = 10 + Math.random() * 12;
+    const rGeo = new THREE.SphereGeometry(0.8 + Math.random() * 1.0, 6, 4);
     const rMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
     const rk = new THREE.Mesh(rGeo, rMat);
     rk.position.set(vx + Math.cos(a) * r, 0.3, vz + Math.sin(a) * r);
@@ -433,11 +303,10 @@ createPortalRing(vx + 16, vz, -10, 0, 0xff4444);
 // Kristal
 const cx = 180, cz = -180;
 createSoftGround(cx, cz, 22, 0x2a1a3a);
-createSoftHill(cx - 3, cz + 3, 3, 1.5, 0x1a0a2a);
-for (let i = 0; i < 25; i++) {
+for (let i = 0; i < 20; i++) {
     const a = Math.random() * Math.PI * 2;
-    const r = 5 + Math.random() * 14;
-    const crGeo = new THREE.OctahedronGeometry(0.4 + Math.random() * 0.7, 0);
+    const r = 6 + Math.random() * 12;
+    const crGeo = new THREE.OctahedronGeometry(0.5 + Math.random() * 0.8, 0);
     const crMat = new THREE.MeshStandardMaterial({ color: 0xcc88ff, roughness: 0.2, metalness: 0.4, emissive: 0x220044, emissiveIntensity: 0.5 });
     const cr = new THREE.Mesh(crGeo, crMat);
     cr.position.set(cx + Math.cos(a) * r, 0.4, cz + Math.sin(a) * r);
@@ -451,14 +320,13 @@ createPortalRing(cx - 12, cz + 12, 10, -10, 0xcc44ff);
 // Harabe
 const hx = -180, hz = 180;
 createSoftGround(hx, hz, 22, 0x8b7d6b);
-createSoftHill(hx + 4, hz - 4, 3.5, 1.8, 0x7b6d5b);
-for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2;
-    const r = 10 + Math.random() * 9;
-    const piGeo = new THREE.CylinderGeometry(0.4, 0.5, 3.0 + Math.random() * 2.5, 8);
+for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const r = 12 + Math.random() * 8;
+    const piGeo = new THREE.CylinderGeometry(0.5, 0.6, 3.5 + Math.random() * 2.5, 8);
     const piMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.7 });
     const pi = new THREE.Mesh(piGeo, piMat);
-    pi.position.set(hx + Math.cos(a) * r, 1.5, hz + Math.sin(a) * r);
+    pi.position.set(hx + Math.cos(a) * r, 1.7, hz + Math.sin(a) * r);
     pi.castShadow = true; pi.receiveShadow = true;
     gameplayGroup.add(pi);
     obstacles.push(pi);
