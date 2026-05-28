@@ -4,10 +4,11 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 
-app.use(express.static(path.join(__dirname, 'public')));
+// Statik dosyaları ana klasörden sun
+app.use(express.static(__dirname));
 
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 let rooms = {};
@@ -96,7 +97,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Sadece saldırı animasyonu için (hasar yok)
     socket.on('playerAttack', () => {
         if (currentRoom && rooms[currentRoom] && rooms[currentRoom].isStarted) {
             socket.to(currentRoom).emit('playerAttacked', socket.id);
@@ -105,10 +105,8 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         if (currentRoom && rooms[currentRoom]) {
-            // Host çıkarsa ve oyun başlamışsa herkesi at
             if (rooms[currentRoom].hostId === socket.id && rooms[currentRoom].isStarted) {
                 io.to(currentRoom).emit('hostDisconnected');
-                // Odadaki tüm kullanıcıları odadan çıkar
                 const socketsInRoom = io.sockets.adapter.rooms.get(currentRoom);
                 if (socketsInRoom) {
                     socketsInRoom.forEach((socketId) => {
@@ -118,11 +116,9 @@ io.on('connection', (socket) => {
                 }
                 delete rooms[currentRoom];
             } else {
-                // Normal oyuncu çıkışı
                 delete rooms[currentRoom].players[socket.id];
 
                 if (rooms[currentRoom].hostId === socket.id) {
-                    // Host çıktı ama oyun başlamamıştı, yeni host ata
                     const remainingIds = Object.keys(rooms[currentRoom].players);
                     if (remainingIds.length > 0) {
                         rooms[currentRoom].hostId = remainingIds[0];
