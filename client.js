@@ -7,59 +7,115 @@ socket.on('connect', () => {
 
 // 2. 3D SAHNE VE KAMERA AYARLARI
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xa0a0a0); // Gökyüzü rengi (Gri/Mavi)
+scene.background = new THREE.Color(0xa0a0a0);
 
-// Kamera açısı (Bakış açısı, ekran oranı, yakınlık, uzaklık)
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 5, 10); // Kamerayı arkaya ve yukarı alıyoruz
-camera.lookAt(0, 0, 0); // Kamera merkeze baksın
+camera.position.set(0, 7, 10); // Kamerayı biraz daha yukarı aldık ki hareket rahat görünsün
+camera.lookAt(0, 0, 0);
 
 // 3. RENDERER (EKRANA ÇİZİCİ) AYARI
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true; // Gölgeleri açıyoruz
+renderer.shadowMap.enabled = true;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-// 4. IŞIKLANDIRMA (3D Dünyanın görünmesi için şart)
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Genel yumuşak ışık
+// 4. IŞIKLANDIRMA
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 0.8); // Güneş ışığı gibi dik ışık
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
 dirLight.position.set(10, 20, 15);
 dirLight.castShadow = true;
 scene.add(dirLight);
 
-// 5. OYUN ZEMİNİ (Düzlük/Harita)
+// 5. OYUN ZEMİNİ
 const floorGeometry = new THREE.PlaneGeometry(50, 50);
-const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x4caf50 }); // Yeşil çimen rengi
+const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x4caf50 });
 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-floor.rotation.x = -Math.PI / 2; // Zemini yatay yapıyoruz
+floor.rotation.x = -Math.PI / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
 // 6. ANA KARAKTER (Geçici 3D Küp Tavşan)
 const geometry = new THREE.BoxGeometry(1, 1, 1);
-const material = new THREE.MeshStandardMaterial({ color: 0xff0000 }); // Kırmızı renk
+const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
 const rabbit = new THREE.Mesh(geometry, material);
-rabbit.position.y = 0.5; // Zeminin tam üstünde dursun
+rabbit.position.y = 0.5;
 rabbit.castShadow = true;
 scene.add(rabbit);
 
-// 7. EKRAN YENİLEME VE ANİMASYON DÖNGÜSÜ (Oyunun akıcı dönmesi için)
+// --- YENİ EKLENEN KISIM: SABİT JOYSTICK HAREKET SİSTEMİ ---
+const zone = document.getElementById('joystick-zone');
+const stick = document.getElementById('joystick-stick');
+
+let joystickActive = false;
+let moveX = 0;
+let moveZ = 0;
+
+// Joystick merkez noktası hesabı
+const maxRadius = 35; 
+const zoneRect = zone.getBoundingClientRect();
+const centerX = zoneRect.left + zoneRect.width / 2;
+const centerY = zoneRect.top + zoneRect.height / 2;
+
+function handleJoystick(clientX, clientY) {
+    let deltaX = clientX - centerX;
+    let deltaY = clientY - centerY;
+    let distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    if (distance > maxRadius) {
+        deltaX = (deltaX / distance) * maxRadius;
+        deltaY = (deltaY / distance) * maxRadius;
+        distance = maxRadius;
+    }
+
+    stick.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+
+    // Karakterin gideceği yön hızlarını belirle
+    moveX = deltaX / maxRadius;
+    moveZ = deltaY / maxRadius;
+}
+
+// Dokunma Etkinlikleri (Mobil için)
+zone.addEventListener('touchstart', (e) => {
+    joystickActive = true;
+    handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
+});
+
+window.addEventListener('touchmove', (e) => {
+    if (!joystickActive) return;
+    handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
+});
+
+window.addEventListener('touchend', () => {
+    joystickActive = false;
+    stick.style.transform = 'translate(0px, 0px)'; // Bırakınca merkeze dönsün
+    moveX = 0;
+    moveZ = 0;
+});
+// ---------------------------------------------------------
+
+// 7. EKRAN YENİLEME VE ANİMASYON DÖNGÜSÜ
+const speed = 0.15; // Tavşanın yürüme hızı
+
 function animate() {
     requestAnimationFrame(animate);
 
-    // Test amaçlı: Karakter kendi etrafında hafifçe dönsün
-    rabbit.rotation.y += 0.01;
+    // Joystick hareket ediyorsa küpü çimenlerin üzerinde yürüt
+    if (joystickActive) {
+        rabbit.position.x += moveX * speed;
+        rabbit.position.z += moveZ * speed;
+        
+        // Karakter hareket ettiği yöne doğru hafifçe baksın
+        rabbit.rotation.y = Math.atan2(-moveX, -moveZ);
+    }
 
-    // Sahneyi kameradan göründüğü şekliyle çiz
     renderer.render(scene, camera);
 }
 
-// Oyunu ve döngüyü başlat
 animate();
 
-// 8. EKRAN BOYUTU DEĞİŞTİĞİNDE (Telefon yan çevrildiğinde vb.) AYARLAR
+// 8. EKRAN BOYUTU DEĞİŞTİĞİNDE AYARLAR
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
