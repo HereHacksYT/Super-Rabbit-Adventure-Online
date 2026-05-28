@@ -10,7 +10,6 @@
         
         #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
 
-        /* GİRİŞ ANA MENÜSÜ */
         #main-menu {
             position: absolute; width: 100%; height: 100%; z-index: 10;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -30,10 +29,8 @@
         #join-input-container { display: none; flex-direction: column; align-items: center; margin-top: 15px; }
         #room-code-input { padding: 10px 20px; border-radius: 20px; border: 2px solid white; font-size: 16px; text-align: center; width: 160px; margin-bottom: 10px; }
 
-        /* --- SÜPER BEAR TARZI LOBİ UI (EKRANI KAPLAYAN ARAYÜZ) --- */
         #lobby-ui { display: none; position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         
-        /* Sol Üst Davet Kodu */
         .code-panel {
             position: absolute; top: 20px; left: 20px; pointer-events: auto;
             background: rgba(0, 0, 0, 0.4); padding: 10px 20px; border-radius: 15px;
@@ -42,7 +39,6 @@
         .code-label { font-size: 12px; color: #ddd; margin-bottom: 2px; }
         .code-text { font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #ffeb3b; }
 
-        /* Alt Orta Oyuncu Sayısı ve Başlat Butonu */
         .bottom-panel {
             position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             display: flex; flex-direction: column; align-items: center; pointer-events: auto;
@@ -58,13 +54,11 @@
         }
         .waiting-msg { color: white; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); font-weight: bold; }
 
-        /* AKTİF OYUN İÇİ SKOR PANELİ */
         #game-info-ui {
             display: none; position: absolute; top: 15px; right: 15px; z-index: 5;
             background: rgba(0,0,0,0.5); color: white; padding: 10px 20px; border-radius: 12px; font-weight: bold;
         }
 
-        /* MOBİL DOKUNMATİK KONTROLLER */
         #controls-ui { display: none; position: absolute; width: 100%; height: 100%; z-index: 6; pointer-events: none; }
         #joystick-zone { position: absolute; bottom: 40px; left: 40px; width: 110px; height: 110px; background: rgba(255,255,255,0.15); border: 3px solid rgba(255,255,255,0.4); border-radius: 50%; pointer-events: auto; display: flex; justify-content: center; align-items: center; }
         #joystick-stick { width: 45px; height: 45px; background: white; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: transform 0.05s; }
