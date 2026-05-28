@@ -4,27 +4,21 @@ const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const path = require('path');
 
-// "Cannot GET" hatasını çözmek için public klasörünün yolunu garantiye alıyoruz
-app.use(express.static(path.join(__dirname)))); 
-app.use(express.static(path.join(__dirname, 'public')));
+// Bütün dosyalar aynı yerde olduğu için doğrudan bulunduğumuz klasörü servis ediyoruz
+app.use(express.static(__dirname));
 
-// Eğer doğrudan ana dizine (/) istek atılırsa index.html dosyasını zorla gönder
+// Ana sayfaya girildiğinde direkt yanındaki index.html'i açmasını söylüyoruz
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'), (err) => {
-        if (err) {
-            // Eğer index.html public klasörünün içindeyse orayı dener:
-            res.sendFile(path.join(__dirname, 'public', 'index.html'));
-        }
-    });
+    res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Bağlı olan tüm online oyuncuları tutan liste
+// MULTIPLAYER (ONLINE) OYUNCU LİSTESİ
 let players = {};
 
 io.on('connection', (socket) => {
     console.log('Yeni bir oyuncu bağlandı! ID:', socket.id);
 
-    // Yeni gelen oyuncuya başlangıç pozisyonu ver ve listeye ekle
+    // Yeni gelen oyuncunun başlangıç verileri
     players[socket.id] = {
         id: socket.id,
         x: 0,
@@ -34,13 +28,13 @@ io.on('connection', (socket) => {
         isAttacking: false
     };
 
-    // Yeni bağlanan oyuncuya mevcut tüm oyuncuları gönder
+    // Yeni gelene mevcut herkesi gönder
     socket.emit('currentPlayers', players);
 
-    // Diğer tüm oyunculara yeni birinin geldiğini haber ver
+    // Diğerlerine yeni birinin geldiğini bildir
     socket.broadcast.emit('newPlayer', players[socket.id]);
 
-    // Oyuncu hareket ettiğinde konumunu güncelle ve herkese yayınla
+    // Hareket verilerini senkronize et
     socket.on('playerMovement', (movementData) => {
         if (players[socket.id]) {
             players[socket.id].x = movementData.x;
@@ -51,14 +45,14 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Oyuncu kafa attığında diğerlerine haber ver
+    // Kafa atma animasyonunu senkronize et
     socket.on('playerAttack', () => {
         if (players[socket.id]) {
             socket.broadcast.emit('playerAttacked', socket.id);
         }
     });
 
-    // Oyuncu oyundan çıktığında listeden sil ve herkese bildir
+    // Çıkış işlemi
     socket.on('disconnect', () => {
         console.log('Oyuncu ayrıldı! ID:', socket.id);
         delete players[socket.id];
@@ -68,5 +62,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 http.listen(PORT, () => {
-    console.log(`Sunucu ${PORT} portunda online!`);
+    console.log(`Sunucu ${PORT} portunda sorunsuz başladı!`);
 });
