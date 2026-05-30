@@ -52,35 +52,25 @@ function createCanvasTexture(width, height, drawFunc) {
     return texture;
 }
 
-// YENİ ÇİMEN DOKUSU
-const grassTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
-    // Ana zemin
-    const gradient = ctx.createLinearGradient(0, 0, w, h);
-    gradient.addColorStop(0, '#7cb342');
-    gradient.addColorStop(0.5, '#8bc34a');
-    gradient.addColorStop(1, '#689f38');
-    ctx.fillStyle = gradient;
+// KLASİK, MAT ÇİMEN DOKUSU
+const grassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
+    // Düz, tok yeşil zemin
+    ctx.fillStyle = '#7c9f3e';
     ctx.fillRect(0, 0, w, h);
-    // Çimen lekeleri
-    for (let i = 0; i < 4000; i++) {
-        const x = Math.random() * w;
-        const y = Math.random() * h;
-        const shade = 40 + Math.random() * 30;
-        ctx.fillStyle = `rgb(${100 + shade}, ${160 + shade}, ${30 + shade/2})`;
-        ctx.fillRect(x, y, 3 + Math.random() * 4, 2 + Math.random() * 4);
+    
+    // Rastgele koyu/ açık yeşil noktacıklar (klasik doku)
+    for (let i = 0; i < 3000; i++) {
+        const r = 90 + Math.random() * 40;
+        const g = 140 + Math.random() * 40;
+        const b = 40 + Math.random() * 30;
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(Math.floor(Math.random() * w), Math.floor(Math.random() * h), 2, 2);
     }
-    // Daha koyu gölge noktaları
-    for (let i = 0; i < 600; i++) {
-        ctx.fillStyle = `rgba(30, 60, 10, ${Math.random() * 0.25})`;
+    // İnce gölge efektleri (parlaklık yok)
+    for (let i = 0; i < 150; i++) {
+        ctx.fillStyle = `rgba(50, 70, 20, 0.15)`;
         ctx.beginPath();
         ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 4 + 1, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    // Açık renk vurgular
-    for (let i = 0; i < 400; i++) {
-        ctx.fillStyle = `rgba(180, 220, 100, ${Math.random() * 0.3})`;
-        ctx.beginPath();
-        ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 2 + 0.5, 0, Math.PI * 2);
         ctx.fill();
     }
 });
@@ -174,12 +164,12 @@ const roofTileTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
 });
 
 // --- MALZEMELER ---
-const grassMat = new THREE.MeshStandardMaterial({ map: grassTexture, roughness: 0.85 });
-const dirtMat = new THREE.MeshStandardMaterial({ map: dirtTexture, roughness: 0.75 });
-const woodPlankMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.65 });
-const barkMat = new THREE.MeshStandardMaterial({ map: barkTexture, roughness: 0.7 });
-const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.4 });
-const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.6 });
+const grassMat = new THREE.MeshStandardMaterial({ map: grassTexture, roughness: 0.95 }); // roughness yüksek = mat
+const dirtMat = new THREE.MeshStandardMaterial({ map: dirtTexture, roughness: 0.85 });
+const woodPlankMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.75 });
+const barkMat = new THREE.MeshStandardMaterial({ map: barkTexture, roughness: 0.8 });
+const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.5 });
+const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.7 });
 
 // --- ZEMİN ---
 const groundGeo = new THREE.CircleGeometry(120, 128);
@@ -222,7 +212,7 @@ function createWoodenHouse(x, z, rotY = 0) {
     
     const roofGeo = new THREE.ConeGeometry(4.2, 2.8, 4);
     const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = 6.2;
+    roof.position.y = 6.3; // 0.1 daha yukarı
     roof.rotation.y = Math.PI / 4;
     roof.castShadow = true; roof.receiveShadow = true;
     group.add(roof);
