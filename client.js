@@ -53,12 +53,10 @@ function createCanvasTexture(width, height, drawFunc) {
     return texture;
 }
 
-// ZEMİN İÇİN YENİ ÇİMEN DOKUSU (büyük alanlarda güzel görünecek)
+// ZEMİN ÇİMEN DOKUSU
 const groundTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
-    // Ana renk
     ctx.fillStyle = '#5a8a3c';
     ctx.fillRect(0, 0, w, h);
-    // Çimen lifleri - ince ve sık
     for (let i = 0; i < 8000; i++) {
         const x = Math.random() * w;
         const y = Math.random() * h;
@@ -68,14 +66,12 @@ const groundTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
         ctx.fillStyle = `rgb(${shade}, ${g}, ${b})`;
         ctx.fillRect(x, y, 1 + Math.random() * 3, 2 + Math.random() * 5);
     }
-    // Küçük gölge lekeleri
     for (let i = 0; i < 500; i++) {
         ctx.fillStyle = `rgba(30, 50, 10, ${Math.random() * 0.25})`;
         ctx.beginPath();
         ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 3 + 0.5, 0, Math.PI * 2);
         ctx.fill();
     }
-    // Açık renk vurgular
     for (let i = 0; i < 300; i++) {
         ctx.fillStyle = `rgba(160, 200, 80, ${Math.random() * 0.2})`;
         ctx.beginPath();
@@ -84,7 +80,7 @@ const groundTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     }
 });
 
-// BLOK ÜSTÜ ÇİMEN DOKUSU (eskisi gibi kalacak)
+// BLOK ÜSTÜ ÇİMEN DOKUSU
 const blockGrassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#6daa2e';
     ctx.fillRect(0, 0, w, h);
@@ -111,17 +107,14 @@ const dirtTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     }
 });
 
-// YENİ AHŞAP DOKUSU (daha belirgin)
+// Ahşap dokusu
 const woodTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
-    // Açık ahşap rengi
     ctx.fillStyle = '#c49a6c';
     ctx.fillRect(0, 0, w, h);
-    // Belirgin dikey çizgiler (tahta arası)
     for (let x = 0; x < w; x += 64) {
         ctx.fillStyle = 'rgba(0,0,0,0.15)';
         ctx.fillRect(x, 0, 2, h);
     }
-    // Ahşap damarları
     for (let i = 0; i < 600; i++) {
         ctx.strokeStyle = `rgba(100, 60, 20, ${Math.random()*0.5})`;
         ctx.lineWidth = Math.random()*3+0.5;
@@ -133,7 +126,6 @@ const woodTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
         }
         ctx.stroke();
     }
-    // Budak lekeleri
     for (let i = 0; i < 15; i++) {
         const bx = Math.random() * w;
         const by = Math.random() * h;
@@ -145,29 +137,47 @@ const woodTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     }
 });
 
-// YENİ KİREMİT ÇATI DOKUSU (daha belirgin)
+// TAŞ DUVAR DOKUSU
+const stoneTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
+    ctx.fillStyle = '#8a8a8a';
+    ctx.fillRect(0, 0, w, h);
+    for (let row = 0; row < 8; row++) {
+        const y = row * 64;
+        const offset = (row % 2) * 32;
+        for (let col = 0; col < 8; col++) {
+            const x = col * 64 + offset;
+            const shade = 120 + Math.random() * 40;
+            ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
+            ctx.fillRect(x + 2, y + 2, 60, 28);
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(x + 2, y + 2, 60, 28);
+        }
+    }
+    for (let i = 0; i < 400; i++) {
+        ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.2})`;
+        ctx.fillRect(Math.random()*w, Math.random()*h, 4, 3);
+    }
+});
+
+// Kiremit çatı dokusu
 const roofTileTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     ctx.fillStyle = '#7a2e2e';
     ctx.fillRect(0, 0, w, h);
-    // Kiremit sıraları
     for (let row = 0; row < 12; row++) {
         const y = row * 42;
         const offset = (row % 2) * 21;
         for (let col = 0; col < 12; col++) {
             const x = col * 42 + offset;
-            // Kiremit
             ctx.fillStyle = `rgb(${150 + Math.random()*30}, ${40 + Math.random()*20}, ${30 + Math.random()*20})`;
             ctx.fillRect(x + 2, y + 2, 38, 18);
-            // Kenar çizgisi
             ctx.strokeStyle = 'rgba(0,0,0,0.3)';
             ctx.lineWidth = 1;
             ctx.strokeRect(x + 2, y + 2, 38, 18);
-            // Alt kiremit gölgesi
             ctx.fillStyle = 'rgba(0,0,0,0.15)';
             ctx.fillRect(x + 2, y + 30, 38, 10);
         }
     }
-    // Eskime efektleri
     for (let i = 0; i < 300; i++) {
         ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.2})`;
         ctx.fillRect(Math.random()*w, Math.random()*h, 3, 2);
@@ -210,6 +220,8 @@ dirtTexture.repeat.set(4, 4);
 
 const woodMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.65 });
 
+const stoneWallMat = new THREE.MeshStandardMaterial({ map: stoneTexture, roughness: 0.6 });
+
 const barkMat = new THREE.MeshStandardMaterial({ map: barkTexture, roughness: 0.7 });
 const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.4 });
 
@@ -222,6 +234,19 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
+// --- TAŞ DUVAR FONKSİYONU (ince ve uzun, farklı açılarda) ---
+function createStoneWall(x, z, width, height, rotY = 0) {
+    const geo = new THREE.BoxGeometry(width, height, 0.5); // ince (0.5 kalınlık)
+    const wall = new THREE.Mesh(geo, stoneWallMat);
+    wall.position.set(x, height / 2, z);
+    wall.rotation.y = rotY;
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    gameplayGroup.add(wall);
+    obstacles.push(wall);
+    return wall;
+}
+
 // --- BÜYÜK ÇİMEN BLOK (tek parça) ---
 function createBigGrassBlock(x, z, width, depth, height) {
     const group = new THREE.Group();
@@ -233,7 +258,7 @@ function createBigGrassBlock(x, z, width, depth, height) {
     group.add(body);
     obstacles.push(body);
     const topGeo = new THREE.BoxGeometry(width - 0.1, 0.2, depth - 0.1);
-    const top = new THREE.Mesh(topGeo, blockGrassMat); // Blok üstü aynı kalsın
+    const top = new THREE.Mesh(topGeo, blockGrassMat);
     top.position.y = height + 0.1;
     top.receiveShadow = true;
     group.add(top);
@@ -243,7 +268,7 @@ function createBigGrassBlock(x, z, width, depth, height) {
     return group;
 }
 
-// --- AHŞAP EV (yeni doku) ---
+// --- AHŞAP EV ---
 function createWoodenHouse(x, z, rotY = 0) {
     const group = new THREE.Group();
     const bodyGeo = new THREE.BoxGeometry(6.0, 5.0, 6.0);
@@ -314,6 +339,39 @@ createBigTree(-40, -14, 2);
 createBigTree(40, 14, 2);
 createBigTree(-16, -38, 1.8);
 createBigTree(16, 38, 1.8);
+
+// ============ TAŞ DUVARLAR (farklı açılarda, uzun ve ince) ============
+// Kuzey bölgesi duvarları
+createStoneWall(-50, -60, 20, 4, 0.3);
+createStoneWall(-60, -50, 18, 3.5, -0.5);
+createStoneWall(-40, -65, 15, 5, 0.7);
+
+// Güney bölgesi duvarları
+createStoneWall(45, 55, 22, 4.5, -0.2);
+createStoneWall(55, 45, 16, 3, 0.6);
+createStoneWall(50, 60, 18, 4, -0.8);
+
+// Doğu bölgesi duvarları
+createStoneWall(60, -40, 14, 5, -0.4);
+createStoneWall(65, -30, 20, 3.5, 0.3);
+createStoneWall(55, -50, 16, 4.5, 0.9);
+
+// Batı bölgesi duvarları
+createStoneWall(-55, 40, 18, 4, 0.5);
+createStoneWall(-65, 30, 14, 3, -0.6);
+createStoneWall(-50, 50, 20, 5, -0.3);
+
+// Orta bölgeye yakın duvarlar
+createStoneWall(-10, -45, 16, 4, 0.8);
+createStoneWall(10, 45, 14, 3.5, -0.4);
+createStoneWall(-45, -10, 18, 4.5, 0.2);
+createStoneWall(45, 10, 15, 3, -0.7);
+
+// Köşe duvarları
+createStoneWall(-70, -70, 12, 5, 0.5);
+createStoneWall(70, 70, 12, 5, -0.5);
+createStoneWall(70, -70, 12, 5, 0.8);
+createStoneWall(-70, 70, 12, 5, -0.8);
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
