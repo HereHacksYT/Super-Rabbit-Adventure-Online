@@ -39,17 +39,122 @@ const gameplayGroup = new THREE.Group();
 scene.add(gameplayGroup);
 const obstacles = [];
 
-// Koordinat göstergesi
-const coordSpan = document.createElement('span');
-coordSpan.id = 'coords-display';
-coordSpan.style.marginLeft = '15px';
-coordSpan.style.color = '#ffeb3b';
-document.getElementById('game-info-ui').appendChild(coordSpan);
+// --- PROSEDÜREL DOKU OLUŞTURUCU ---
+function createCanvasTexture(width, height, drawFunc) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    drawFunc(ctx, width, height);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1, 1);
+    return texture;
+}
 
-// --- ZEMİN (120 yarıçap) ---
+// Çimen dokusu
+const grassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#6daa2e';
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 2000; i++) {
+        ctx.fillStyle = `rgb(${100 + Math.random()*40}, ${150 + Math.random()*60}, ${30 + Math.random()*30})`;
+        ctx.fillRect(Math.random()*w, Math.random()*h, 4, 6);
+    }
+    for (let i = 0; i < 300; i++) {
+        ctx.fillStyle = `rgba(50,80,20,${Math.random()*0.3})`;
+        ctx.beginPath();
+        ctx.arc(Math.random()*w, Math.random()*h, Math.random()*3+1, 0, Math.PI*2);
+        ctx.fill();
+    }
+});
+
+// Toprak dokusu
+const dirtTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#8B6B4D';
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 3000; i++) {
+        const shade = 100 + Math.random() * 50;
+        ctx.fillStyle = `rgb(${shade}, ${shade*0.7}, ${shade*0.4})`;
+        ctx.fillRect(Math.random()*w, Math.random()*h, 3, 3);
+    }
+});
+
+// Ahşap dokusu
+const woodTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#b8956c';
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 400; i++) {
+        ctx.strokeStyle = `rgba(120, 70, 30, ${Math.random()*0.4})`;
+        ctx.lineWidth = Math.random()*3+1;
+        ctx.beginPath();
+        ctx.moveTo(0, Math.random()*h);
+        ctx.lineTo(w, Math.random()*h);
+        ctx.stroke();
+    }
+    for (let i = 0; i < 1500; i++) {
+        ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.1})`;
+        ctx.fillRect(Math.random()*w, Math.random()*h, 1, 3);
+    }
+});
+
+// Taş dokusu
+const stoneTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#999999';
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1000; i++) {
+        const shade = 120 + Math.random() * 80;
+        ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
+        ctx.fillRect(Math.random()*w, Math.random()*h, 8, 8);
+    }
+    for (let i = 0; i < 80; i++) {
+        ctx.strokeStyle = `rgba(0,0,0,${Math.random()*0.2})`;
+        ctx.lineWidth = Math.random()*2;
+        ctx.beginPath();
+        ctx.moveTo(Math.random()*w, Math.random()*h);
+        ctx.lineTo(Math.random()*w, Math.random()*h);
+        ctx.stroke();
+    }
+});
+
+// Ağaç kabuğu dokusu
+const barkTexture = createCanvasTexture(256, 512, (ctx, w, h) => {
+    ctx.fillStyle = '#6B4F3C';
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 800; i++) {
+        ctx.strokeStyle = `rgba(40, 20, 10, ${Math.random()*0.5})`;
+        ctx.lineWidth = Math.random()*4+2;
+        ctx.beginPath();
+        ctx.moveTo(0, Math.random()*h);
+        ctx.lineTo(w, Math.random()*h);
+        ctx.stroke();
+    }
+});
+
+// Yaprak dokusu
+const leafTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#3d7a1c';
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 5000; i++) {
+        ctx.fillStyle = `rgb(${40 + Math.random()*30}, ${100 + Math.random()*50}, ${20 + Math.random()*20})`;
+        ctx.fillRect(Math.random()*w, Math.random()*h, 2, 3);
+    }
+});
+
+// --- MALZEMELER ---
+const grassMat = new THREE.MeshStandardMaterial({ map: grassTexture, roughness: 0.85 });
+grassTexture.repeat.set(8, 8);
+const dirtMat = new THREE.MeshStandardMaterial({ map: dirtTexture, roughness: 0.75 });
+dirtTexture.repeat.set(4, 4);
+const woodMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.7 });
+const stoneMat = new THREE.MeshStandardMaterial({ map: stoneTexture, roughness: 0.5 });
+const barkMat = new THREE.MeshStandardMaterial({ map: barkTexture, roughness: 0.7 });
+const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.4 });
+const roofMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6 }); // çatı düz renk kalsın
+
+// --- ZEMİN ---
 const groundGeo = new THREE.CircleGeometry(120, 128);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x7ec850, roughness: 0.9 });
-const ground = new THREE.Mesh(groundGeo, groundMat);
+const ground = new THREE.Mesh(groundGeo, grassMat.clone());
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
@@ -58,16 +163,14 @@ gameplayGroup.add(ground);
 function createBigGrassBlock(x, z, width, depth, height) {
     const group = new THREE.Group();
     const bodyGeo = new THREE.BoxGeometry(width, height, depth);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x9b8c7c, roughness: 0.7 });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    const body = new THREE.Mesh(bodyGeo, dirtMat);
     body.position.y = height / 2;
     body.castShadow = true;
     body.receiveShadow = true;
     group.add(body);
     obstacles.push(body);
     const topGeo = new THREE.BoxGeometry(width - 0.1, 0.2, depth - 0.1);
-    const topMat = new THREE.MeshStandardMaterial({ color: 0x7ec850, roughness: 0.8 });
-    const top = new THREE.Mesh(topGeo, topMat);
+    const top = new THREE.Mesh(topGeo, grassMat);
     top.position.y = height + 0.1;
     top.receiveShadow = true;
     group.add(top);
@@ -77,24 +180,9 @@ function createBigGrassBlock(x, z, width, depth, height) {
     return group;
 }
 
-// --- TAŞ DUVAR ---
-function createStoneWallBlock(x, z, width, height, depth = 0.5) {
-    const geo = new THREE.BoxGeometry(width, height, depth);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5 });
-    const wall = new THREE.Mesh(geo, mat);
-    wall.position.set(x, height/2, z);
-    wall.castShadow = true;
-    wall.receiveShadow = true;
-    gameplayGroup.add(wall);
-    obstacles.push(wall);
-    return wall;
-}
-
 // --- AHŞAP EV (çatı da engel) ---
 function createWoodenHouse(x, z, rotY = 0) {
     const group = new THREE.Group();
-    const woodMat = new THREE.MeshStandardMaterial({ color: 0xc49a6c, roughness: 0.7 });
-    const roofMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6 });
     const bodyGeo = new THREE.BoxGeometry(6.0, 5.0, 6.0);
     const body = new THREE.Mesh(bodyGeo, woodMat);
     body.position.y = 2.5;
@@ -123,13 +211,11 @@ function createWoodenHouse(x, z, rotY = 0) {
 function createBigTree(x, z, scale = 2) {
     const group = new THREE.Group();
     const trunkGeo = new THREE.CylinderGeometry(0.3 * scale, 0.45 * scale, 3.0 * scale, 16);
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.55 });
-    const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+    const trunk = new THREE.Mesh(trunkGeo, barkMat);
     trunk.position.y = 1.5 * scale;
     trunk.castShadow = true; trunk.receiveShadow = true;
     group.add(trunk);
     obstacles.push(trunk);
-    const leafMat = new THREE.MeshStandardMaterial({ color: 0x3d7a1c, roughness: 0.35 });
     for (let i = 0; i < 4; i++) {
         const sGeo = new THREE.SphereGeometry(0.85 * scale - i * 0.12, 16, 12);
         const s = new THREE.Mesh(sGeo, leafMat);
@@ -153,7 +239,7 @@ createBigGrassBlock(33, 22, 10, 8, 7);
 createBigGrassBlock(-30, -30, 9, 9, 10);
 createBigGrassBlock(22, 0, 8, 8, 6);
 
-createStoneWallBlock(28, -32, 16, 10, 0.5);
+// Taş duvar KALDIRILDI
 
 createBigTree(-36, -36, 2);
 createBigTree(36, -32, 1.8);
@@ -167,6 +253,13 @@ createBigTree(-40, -14, 2);
 createBigTree(40, 14, 2);
 createBigTree(-16, -38, 1.8);
 createBigTree(16, 38, 1.8);
+
+// --- KOORDİNAT GÖSTERGESİ ---
+const coordSpan = document.createElement('span');
+coordSpan.id = 'coords-display';
+coordSpan.style.marginLeft = '15px';
+coordSpan.style.color = '#ffeb3b';
+document.getElementById('game-info-ui').appendChild(coordSpan);
 
 // --- MODEL FABRİKASI (TAVŞAN) ---
 const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
@@ -257,7 +350,7 @@ function getFloorY(pX, pY, pZ) {
 }
 
 let velocityY = 0, jumpCount = 0;
-const gravity = 0.8, jumpForce = 15.3; // 18 * 0.85
+const gravity = 0.8, jumpForce = 15.3;
 
 window.playSolo = function() {
     isOnlineMode = false; gameActive = true;
