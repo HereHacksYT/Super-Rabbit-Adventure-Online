@@ -11,9 +11,9 @@ let respawnCountdown = 15;
 // 3D SAHNE
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB);
-scene.fog = new THREE.Fog(0x87CEEB, 40, 120);
+scene.fog = new THREE.Fog(0x87CEEB, 80, 300);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 500);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -25,7 +25,7 @@ document.getElementById('canvas-container').appendChild(renderer.domElement);
 const ambientLight = new THREE.AmbientLight(0xfff5e6, 0.7);
 scene.add(ambientLight);
 const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.0);
-sunLight.position.set(50, 80, 40);
+sunLight.position.set(120, 200, 100);
 sunLight.castShadow = true;
 sunLight.shadow.mapSize.width = 2048;
 sunLight.shadow.mapSize.height = 2048;
@@ -35,15 +35,15 @@ const gameplayGroup = new THREE.Group();
 scene.add(gameplayGroup);
 const obstacles = [];
 
-// --- ZEMİN ---
-const groundGeo = new THREE.CircleGeometry(20, 64);
+// --- ZEMİN (3x: 60 yarıçap) ---
+const groundGeo = new THREE.CircleGeometry(60, 64);
 const groundMat = new THREE.MeshStandardMaterial({ color: 0x7ec850, roughness: 0.9 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
-// --- ÇİMEN KAPLI BLOK YÜKSELTİ (Minecraft tarzı) ---
+// --- ÇİMEN KAPLI BLOK YÜKSELTİ (Minecraft tarzı, 3x boyutlu, 3x uzakta) ---
 function createGrassBlockPlatform(x, z, width, depth, height) {
     const blockSize = 1.0;
     const cols = Math.round(width / blockSize);
@@ -53,7 +53,6 @@ function createGrassBlockPlatform(x, z, width, depth, height) {
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 const geo = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
-                // En üst katman çimen yeşili, alt katmanlar toprak/kahverengi
                 const color = (l === layers - 1) ? 0x7ec850 : 0x9b8c7c;
                 const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.6 });
                 const block = new THREE.Mesh(geo, mat);
@@ -71,7 +70,7 @@ function createGrassBlockPlatform(x, z, width, depth, height) {
     }
 }
 
-// --- TAŞ DUVAR (parkur için düz duvar) ---
+// --- TAŞ DUVAR (3x boyutlu, 3x uzakta) ---
 function createStoneWall(x, z, width, height, depth = 0.5) {
     const blockSize = 1.0;
     const cols = Math.round(width / blockSize);
@@ -90,7 +89,7 @@ function createStoneWall(x, z, width, height, depth = 0.5) {
     }
 }
 
-// --- PARKUR KAYALARI (basamak şeklinde) ---
+// --- PARKUR KAYALARI (3x boyutlu, 3x uzakta) ---
 function createParkourSteps(x, z, count, stepHeight = 0.5, stepSize = 1.0) {
     for (let i = 0; i < count; i++) {
         const h = (i + 1) * stepHeight;
@@ -105,31 +104,31 @@ function createParkourSteps(x, z, count, stepHeight = 0.5, stepSize = 1.0) {
     }
 }
 
-// --- AHŞAP EV ---
+// --- AHŞAP EV (3x boyutlu, 3x uzakta) ---
 function createWoodenHouse(x, z, rotY = 0) {
     const group = new THREE.Group();
     const woodMat = new THREE.MeshStandardMaterial({ color: 0xc49a6c, roughness: 0.7 });
     const roofMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6 });
-    
-    const bodyGeo = new THREE.BoxGeometry(2.5, 2.0, 2.5);
+
+    const bodyGeo = new THREE.BoxGeometry(3.0, 2.4, 3.0); // 1.2x büyük
     const body = new THREE.Mesh(bodyGeo, woodMat);
-    body.position.y = 1.0;
+    body.position.y = 1.2;
     body.castShadow = true; body.receiveShadow = true;
     group.add(body);
-    
-    const roofGeo = new THREE.ConeGeometry(1.8, 1.0, 4);
+
+    const roofGeo = new THREE.ConeGeometry(2.2, 1.2, 4);
     const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = 2.5;
+    roof.position.y = 3.0;
     roof.rotation.y = Math.PI / 4;
     roof.castShadow = true; roof.receiveShadow = true;
     group.add(roof);
-    
-    const doorGeo = new THREE.BoxGeometry(0.6, 1.2, 0.1);
+
+    const doorGeo = new THREE.BoxGeometry(0.7, 1.4, 0.1);
     const doorMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.5 });
     const door = new THREE.Mesh(doorGeo, doorMat);
-    door.position.set(0, 0.6, 1.3);
+    door.position.set(0, 0.7, 1.55);
     group.add(door);
-    
+
     group.position.set(x, 0, z);
     group.rotation.y = rotY;
     gameplayGroup.add(group);
@@ -137,7 +136,7 @@ function createWoodenHouse(x, z, rotY = 0) {
     return group;
 }
 
-// --- AĞAÇ (ortada yok, sadece etrafta) ---
+// --- AĞAÇ (3x boyutlu, 3x uzakta, evlerden uzak) ---
 function createBigTree(x, z, scale = 1) {
     const group = new THREE.Group();
     const trunkGeo = new THREE.CylinderGeometry(0.3 * scale, 0.45 * scale, 3.0 * scale, 16);
@@ -160,35 +159,37 @@ function createBigTree(x, z, scale = 1) {
     return group;
 }
 
-// ============ HARİTA ELEMANLARI ============
+// ============ HARİTA ELEMANLARI (3x büyük, 3x uzak) ============
 
-// Ahşap evler (kayalıklardan uzak konumlandır)
-createWoodenHouse(-7, -6, 0.2);
-createWoodenHouse(8, 5, -0.3);
-createWoodenHouse(-7, 8, 0.5);
+// Ahşap evler (merkezden uzak, birbirinden ayrı)
+createWoodenHouse(-30, -25, 0.2);
+createWoodenHouse(28, 22, -0.3);
+createWoodenHouse(-32, 30, 0.5);
 
-// Çimen kaplı blok yükseltiler (evlerden uzak)
-createGrassBlockPlatform(5, -7, 2, 2, 3);
-createGrassBlockPlatform(-4, -3, 2, 3, 2);
-createGrassBlockPlatform(6, 7, 3, 2, 2);
-createGrassBlockPlatform(-8, -8, 2, 2, 4);
-createGrassBlockPlatform(4, 0, 2, 2, 2);
+// Çimen kaplı blok yükseltiler (evlerden tamamen uzak)
+createGrassBlockPlatform(40, -30, 4, 4, 4);
+createGrassBlockPlatform(-35, -15, 4, 5, 3);
+createGrassBlockPlatform(42, 30, 5, 4, 3);
+createGrassBlockPlatform(-40, -40, 4, 4, 5);
+createGrassBlockPlatform(30, 0, 4, 4, 3);
 
-// Taş duvar ve parkur alanı (sağ alt köşe)
-createStoneWall(8, -10, 4, 3, 0.5);
-createParkourSteps(9, -8, 4, 0.6, 1.0);
+// Taş duvar ve parkur alanı (evlerden uzak, sağ alt bölge)
+createStoneWall(38, -42, 8, 5, 0.5);
+createParkourSteps(40, -35, 5, 0.6, 1.2);
 
-// Etrafta ağaçlar (merkezde büyük ağaç yok!)
-createBigTree(-10, -10, 0.8);
-createBigTree(11, -8, 0.75);
-createBigTree(-9, 11, 0.85);
-createBigTree(10, 10, 0.8);
-createBigTree(-11, 2, 0.7);
-createBigTree(12, -2, 0.75);
-createBigTree(0, -11, 0.9);
-createBigTree(0, 11, 0.9);
-createBigTree(-12, -4, 0.8);
-createBigTree(13, 4, 0.8);
+// Etrafta ağaçlar (evlerden uzak, çeperde)
+createBigTree(-45, -45, 1.0);
+createBigTree(45, -40, 0.9);
+createBigTree(-42, 45, 1.1);
+createBigTree(44, 42, 1.0);
+createBigTree(-48, 10, 0.9);
+createBigTree(48, -10, 0.95);
+createBigTree(0, -50, 1.1);
+createBigTree(0, 50, 1.1);
+createBigTree(-50, -15, 1.0);
+createBigTree(50, 15, 1.0);
+createBigTree(-20, -48, 0.9);
+createBigTree(20, 48, 0.9);
 
 // --- MODEL FABRİKASI (TAVŞAN) ---
 const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
