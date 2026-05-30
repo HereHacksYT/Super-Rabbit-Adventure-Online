@@ -53,7 +53,7 @@ function createCanvasTexture(width, height, drawFunc) {
     return texture;
 }
 
-// Çimen dokusu (hem yer hem blok üstleri için aynı doku)
+// Çimen dokusu
 const grassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#6daa2e';
     ctx.fillRect(0, 0, w, h);
@@ -142,21 +142,19 @@ const leafTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
 });
 
 // --- MALZEMELER ---
-const grassMat = new THREE.MeshStandardMaterial({ map: grassTexture, roughness: 0.85 });
-grassTexture.repeat.set(8, 8); // Zemin için tekrar
-
+const groundMat = new THREE.MeshStandardMaterial({ map: grassTexture, roughness: 0.85 });
+grassTexture.repeat.set(8, 8);
 const dirtMat = new THREE.MeshStandardMaterial({ map: dirtTexture, roughness: 0.75 });
 dirtTexture.repeat.set(4, 4);
-
 const woodMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.7 });
 const stoneMat = new THREE.MeshStandardMaterial({ map: stoneTexture, roughness: 0.5 });
 const barkMat = new THREE.MeshStandardMaterial({ map: barkTexture, roughness: 0.7 });
 const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.4 });
 const roofMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6 });
 
-// --- ZEMİN (blok üstleri ile aynı materyali kullan) ---
+// --- ZEMİN ---
 const groundGeo = new THREE.CircleGeometry(120, 128);
-const ground = new THREE.Mesh(groundGeo, grassMat); // clone() yok, doğrudan aynı materyal
+const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
@@ -172,7 +170,7 @@ function createBigGrassBlock(x, z, width, depth, height) {
     group.add(body);
     obstacles.push(body);
     const topGeo = new THREE.BoxGeometry(width - 0.1, 0.2, depth - 0.1);
-    const top = new THREE.Mesh(topGeo, grassMat); // Zeminle aynı materyal
+    const top = new THREE.Mesh(topGeo, groundMat);
     top.position.y = height + 0.1;
     top.receiveShadow = true;
     group.add(top);
@@ -193,7 +191,7 @@ function createWoodenHouse(x, z, rotY = 0) {
     obstacles.push(body);
     const roofGeo = new THREE.ConeGeometry(4.2, 2.8, 4);
     const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = 6.5;
+    roof.position.y = 6.4; // 0.1 daha yükseltildi, artık 6.4
     roof.rotation.y = Math.PI / 4;
     roof.castShadow = true; roof.receiveShadow = true;
     group.add(roof);
