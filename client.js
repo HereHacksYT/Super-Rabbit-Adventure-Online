@@ -39,6 +39,13 @@ const gameplayGroup = new THREE.Group();
 scene.add(gameplayGroup);
 const obstacles = [];
 
+// Koordinat göstergesi ekle
+const coordSpan = document.createElement('span');
+coordSpan.id = 'coords-display';
+coordSpan.style.marginLeft = '15px';
+coordSpan.style.color = '#ffeb3b';
+document.getElementById('game-info-ui').appendChild(coordSpan);
+
 // --- ZEMİN (120 yarıçap) ---
 const groundGeo = new THREE.CircleGeometry(120, 128);
 const groundMat = new THREE.MeshStandardMaterial({ color: 0x7ec850, roughness: 0.9 });
@@ -88,22 +95,7 @@ function createStoneWallBlock(x, z, width, height, depth = 0.5) {
     return wall;
 }
 
-// --- PARKUR (basamaklı kaya platformlar, düzenli aralıklı) ---
-function createParkourStepsClean(x, z, count, stepHeight = 1.2, stepSize = 2.4, gap = 1.5) {
-    for (let i = 0; i < count; i++) {
-        const h = (i + 1) * stepHeight;
-        const geo = new THREE.BoxGeometry(stepSize, h, stepSize);
-        const mat = new THREE.MeshStandardMaterial({ color: 0xaa9977, roughness: 0.6 });
-        const step = new THREE.Mesh(geo, mat);
-        step.position.set(x, h/2, z + i * (stepSize + gap));
-        step.castShadow = true;
-        step.receiveShadow = true;
-        gameplayGroup.add(step);
-        obstacles.push(step);
-    }
-}
-
-// --- AHŞAP EV (sadece gövde engele eklenecek, daha büyük) ---
+// --- AHŞAP EV (çatı da engele eklendi, boyut aynı) ---
 function createWoodenHouse(x, z, rotY = 0) {
     const group = new THREE.Group();
     const woodMat = new THREE.MeshStandardMaterial({ color: 0xc49a6c, roughness: 0.7 });
@@ -114,7 +106,7 @@ function createWoodenHouse(x, z, rotY = 0) {
     body.position.y = 2.5;
     body.castShadow = true; body.receiveShadow = true;
     group.add(body);
-    obstacles.push(body); // Sadece gövdeyi engele ekle, çatıyı değil
+    obstacles.push(body); // Gövde engel
 
     const roofGeo = new THREE.ConeGeometry(4.2, 2.8, 4);
     const roof = new THREE.Mesh(roofGeo, roofMat);
@@ -122,6 +114,7 @@ function createWoodenHouse(x, z, rotY = 0) {
     roof.rotation.y = Math.PI / 4;
     roof.castShadow = true; roof.receiveShadow = true;
     group.add(roof);
+    obstacles.push(roof); // ÇATI DA ENGEL (içinden geçilmez)
 
     const doorGeo = new THREE.BoxGeometry(1.6, 3.0, 0.2);
     const doorMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.5 });
@@ -159,25 +152,24 @@ function createBigTree(x, z, scale = 2) {
     return group;
 }
 
-// ============ HARİTA ELEMANLARI (YENİ DÜZEN) ============
+// ============ HARİTA ELEMANLARI ============
 
-// Ahşap evler (gövde boyutu 6x5x6, görsel büyüdü, çarpışma sadece gövde)
+// Ahşap evler
 createWoodenHouse(-20, -16, 0.2);
 createWoodenHouse(18, 13, -0.3);
 createWoodenHouse(-20, 20, 0.5);
 
-// Büyük çimen bloklar (evlerden tamamen uzak, tek parça)
+// Büyük çimen bloklar (evlerden uzak, tek parça)
 createBigGrassBlock(32, -22, 8, 8, 8);
 createBigGrassBlock(-28, -12, 9, 10, 6);
 createBigGrassBlock(33, 22, 10, 8, 7);
 createBigGrassBlock(-30, -30, 9, 9, 10);
 createBigGrassBlock(22, 0, 8, 8, 6);
 
-// Taş duvar (parkurdan ayrı, temiz)
+// Taş duvar
 createStoneWallBlock(28, -32, 16, 10, 0.5);
 
-// Parkur (basamaklı, taş duvarın yanında, çimen bloklarla çakışmayacak)
-createParkourStepsClean(30, -24, 5, 1.2, 2.4, 1.5);
+// Parkur KALDIRILDI
 
 // Ağaçlar
 createBigTree(-36, -36, 2);
@@ -282,7 +274,7 @@ function getFloorY(pX, pY, pZ) {
 }
 
 let velocityY = 0, jumpCount = 0;
-const gravity = 0.8, jumpForce = 18;
+const gravity = 0.8, jumpForce = 13.5; // Zıplama yüksekliği azaltıldı (18 → 13.5)
 
 window.playSolo = function() {
     isOnlineMode = false; gameActive = true;
@@ -399,7 +391,7 @@ window.addEventListener('touchmove', (e) => {
 }, { passive: true });
 window.addEventListener('touchend', () => { isTurningCamera = false; });
 
-document.getElementById('jump-button').addEventListener('touchstart', (e) => { e.preventDefault(); if (gameActive && !isDead && jumpCount < 2) { velocityY = jumpForce; jumpCount++; } });
+document.getElementById('jump-button').addEventListener('touchstart', (e) => { e.preventDefault(); if (gameActive && !isDead && jumpCount < 3) { velocityY = jumpForce; jumpCount++; } });
 document.getElementById('attack-button').addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (gameActive && !isDead && !isAttacking) {
@@ -423,6 +415,9 @@ function animate() {
     requestAnimationFrame(animate);
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
+
+    // Koordinat güncelle
+    document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Z:${Math.round(rabbit.position.z)}`;
 
     if (isOnlineMode && !gameActive && !isDead) {
         rabbit.rotation.y += 1.2 * deltaTime;
