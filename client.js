@@ -39,7 +39,7 @@ const gameplayGroup = new THREE.Group();
 scene.add(gameplayGroup);
 const obstacles = [];
 
-// --- PROSEDÜREL DOKULAR ---
+// --- PROSEDÜREL DOKU OLUŞTURUCU ---
 function createCanvasTexture(width, height, drawFunc) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -49,32 +49,27 @@ function createCanvasTexture(width, height, drawFunc) {
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1, 1);
     return texture;
 }
 
-// KLASİK, MAT ÇİMEN DOKUSU
+// Çimen dokusu (hem yer hem blok üstleri için aynı doku)
 const grassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
-    // Düz, tok yeşil zemin
-    ctx.fillStyle = '#7c9f3e';
+    ctx.fillStyle = '#6daa2e';
     ctx.fillRect(0, 0, w, h);
-    
-    // Rastgele koyu/ açık yeşil noktacıklar (klasik doku)
-    for (let i = 0; i < 3000; i++) {
-        const r = 90 + Math.random() * 40;
-        const g = 140 + Math.random() * 40;
-        const b = 40 + Math.random() * 30;
-        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-        ctx.fillRect(Math.floor(Math.random() * w), Math.floor(Math.random() * h), 2, 2);
+    for (let i = 0; i < 2000; i++) {
+        ctx.fillStyle = `rgb(${100 + Math.random()*40}, ${150 + Math.random()*60}, ${30 + Math.random()*30})`;
+        ctx.fillRect(Math.random()*w, Math.random()*h, 4, 6);
     }
-    // İnce gölge efektleri (parlaklık yok)
-    for (let i = 0; i < 150; i++) {
-        ctx.fillStyle = `rgba(50, 70, 20, 0.15)`;
+    for (let i = 0; i < 300; i++) {
+        ctx.fillStyle = `rgba(50,80,20,${Math.random()*0.3})`;
         ctx.beginPath();
-        ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 4 + 1, 0, Math.PI * 2);
+        ctx.arc(Math.random()*w, Math.random()*h, Math.random()*3+1, 0, Math.PI*2);
         ctx.fill();
     }
 });
 
+// Toprak dokusu
 const dirtTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#8B6B4D';
     ctx.fillRect(0, 0, w, h);
@@ -85,40 +80,44 @@ const dirtTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     }
 });
 
+// Ahşap dokusu
 const woodTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
-    ctx.fillStyle = '#c49a6c';
+    ctx.fillStyle = '#b8956c';
     ctx.fillRect(0, 0, w, h);
-    for (let y = 0; y < h; y += 32) {
-        ctx.fillStyle = `rgba(180, 130, 80, 0.5)`;
-        ctx.fillRect(0, y, w, 16);
-        ctx.fillStyle = `rgba(200, 160, 110, 0.5)`;
-        ctx.fillRect(0, y + 16, w, 16);
-    }
-    for (let i = 0; i < 300; i++) {
-        ctx.strokeStyle = `rgba(120, 70, 30, ${Math.random()*0.5})`;
-        ctx.lineWidth = Math.random()*2+1;
+    for (let i = 0; i < 400; i++) {
+        ctx.strokeStyle = `rgba(120, 70, 30, ${Math.random()*0.4})`;
+        ctx.lineWidth = Math.random()*3+1;
         ctx.beginPath();
-        const y = Math.random() * h;
-        ctx.moveTo(0, y);
-        for (let x = 0; x < w; x += 20) {
-            ctx.lineTo(x, y + (Math.random()-0.5)*8);
-        }
+        ctx.moveTo(0, Math.random()*h);
+        ctx.lineTo(w, Math.random()*h);
         ctx.stroke();
     }
-    for (let i = 0; i < 8; i++) {
-        const bx = Math.random() * w;
-        const by = Math.random() * h;
-        ctx.fillStyle = `rgba(80, 40, 20, 0.6)`;
-        ctx.beginPath();
-        ctx.ellipse(bx, by, 4, 6, 0, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = `rgba(60, 30, 10, 0.8)`;
-        ctx.beginPath();
-        ctx.ellipse(bx, by, 2, 3, 0, 0, Math.PI*2);
-        ctx.fill();
+    for (let i = 0; i < 1500; i++) {
+        ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.1})`;
+        ctx.fillRect(Math.random()*w, Math.random()*h, 1, 3);
     }
 });
 
+// Taş dokusu
+const stoneTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
+    ctx.fillStyle = '#999999';
+    ctx.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1000; i++) {
+        const shade = 120 + Math.random() * 80;
+        ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
+        ctx.fillRect(Math.random()*w, Math.random()*h, 8, 8);
+    }
+    for (let i = 0; i < 80; i++) {
+        ctx.strokeStyle = `rgba(0,0,0,${Math.random()*0.2})`;
+        ctx.lineWidth = Math.random()*2;
+        ctx.beginPath();
+        ctx.moveTo(Math.random()*w, Math.random()*h);
+        ctx.lineTo(Math.random()*w, Math.random()*h);
+        ctx.stroke();
+    }
+});
+
+// Ağaç kabuğu dokusu
 const barkTexture = createCanvasTexture(256, 512, (ctx, w, h) => {
     ctx.fillStyle = '#6B4F3C';
     ctx.fillRect(0, 0, w, h);
@@ -132,6 +131,7 @@ const barkTexture = createCanvasTexture(256, 512, (ctx, w, h) => {
     }
 });
 
+// Yaprak dokusu
 const leafTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#3d7a1c';
     ctx.fillRect(0, 0, w, h);
@@ -141,44 +141,27 @@ const leafTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     }
 });
 
-const roofTileTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
-    ctx.fillStyle = '#8B3A3A';
-    ctx.fillRect(0, 0, w, h);
-    for (let row = 0; row < 8; row++) {
-        const y = row * 32;
-        ctx.fillStyle = `rgba(180, 60, 40, 0.7)`;
-        ctx.fillRect(0, y, w, 14);
-        ctx.fillStyle = `rgba(120, 30, 20, 0.7)`;
-        ctx.fillRect(0, y + 14, w, 18);
-        for (let col = 0; col < 8; col++) {
-            const x = col * 32 + (row % 2) * 16;
-            ctx.strokeStyle = `rgba(60, 20, 10, 0.5)`;
-            ctx.lineWidth = 1;
-            ctx.strokeRect(x, y, 32, 32);
-        }
-    }
-    for (let i = 0; i < 200; i++) {
-        ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.2})`;
-        ctx.fillRect(Math.random()*w, Math.random()*h, 5, 3);
-    }
-});
-
 // --- MALZEMELER ---
-const grassMat = new THREE.MeshStandardMaterial({ map: grassTexture, roughness: 0.95 }); // roughness yüksek = mat
-const dirtMat = new THREE.MeshStandardMaterial({ map: dirtTexture, roughness: 0.85 });
-const woodPlankMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.75 });
-const barkMat = new THREE.MeshStandardMaterial({ map: barkTexture, roughness: 0.8 });
-const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.5 });
-const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.7 });
+const grassMat = new THREE.MeshStandardMaterial({ map: grassTexture, roughness: 0.85 });
+grassTexture.repeat.set(8, 8); // Zemin için tekrar
 
-// --- ZEMİN ---
+const dirtMat = new THREE.MeshStandardMaterial({ map: dirtTexture, roughness: 0.75 });
+dirtTexture.repeat.set(4, 4);
+
+const woodMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.7 });
+const stoneMat = new THREE.MeshStandardMaterial({ map: stoneTexture, roughness: 0.5 });
+const barkMat = new THREE.MeshStandardMaterial({ map: barkTexture, roughness: 0.7 });
+const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.4 });
+const roofMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6 });
+
+// --- ZEMİN (blok üstleri ile aynı materyali kullan) ---
 const groundGeo = new THREE.CircleGeometry(120, 128);
-const ground = new THREE.Mesh(groundGeo, grassMat);
+const ground = new THREE.Mesh(groundGeo, grassMat); // clone() yok, doğrudan aynı materyal
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
-// --- BÜYÜK ÇİMEN BLOK ---
+// --- BÜYÜK ÇİMEN BLOK (tek parça) ---
 function createBigGrassBlock(x, z, width, depth, height) {
     const group = new THREE.Group();
     const bodyGeo = new THREE.BoxGeometry(width, height, depth);
@@ -189,7 +172,7 @@ function createBigGrassBlock(x, z, width, depth, height) {
     group.add(body);
     obstacles.push(body);
     const topGeo = new THREE.BoxGeometry(width - 0.1, 0.2, depth - 0.1);
-    const top = new THREE.Mesh(topGeo, grassMat);
+    const top = new THREE.Mesh(topGeo, grassMat); // Zeminle aynı materyal
     top.position.y = height + 0.1;
     top.receiveShadow = true;
     group.add(top);
@@ -199,31 +182,27 @@ function createBigGrassBlock(x, z, width, depth, height) {
     return group;
 }
 
-// --- AHŞAP EV ---
+// --- AHŞAP EV (çatı da engel) ---
 function createWoodenHouse(x, z, rotY = 0) {
     const group = new THREE.Group();
-    
     const bodyGeo = new THREE.BoxGeometry(6.0, 5.0, 6.0);
-    const body = new THREE.Mesh(bodyGeo, woodPlankMat);
+    const body = new THREE.Mesh(bodyGeo, woodMat);
     body.position.y = 2.5;
     body.castShadow = true; body.receiveShadow = true;
     group.add(body);
     obstacles.push(body);
-    
     const roofGeo = new THREE.ConeGeometry(4.2, 2.8, 4);
     const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = 6.3; // 0.1 daha yukarı
+    roof.position.y = 6.5;
     roof.rotation.y = Math.PI / 4;
     roof.castShadow = true; roof.receiveShadow = true;
     group.add(roof);
     obstacles.push(roof);
-    
     const doorGeo = new THREE.BoxGeometry(1.6, 3.0, 0.2);
     const doorMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.5 });
     const door = new THREE.Mesh(doorGeo, doorMat);
     door.position.set(0, 1.5, 3.1);
     group.add(door);
-    
     group.position.set(x, 0, z);
     group.rotation.y = rotY;
     gameplayGroup.add(group);
