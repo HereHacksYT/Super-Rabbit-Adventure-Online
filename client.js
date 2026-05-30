@@ -234,12 +234,11 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
-// --- UZUN İNCE DUVAR (tek parça, kasma yapmaz) ---
-function createLongWall(x, z, width, height, rotY = 0) {
-    const geo = new THREE.BoxGeometry(width, height, 0.5);
+// --- DUVAR (tek parça) ---
+function createWall(x, z, width, height, depth) {
+    const geo = new THREE.BoxGeometry(width, height, depth);
     const wall = new THREE.Mesh(geo, stoneWallMat);
     wall.position.set(x, height / 2, z);
-    wall.rotation.y = rotY;
     wall.castShadow = true;
     wall.receiveShadow = true;
     gameplayGroup.add(wall);
@@ -340,39 +339,18 @@ createBigTree(40, 14, 2);
 createBigTree(-16, -38, 1.8);
 createBigTree(16, 38, 1.8);
 
-// ============ HARİTA ÇEVRE DUVARLARI (uzun ince, farklı açılarda) ============
-// Kuzey kenarı
-createLongWall(-80, -95, 30, 20, 0.2);
-createLongWall(-45, -100, 35, 18, 0.0);
-createLongWall(-5, -98, 30, 22, -0.1);
-createLongWall(35, -95, 25, 20, 0.1);
-createLongWall(75, -92, 30, 18, 0.0);
+// ============ 4 BÜYÜK DUVAR ============
+// x:-45 z:45 → x:45 z:45 (üst kenar, yatay, dışa doğru)
+createWall(0, 46, 90, 100, 2);
 
-// Güney kenarı
-createLongWall(-75, 92, 30, 20, 0.0);
-createLongWall(-35, 98, 35, 18, -0.1);
-createLongWall(5, 95, 30, 22, 0.1);
-createLongWall(45, 93, 25, 20, 0.0);
-createLongWall(80, 95, 30, 18, -0.2);
+// x:45 z:45 → x:45 z:-45 (sağ kenar, dikey, dışa doğru)
+createWall(46, 0, 2, 100, 90);
 
-// Doğu kenarı
-createLongWall(95, -70, 20, 18, 1.5);
-createLongWall(98, -30, 20, 20, 1.6);
-createLongWall(95, 10, 20, 22, 1.4);
-createLongWall(93, 50, 20, 18, 1.5);
-createLongWall(90, 80, 20, 20, 1.6);
+// x:45 z:-45 → x:-45 z:-45 (alt kenar, yatay, dışa doğru)
+createWall(0, -46, 90, 100, 2);
 
-// Batı kenarı
-createLongWall(-95, -60, 20, 18, 1.5);
-createLongWall(-98, -20, 20, 20, 1.6);
-createLongWall(-95, 20, 20, 22, 1.4);
-createLongWall(-93, 60, 20, 18, 1.5);
-
-// Köşe bağlantıları
-createLongWall(-90, -90, 25, 20, 0.8);
-createLongWall(90, -90, 25, 20, -0.8);
-createLongWall(-90, 90, 25, 20, -0.8);
-createLongWall(90, 90, 25, 20, 0.8);
+// x:-45 z:-45 → x:-45 z:45 (sol kenar, dikey, dışa doğru)
+createWall(-46, 0, 2, 100, 90);
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
