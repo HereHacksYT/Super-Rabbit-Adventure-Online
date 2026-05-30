@@ -234,27 +234,17 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
-// --- KÜP KÜP TAŞ DUVAR (yükseklik 10 kat artırıldı) ---
-function createStoneWall(x, z, width, height, rotY = 0) {
-    const blockSize = 1.0;
-    const cols = Math.round(width / blockSize);
-    const rows = Math.round(height / blockSize);
-    for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-            const geo = new THREE.BoxGeometry(blockSize, blockSize, blockSize);
-            const block = new THREE.Mesh(geo, stoneWallMat);
-            block.position.set(
-                x + c * blockSize - width/2 + blockSize/2,
-                r * blockSize + blockSize/2,
-                z
-            );
-            block.castShadow = true;
-            block.receiveShadow = true;
-            block.rotation.y = rotY;
-            gameplayGroup.add(block);
-            obstacles.push(block);
-        }
-    }
+// --- UZUN İNCE DUVAR (tek parça, kasma yapmaz) ---
+function createLongWall(x, z, width, height, rotY = 0) {
+    const geo = new THREE.BoxGeometry(width, height, 0.5);
+    const wall = new THREE.Mesh(geo, stoneWallMat);
+    wall.position.set(x, height / 2, z);
+    wall.rotation.y = rotY;
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    gameplayGroup.add(wall);
+    obstacles.push(wall);
+    return wall;
 }
 
 // --- BÜYÜK ÇİMEN BLOK (tek parça) ---
@@ -350,38 +340,39 @@ createBigTree(40, 14, 2);
 createBigTree(-16, -38, 1.8);
 createBigTree(16, 38, 1.8);
 
-// ============ KÜP KÜP DUVARLAR (10 kat yüksek) ============
-// Kuzey bölgesi
-createStoneWall(-50, -60, 20, 40, 0.3);
-createStoneWall(-60, -50, 18, 35, -0.5);
-createStoneWall(-40, -65, 15, 50, 0.7);
+// ============ HARİTA ÇEVRE DUVARLARI (uzun ince, farklı açılarda) ============
+// Kuzey kenarı
+createLongWall(-80, -95, 30, 20, 0.2);
+createLongWall(-45, -100, 35, 18, 0.0);
+createLongWall(-5, -98, 30, 22, -0.1);
+createLongWall(35, -95, 25, 20, 0.1);
+createLongWall(75, -92, 30, 18, 0.0);
 
-// Güney bölgesi
-createStoneWall(45, 55, 22, 45, -0.2);
-createStoneWall(55, 45, 16, 30, 0.6);
-createStoneWall(50, 60, 18, 40, -0.8);
+// Güney kenarı
+createLongWall(-75, 92, 30, 20, 0.0);
+createLongWall(-35, 98, 35, 18, -0.1);
+createLongWall(5, 95, 30, 22, 0.1);
+createLongWall(45, 93, 25, 20, 0.0);
+createLongWall(80, 95, 30, 18, -0.2);
 
-// Doğu bölgesi
-createStoneWall(60, -40, 14, 50, -0.4);
-createStoneWall(65, -30, 20, 35, 0.3);
-createStoneWall(55, -50, 16, 45, 0.9);
+// Doğu kenarı
+createLongWall(95, -70, 20, 18, 1.5);
+createLongWall(98, -30, 20, 20, 1.6);
+createLongWall(95, 10, 20, 22, 1.4);
+createLongWall(93, 50, 20, 18, 1.5);
+createLongWall(90, 80, 20, 20, 1.6);
 
-// Batı bölgesi
-createStoneWall(-55, 40, 18, 40, 0.5);
-createStoneWall(-65, 30, 14, 30, -0.6);
-createStoneWall(-50, 50, 20, 50, -0.3);
+// Batı kenarı
+createLongWall(-95, -60, 20, 18, 1.5);
+createLongWall(-98, -20, 20, 20, 1.6);
+createLongWall(-95, 20, 20, 22, 1.4);
+createLongWall(-93, 60, 20, 18, 1.5);
 
-// Orta bölgeye yakın
-createStoneWall(-10, -45, 16, 40, 0.8);
-createStoneWall(10, 45, 14, 35, -0.4);
-createStoneWall(-45, -10, 18, 45, 0.2);
-createStoneWall(45, 10, 15, 30, -0.7);
-
-// Köşe duvarları
-createStoneWall(-70, -70, 12, 50, 0.5);
-createStoneWall(70, 70, 12, 50, -0.5);
-createStoneWall(70, -70, 12, 50, 0.8);
-createStoneWall(-70, 70, 12, 50, -0.8);
+// Köşe bağlantıları
+createLongWall(-90, -90, 25, 20, 0.8);
+createLongWall(90, -90, 25, 20, -0.8);
+createLongWall(-90, 90, 25, 20, -0.8);
+createLongWall(90, 90, 25, 20, 0.8);
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
