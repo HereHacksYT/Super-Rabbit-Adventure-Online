@@ -52,7 +52,7 @@ function createCanvasTexture(width, height, drawFunc) {
     return texture;
 }
 
-// Çimen dokusu (yer ve blok üstleri için aynı)
+// Çimen dokusu (hem yer hem blok üstleri için TEK DOKU)
 const grassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#6daa2e';
     ctx.fillRect(0, 0, w, h);
@@ -134,7 +134,6 @@ const leafTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     }
 });
 
-// Kiremit dokusu (konik çatı için)
 const roofTileTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#8B3A3A';
     ctx.fillRect(0, 0, w, h);
@@ -163,9 +162,9 @@ const dirtMat = new THREE.MeshStandardMaterial({ map: dirtTexture, roughness: 0.
 const woodPlankMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.65 });
 const barkMat = new THREE.MeshStandardMaterial({ map: barkTexture, roughness: 0.7 });
 const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.4 });
-const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.6 }); // Kiremit çatı
+const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.6 });
 
-// --- ZEMİN (çimen doku) ---
+// --- ZEMİN (BLOK ÜSTLERİYLE AYNI ÇİMEN DOKU) ---
 const groundGeo = new THREE.CircleGeometry(120, 128);
 const ground = new THREE.Mesh(groundGeo, grassMat);
 ground.rotation.x = -Math.PI / 2;
@@ -193,11 +192,10 @@ function createBigGrassBlock(x, z, width, depth, height) {
     return group;
 }
 
-// --- AHŞAP EV (konik çatı geri döndü, engele eklendi, kiremit dokulu) ---
+// --- AHŞAP EV (çatı 0.5 aşağı indirildi, boşluk yok) ---
 function createWoodenHouse(x, z, rotY = 0) {
     const group = new THREE.Group();
     
-    // Gövde
     const bodyGeo = new THREE.BoxGeometry(6.0, 5.0, 6.0);
     const body = new THREE.Mesh(bodyGeo, woodPlankMat);
     body.position.y = 2.5;
@@ -205,16 +203,14 @@ function createWoodenHouse(x, z, rotY = 0) {
     group.add(body);
     obstacles.push(body);
     
-    // Konik çatı (kiremit dokulu, engele eklendi)
     const roofGeo = new THREE.ConeGeometry(4.2, 2.8, 4);
     const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = 6.5;
+    roof.position.y = 6.0; // 6.5'ten 6.0'a indirildi
     roof.rotation.y = Math.PI / 4;
     roof.castShadow = true; roof.receiveShadow = true;
     group.add(roof);
-    obstacles.push(roof); // İÇİNDEN GEÇİLMEZ
+    obstacles.push(roof);
     
-    // Kapı
     const doorGeo = new THREE.BoxGeometry(1.6, 3.0, 0.2);
     const doorMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.5 });
     const door = new THREE.Mesh(doorGeo, doorMat);
