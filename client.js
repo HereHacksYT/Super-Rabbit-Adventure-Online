@@ -52,18 +52,35 @@ function createCanvasTexture(width, height, drawFunc) {
     return texture;
 }
 
-// Çimen dokusu (hem yer hem blok üstleri için TEK DOKU)
-const grassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
-    ctx.fillStyle = '#6daa2e';
+// YENİ ÇİMEN DOKUSU
+const grassTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
+    // Ana zemin
+    const gradient = ctx.createLinearGradient(0, 0, w, h);
+    gradient.addColorStop(0, '#7cb342');
+    gradient.addColorStop(0.5, '#8bc34a');
+    gradient.addColorStop(1, '#689f38');
+    ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < 2000; i++) {
-        ctx.fillStyle = `rgb(${100 + Math.random()*40}, ${150 + Math.random()*60}, ${30 + Math.random()*30})`;
-        ctx.fillRect(Math.random()*w, Math.random()*h, 4, 6);
+    // Çimen lekeleri
+    for (let i = 0; i < 4000; i++) {
+        const x = Math.random() * w;
+        const y = Math.random() * h;
+        const shade = 40 + Math.random() * 30;
+        ctx.fillStyle = `rgb(${100 + shade}, ${160 + shade}, ${30 + shade/2})`;
+        ctx.fillRect(x, y, 3 + Math.random() * 4, 2 + Math.random() * 4);
     }
-    for (let i = 0; i < 300; i++) {
-        ctx.fillStyle = `rgba(50,80,20,${Math.random()*0.3})`;
+    // Daha koyu gölge noktaları
+    for (let i = 0; i < 600; i++) {
+        ctx.fillStyle = `rgba(30, 60, 10, ${Math.random() * 0.25})`;
         ctx.beginPath();
-        ctx.arc(Math.random()*w, Math.random()*h, Math.random()*3+1, 0, Math.PI*2);
+        ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 4 + 1, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    // Açık renk vurgular
+    for (let i = 0; i < 400; i++) {
+        ctx.fillStyle = `rgba(180, 220, 100, ${Math.random() * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 2 + 0.5, 0, Math.PI * 2);
         ctx.fill();
     }
 });
@@ -164,14 +181,14 @@ const barkMat = new THREE.MeshStandardMaterial({ map: barkTexture, roughness: 0.
 const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.4 });
 const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.6 });
 
-// --- ZEMİN (BLOK ÜSTLERİYLE AYNI ÇİMEN DOKU) ---
+// --- ZEMİN ---
 const groundGeo = new THREE.CircleGeometry(120, 128);
 const ground = new THREE.Mesh(groundGeo, grassMat);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
-// --- BÜYÜK ÇİMEN BLOK (tek parça) ---
+// --- BÜYÜK ÇİMEN BLOK ---
 function createBigGrassBlock(x, z, width, depth, height) {
     const group = new THREE.Group();
     const bodyGeo = new THREE.BoxGeometry(width, height, depth);
@@ -192,7 +209,7 @@ function createBigGrassBlock(x, z, width, depth, height) {
     return group;
 }
 
-// --- AHŞAP EV (çatı 0.5 aşağı indirildi, boşluk yok) ---
+// --- AHŞAP EV ---
 function createWoodenHouse(x, z, rotY = 0) {
     const group = new THREE.Group();
     
@@ -205,7 +222,7 @@ function createWoodenHouse(x, z, rotY = 0) {
     
     const roofGeo = new THREE.ConeGeometry(4.2, 2.8, 4);
     const roof = new THREE.Mesh(roofGeo, roofMat);
-    roof.position.y = 6.0; // 6.5'ten 6.0'a indirildi
+    roof.position.y = 6.2;
     roof.rotation.y = Math.PI / 4;
     roof.castShadow = true; roof.receiveShadow = true;
     group.add(roof);
