@@ -39,7 +39,7 @@ const gameplayGroup = new THREE.Group();
 scene.add(gameplayGroup);
 const obstacles = [];
 
-// --- PROSEDÜREL DOKU OLUŞTURUCU ---
+// --- PROSEDÜREL DOKULAR ---
 function createCanvasTexture(width, height, drawFunc) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -52,7 +52,7 @@ function createCanvasTexture(width, height, drawFunc) {
     return texture;
 }
 
-// Çimen dokusu (blok üstleriyle aynı)
+// Çimen dokusu (yer ve blok üstleri için aynı)
 const grassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#6daa2e';
     ctx.fillRect(0, 0, w, h);
@@ -68,7 +68,6 @@ const grassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     }
 });
 
-// Toprak dokusu
 const dirtTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#8B6B4D';
     ctx.fillRect(0, 0, w, h);
@@ -79,19 +78,15 @@ const dirtTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     }
 });
 
-// YENİ Ahşap dokusu (belirgin tahta çizgili)
 const woodTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
-    // Temel ahşap rengi
     ctx.fillStyle = '#c49a6c';
     ctx.fillRect(0, 0, w, h);
-    // Belirgin yatay tahta çizgileri
     for (let y = 0; y < h; y += 32) {
         ctx.fillStyle = `rgba(180, 130, 80, 0.5)`;
         ctx.fillRect(0, y, w, 16);
         ctx.fillStyle = `rgba(200, 160, 110, 0.5)`;
         ctx.fillRect(0, y + 16, w, 16);
     }
-    // Ahşap damarları
     for (let i = 0; i < 300; i++) {
         ctx.strokeStyle = `rgba(120, 70, 30, ${Math.random()*0.5})`;
         ctx.lineWidth = Math.random()*2+1;
@@ -103,7 +98,6 @@ const woodTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
         }
         ctx.stroke();
     }
-    // Budak delikleri
     for (let i = 0; i < 8; i++) {
         const bx = Math.random() * w;
         const by = Math.random() * h;
@@ -118,26 +112,6 @@ const woodTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     }
 });
 
-// Taş dokusu
-const stoneTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
-    ctx.fillStyle = '#999999';
-    ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < 1000; i++) {
-        const shade = 120 + Math.random() * 80;
-        ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
-        ctx.fillRect(Math.random()*w, Math.random()*h, 8, 8);
-    }
-    for (let i = 0; i < 80; i++) {
-        ctx.strokeStyle = `rgba(0,0,0,${Math.random()*0.2})`;
-        ctx.lineWidth = Math.random()*2;
-        ctx.beginPath();
-        ctx.moveTo(Math.random()*w, Math.random()*h);
-        ctx.lineTo(Math.random()*w, Math.random()*h);
-        ctx.stroke();
-    }
-});
-
-// Ağaç kabuğu dokusu
 const barkTexture = createCanvasTexture(256, 512, (ctx, w, h) => {
     ctx.fillStyle = '#6B4F3C';
     ctx.fillRect(0, 0, w, h);
@@ -151,7 +125,6 @@ const barkTexture = createCanvasTexture(256, 512, (ctx, w, h) => {
     }
 });
 
-// Yaprak dokusu
 const leafTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#3d7a1c';
     ctx.fillRect(0, 0, w, h);
@@ -161,18 +134,16 @@ const leafTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     }
 });
 
-// Kiremit dokusu (çatı için)
+// Kiremit dokusu (konik çatı için)
 const roofTileTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#8B3A3A';
     ctx.fillRect(0, 0, w, h);
-    // Yatay kiremit sıraları
     for (let row = 0; row < 8; row++) {
         const y = row * 32;
         ctx.fillStyle = `rgba(180, 60, 40, 0.7)`;
         ctx.fillRect(0, y, w, 14);
         ctx.fillStyle = `rgba(120, 30, 20, 0.7)`;
         ctx.fillRect(0, y + 14, w, 18);
-        // Kiremit çizgileri
         for (let col = 0; col < 8; col++) {
             const x = col * 32 + (row % 2) * 16;
             ctx.strokeStyle = `rgba(60, 20, 10, 0.5)`;
@@ -180,7 +151,6 @@ const roofTileTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
             ctx.strokeRect(x, y, 32, 32);
         }
     }
-    // Eskime efektleri
     for (let i = 0; i < 200; i++) {
         ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.2})`;
         ctx.fillRect(Math.random()*w, Math.random()*h, 5, 3);
@@ -190,13 +160,12 @@ const roofTileTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
 // --- MALZEMELER ---
 const grassMat = new THREE.MeshStandardMaterial({ map: grassTexture, roughness: 0.85 });
 const dirtMat = new THREE.MeshStandardMaterial({ map: dirtTexture, roughness: 0.75 });
-const woodPlankMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.65 }); // Yeni ahşap
-const stoneMat = new THREE.MeshStandardMaterial({ map: stoneTexture, roughness: 0.5 });
+const woodPlankMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.65 });
 const barkMat = new THREE.MeshStandardMaterial({ map: barkTexture, roughness: 0.7 });
 const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.4 });
-const roofTileMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.6 }); // Kiremit
+const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.6 }); // Kiremit çatı
 
-// --- ZEMİN (blok üstleriyle aynı doku) ---
+// --- ZEMİN (çimen doku) ---
 const groundGeo = new THREE.CircleGeometry(120, 128);
 const ground = new THREE.Mesh(groundGeo, grassMat);
 ground.rotation.x = -Math.PI / 2;
@@ -224,11 +193,11 @@ function createBigGrassBlock(x, z, width, depth, height) {
     return group;
 }
 
-// --- AHŞAP EV (yeni ahşap + kiremit çatı) ---
+// --- AHŞAP EV (konik çatı geri döndü, engele eklendi, kiremit dokulu) ---
 function createWoodenHouse(x, z, rotY = 0) {
     const group = new THREE.Group();
     
-    // Gövde (yeni ahşap doku)
+    // Gövde
     const bodyGeo = new THREE.BoxGeometry(6.0, 5.0, 6.0);
     const body = new THREE.Mesh(bodyGeo, woodPlankMat);
     body.position.y = 2.5;
@@ -236,22 +205,14 @@ function createWoodenHouse(x, z, rotY = 0) {
     group.add(body);
     obstacles.push(body);
     
-    // ESKİ KONİK ÇATI (görünmez, sadece dekor)
-    const oldRoofGeo = new THREE.ConeGeometry(4.2, 2.8, 4);
-    const oldRoofMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.6, visible: false });
-    const oldRoof = new THREE.Mesh(oldRoofGeo, oldRoofMat);
-    oldRoof.position.y = 6.5;
-    oldRoof.rotation.y = Math.PI / 4;
-    oldRoof.visible = false; // GÖRÜNMEZ
-    group.add(oldRoof);
-    
-    // YENİ KUTU ÇATI (kiremit dokulu, engele ekli)
-    const newRoofGeo = new THREE.BoxGeometry(6.4, 1.5, 6.4);
-    const newRoof = new THREE.Mesh(newRoofGeo, roofTileMat);
-    newRoof.position.y = 6.5;
-    newRoof.castShadow = true; newRoof.receiveShadow = true;
-    group.add(newRoof);
-    obstacles.push(newRoof); // İÇİNDEN GEÇİLMEZ
+    // Konik çatı (kiremit dokulu, engele eklendi)
+    const roofGeo = new THREE.ConeGeometry(4.2, 2.8, 4);
+    const roof = new THREE.Mesh(roofGeo, roofMat);
+    roof.position.y = 6.5;
+    roof.rotation.y = Math.PI / 4;
+    roof.castShadow = true; roof.receiveShadow = true;
+    group.add(roof);
+    obstacles.push(roof); // İÇİNDEN GEÇİLMEZ
     
     // Kapı
     const doorGeo = new THREE.BoxGeometry(1.6, 3.0, 0.2);
