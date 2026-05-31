@@ -16,6 +16,13 @@ let joystickActive = false;
 let moveX = 0;
 let moveZ = 0;
 
+// Maymun değişkenleri
+let monkey = null;
+let monkeyAlive = true;
+let monkeyRespawnTimer = null;
+let monkeyAttackCooldown = 0;
+let monkeyAnimTime = 0;
+
 // 3D SAHNE
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB);
@@ -723,7 +730,6 @@ cube.castShadow = true; cube.receiveShadow = true;
 gameplayGroup.add(cube);
 obstacles.push(cube);
 
-// Küp üstü çimen
 const cubeTopGeo = new THREE.BoxGeometry(cubeMaxX - cubeMinX - 0.2, 0.3, cubeMaxZ - cubeMinZ - 0.2);
 const cubeTop = new THREE.Mesh(cubeTopGeo, blockGrassMat);
 cubeTop.position.set((cubeMinX + cubeMaxX) / 2, cubeHeight + 0.15, (cubeMinZ + cubeMaxZ) / 2);
@@ -731,79 +737,152 @@ cubeTop.receiveShadow = true;
 gameplayGroup.add(cubeTop);
 obstacles.push(cubeTop);
 
-// --- MAYMUN (X:180, Y:25.3, Z:140) ---
+// --- MAYMUN (SALDIRILI, CANLI) ---
 function createMonkey(x, y, z) {
     const monkeyGroup = new THREE.Group();
+    monkeyGroup.name = 'monkey';
+    
+    // Ayaklar
+    const footGeo = new THREE.BoxGeometry(0.25, 0.15, 0.3);
+    const footMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.6 });
+    const footL = new THREE.Mesh(footGeo, footMat);
+    footL.position.set(-0.2, 0.1, 0.1);
+    monkeyGroup.add(footL);
+    const footR = new THREE.Mesh(footGeo, footMat);
+    footR.position.set(0.2, 0.1, 0.1);
+    monkeyGroup.add(footR);
+    
+    // Bacaklar
+    const legGeo = new THREE.CylinderGeometry(0.1, 0.12, 0.6, 6);
+    const legMat = new THREE.MeshStandardMaterial({ color: 0x8B5A3C, roughness: 0.6 });
+    const legL = new THREE.Mesh(legGeo, legMat);
+    legL.position.set(-0.2, 0.4, 0.05);
+    monkeyGroup.add(legL);
+    const legR = new THREE.Mesh(legGeo, legMat);
+    legR.position.set(0.2, 0.4, 0.05);
+    monkeyGroup.add(legR);
     
     // Gövde
-    const bodyGeo = new THREE.CylinderGeometry(0.4, 0.45, 1.2, 8);
+    const bodyGeo = new THREE.CylinderGeometry(0.35, 0.4, 1.0, 8);
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x8B5A3C, roughness: 0.6 });
     const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 0.6;
+    body.position.y = 0.8;
     body.castShadow = true; body.receiveShadow = true;
     monkeyGroup.add(body);
     
+    // Kollar
+    const armGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.7, 6);
+    const armMat = new THREE.MeshStandardMaterial({ color: 0x8B5A3C, roughness: 0.6 });
+    const armL = new THREE.Mesh(armGeo, armMat);
+    armL.position.set(-0.45, 1.1, 0);
+    armL.rotation.z = 0.5;
+    monkeyGroup.add(armL);
+    const armR = new THREE.Mesh(armGeo, armMat);
+    armR.position.set(0.45, 1.1, 0);
+    armR.rotation.z = -0.5;
+    monkeyGroup.add(armR);
+    
+    // Muz (sağ elinde)
+    const bananaGroup = new THREE.Group();
+    bananaGroup.position.set(0.5, 0.7, 0);
+    const bananaCurve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0.05, 0.2, 0.05),
+        new THREE.Vector3(0, 0.4, 0.1),
+        new THREE.Vector3(-0.05, 0.55, 0.05),
+        new THREE.Vector3(0, 0.65, 0)
+    ]);
+    const bananaGeo = new THREE.TubeGeometry(bananaCurve, 8, 0.04, 6, false);
+    const bananaMat = new THREE.MeshStandardMaterial({ color: 0xFFE135, roughness: 0.4 });
+    const banana = new THREE.Mesh(bananaGeo, bananaMat);
+    bananaGroup.add(banana);
+    monkeyGroup.add(bananaGroup);
+    
     // Kafa
-    const headGeo = new THREE.SphereGeometry(0.35, 8, 8);
+    const headGeo = new THREE.SphereGeometry(0.3, 8, 8);
     const headMat = new THREE.MeshStandardMaterial({ color: 0xA0704A, roughness: 0.5 });
     const head = new THREE.Mesh(headGeo, headMat);
-    head.position.y = 1.4;
+    head.position.y = 1.5;
     head.castShadow = true; head.receiveShadow = true;
     monkeyGroup.add(head);
     
     // Kulaklar
-    const earGeo = new THREE.SphereGeometry(0.12, 6, 6);
+    const earGeo = new THREE.SphereGeometry(0.1, 6, 6);
     const earMat = new THREE.MeshStandardMaterial({ color: 0xD4956B, roughness: 0.5 });
     const earL = new THREE.Mesh(earGeo, earMat);
-    earL.position.set(-0.3, 1.55, 0);
+    earL.position.set(-0.25, 1.65, 0);
     monkeyGroup.add(earL);
     const earR = new THREE.Mesh(earGeo, earMat);
-    earR.position.set(0.3, 1.55, 0);
+    earR.position.set(0.25, 1.65, 0);
     monkeyGroup.add(earR);
     
     // Gözler
-    const eyeGeo = new THREE.SphereGeometry(0.07, 6, 6);
+    const eyeGeo = new THREE.SphereGeometry(0.06, 6, 6);
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
     const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeL.position.set(-0.12, 1.5, 0.28);
+    eyeL.position.set(-0.1, 1.6, 0.25);
     monkeyGroup.add(eyeL);
     const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeR.position.set(0.12, 1.5, 0.28);
+    eyeR.position.set(0.1, 1.6, 0.25);
     monkeyGroup.add(eyeR);
     
     // Burun
-    const noseGeo = new THREE.SphereGeometry(0.08, 6, 6);
+    const noseGeo = new THREE.SphereGeometry(0.07, 6, 6);
     const noseMat = new THREE.MeshStandardMaterial({ color: 0x4A2A1A, roughness: 0.4 });
     const nose = new THREE.Mesh(noseGeo, noseMat);
-    nose.position.set(0, 1.42, 0.32);
+    nose.position.set(0, 1.52, 0.28);
     monkeyGroup.add(nose);
     
     // Kuyruk
     const tailPoints = [];
-    for (let i = 0; i < 8; i++) {
-        const angle = i * 0.5;
+    for (let i = 0; i < 10; i++) {
+        const angle = i * 0.6;
         tailPoints.push(new THREE.Vector3(
             Math.sin(angle) * 0.3,
-            0.3 - i * 0.2,
-            Math.cos(angle) * 0.3 - 0.4
+            0.5 - i * 0.2,
+            Math.cos(angle) * 0.3 - 0.3
         ));
     }
     const tailCurve = new THREE.CatmullRomCurve3(tailPoints);
-    const tailGeo = new THREE.TubeGeometry(tailCurve, 16, 0.06, 6, false);
+    const tailGeo = new THREE.TubeGeometry(tailCurve, 16, 0.05, 6, false);
     const tailMat = new THREE.MeshStandardMaterial({ color: 0x8B5A3C, roughness: 0.6 });
     const tail = new THREE.Mesh(tailGeo, tailMat);
-    tail.position.y = 1.1;
+    tail.position.y = 1.3;
     monkeyGroup.add(tail);
     
     monkeyGroup.position.set(x, y, z);
-    monkeyGroup.rotation.y = Math.random() * Math.PI * 2;
+    monkeyGroup.userData = {
+        homeX: x,
+        homeY: y,
+        homeZ: z,
+        bananaGroup: bananaGroup,
+        targetX: x,
+        targetZ: z,
+        speed: 0.05,
+        attackRange: 1.5,
+        chaseRange: 8,
+        homeRange: 15,
+        health: 50,
+        maxHealth: 50,
+        isDead: false,
+        deathTime: 0
+    };
+    
     gameplayGroup.add(monkeyGroup);
     obstacles.push(monkeyGroup);
+    monkey = monkeyGroup;
     
     return monkeyGroup;
 }
 
-createMonkey(180, 25.3, 140);
+createMonkey(175, 25.3, 140);
+
+// Maymun sağlık barı
+const monkeyHealthBarContainer = document.createElement('div');
+monkeyHealthBarContainer.id = 'monkey-health-container';
+monkeyHealthBarContainer.style.cssText = 'display:none; position:absolute; top:55px; left:15px; z-index:5; width:180px; height:15px; background:rgba(0,0,0,0.6); border-radius:7px; border:1px solid white; overflow:hidden;';
+monkeyHealthBarContainer.innerHTML = '<div id="monkey-health-fill" style="width:100%; height:100%; background:linear-gradient(90deg, #f44336, #ff5722); transition:width 0.2s;"></div>';
+document.body.appendChild(monkeyHealthBarContainer);
 
 // --- PARKUR (4 BASAMAKLI, TOPLAM 16 BASAMAK) ---
 function createParkourStep(x, z, y, w, d) {
@@ -818,13 +897,9 @@ function createParkourStep(x, z, y, w, d) {
 }
 
 const parkourData = [
-    // üst kenar
     {x: 167, z: 124}, {x: 171, z: 124}, {x: 175, z: 124}, {x: 179, z: 124},
-    // sağ kenar
     {x: 186, z: 128}, {x: 186, z: 133}, {x: 186, z: 138}, {x: 186, z: 143},
-    // alt kenar
     {x: 179, z: 156}, {x: 175, z: 156}, {x: 171, z: 156}, {x: 167, z: 156},
-    // sol kenar
     {x: 164, z: 143}, {x: 164, z: 138}, {x: 164, z: 133}, {x: 164, z: 128}
 ];
 
@@ -1073,12 +1148,101 @@ window.addEventListener('touchmove', (e) => {
 
 window.addEventListener('touchend', () => { isTurningCamera = false; });
 
+// --- MAYMUN YAPAY ZEKA ---
+function updateMonkeyAI(deltaTime) {
+    if (!monkey || !monkeyAlive) return;
+    
+    const ud = monkey.userData;
+    const monkeyPos = monkey.position;
+    const playerPos = rabbit.position;
+    const dist = new THREE.Vector2(monkeyPos.x - playerPos.x, monkeyPos.z - playerPos.z).length();
+    const distFromHome = new THREE.Vector2(monkeyPos.x - ud.homeX, monkeyPos.z - ud.homeZ).length();
+    
+    // Ölüyse canlanma kontrolü
+    if (ud.isDead) {
+        if (Date.now() - ud.deathTime > 60000) { // 1 dakika
+            ud.isDead = false;
+            ud.health = ud.maxHealth;
+            monkey.visible = true;
+            monkey.position.set(ud.homeX, ud.homeY, ud.homeZ);
+            monkeyHealthBarContainer.style.display = 'none';
+            document.getElementById('monkey-health-fill').style.width = '100%';
+        }
+        return;
+    }
+    
+    // Oyuncu belirli mesafedeyse kovala
+    if (dist < ud.chaseRange && distFromHome < ud.homeRange) {
+        const angle = Math.atan2(playerPos.x - monkeyPos.x, playerPos.z - monkeyPos.z);
+        ud.targetX = monkeyPos.x + Math.sin(angle) * ud.speed;
+        ud.targetZ = monkeyPos.z + Math.cos(angle) * ud.speed;
+        
+        // Maymun oyuncuya dönük
+        monkey.rotation.y = angle;
+        
+        // Saldırı menzilinde ve cooldown hazırsa saldır
+        if (dist < ud.attackRange && monkeyAttackCooldown <= 0) {
+            // Muz animasyonu
+            ud.bananaGroup.rotation.x = Math.sin(Date.now() * 0.01) * 0.5;
+            
+            monkeyAttackCooldown = 1.5;
+            myHealth -= 10;
+            updateHealthBar();
+            
+            if (myHealth <= 0) {
+                myHealth = 0;
+                die();
+            }
+        }
+    } else if (distFromHome > 0.5) {
+        // Eve dön
+        const angle = Math.atan2(ud.homeX - monkeyPos.x, ud.homeZ - monkeyPos.z);
+        ud.targetX = monkeyPos.x + Math.sin(angle) * ud.speed;
+        ud.targetZ = monkeyPos.z + Math.cos(angle) * ud.speed;
+        monkey.rotation.y = angle;
+    }
+    
+    // Hareket
+    monkey.position.x += (ud.targetX - monkeyPos.x) * 0.1;
+    monkey.position.z += (ud.targetZ - monkeyPos.z) * 0.1;
+    
+    // Zıplama animasyonu
+    monkey.position.y = ud.homeY + Math.abs(Math.sin(Date.now() * 0.005)) * 0.2;
+    
+    // Cooldown güncelle
+    if (monkeyAttackCooldown > 0) monkeyAttackCooldown -= deltaTime;
+    
+    // Sağlık barı
+    if (dist < ud.chaseRange) {
+        monkeyHealthBarContainer.style.display = 'block';
+        const healthPercent = (ud.health / ud.maxHealth) * 100;
+        document.getElementById('monkey-health-fill').style.width = healthPercent + '%';
+    } else {
+        monkeyHealthBarContainer.style.display = 'none';
+    }
+    
+    // Oyuncu maymuna vurdu mu?
+    if (isAttacking && dist < ud.attackRange + 0.5 && attackAnimTime < 0.2) {
+        ud.health -= 25;
+        if (ud.health <= 0) {
+            ud.health = 0;
+            ud.isDead = true;
+            ud.deathTime = Date.now();
+            monkey.visible = false;
+            monkeyHealthBarContainer.style.display = 'none';
+        }
+    }
+}
+
 // --- ANA DÖNGÜ ---
 let legWiggle = 0;
 function animate() {
     requestAnimationFrame(animate);
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
+    
+    // Maymun AI
+    updateMonkeyAI(deltaTime);
     
     let finalMoveX = 0, finalMoveZ = 0;
     if (joystickActive) { finalMoveX = moveX; finalMoveZ = moveZ; }
