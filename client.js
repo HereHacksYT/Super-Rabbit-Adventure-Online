@@ -493,11 +493,10 @@ function createGoldenPortal(x, z, targetX, targetZ) {
     return group;
 }
 
-// --- TABELA ---
+// --- TABELA (yüzü kuzeye bakar) ---
 function createSign(x, z, text, rotY = 0) {
     const group = new THREE.Group();
     
-    // Direk
     const poleGeo = new THREE.CylinderGeometry(0.1, 0.15, 3.5, 8);
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.7 });
     const pole = new THREE.Mesh(poleGeo, poleMat);
@@ -505,7 +504,6 @@ function createSign(x, z, text, rotY = 0) {
     pole.castShadow = true;
     group.add(pole);
     
-    // Tabela tahtası
     const boardGeo = new THREE.BoxGeometry(4.0, 1.2, 0.2);
     const boardMat = new THREE.MeshStandardMaterial({ color: 0xc49a6c, roughness: 0.7 });
     const board = new THREE.Mesh(boardGeo, boardMat);
@@ -514,7 +512,6 @@ function createSign(x, z, text, rotY = 0) {
     board.receiveShadow = true;
     group.add(board);
     
-    // Canvas yazı
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 128;
@@ -532,7 +529,6 @@ function createSign(x, z, text, rotY = 0) {
     const textPlaneGeo = new THREE.PlaneGeometry(3.8, 1.0);
     const textPlane = new THREE.Mesh(textPlaneGeo, textMat);
     textPlane.position.set(0, 3.0, 0.11);
-    textPlane.rotation.y = 0;
     group.add(textPlane);
     
     group.position.set(x, 0, z);
@@ -636,14 +632,13 @@ createBigTree(40, 15, 2);
 createBigTree(-15, -40, 1.8);
 createBigTree(15, 40, 1.8);
 
-// Gidiş portalı (X:0 Z:40)
+// Gidiş portalı (X:0 Z:40) ve tabelası (yüzü güneye bakar)
 createGoldenPortal(0, 40, 200, 80);
+createSign(0, 43, "Yağmurlu Orman", Math.PI); // yüzü güneye (merkezden dışarı)
 
-// Tabela (X:0 Z:43)
-createSign(0, 43, "Yağmurlu Orman", 0);
-
-// Geri dönüş portalı (X:200 Z:80 → X:0 Z:37)
+// Geri dönüş portalı (X:200 Z:80) ve tabelası
 createGoldenPortal(200, 80, 0, 37);
+createSign(200, 83, "Geri Dön", 0); // yüzü kuzeye
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
