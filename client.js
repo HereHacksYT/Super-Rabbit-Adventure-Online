@@ -252,7 +252,6 @@ document.addEventListener('keydown', (e) => {
             });
         }
     }
-    // Işık oyunu için ayna döndürme
     if (lightGameActive && (e.key === 'e' || e.key === 'f')) {
         handleMirrorRotate();
     }
@@ -869,6 +868,10 @@ createSign(0, 43, "Yağmurlu Orman", Math.PI);
 createGoldenPortal(200, 80, 0, 37);
 createSign(200, 76, "Geri Dön", 0);
 
+// Işık oyununa giden portal
+createGoldenPortal(0, -50, 310, 100);
+createSign(0, -53, "Işık Oyunu", 0);
+
 const coordSpan = document.createElement('span');
 coordSpan.id = 'coords-display';
 coordSpan.style.marginLeft = '15px';
@@ -1153,7 +1156,7 @@ function showMessage(text) {
     }, 2000);
 }
 
-// ===================== IŞIK YANSITMA OYUNU (X:310 Z:100) =====================
+// ===================== IŞIK YANSITMA OYUNU =====================
 const lightGameZone = { x: 310, z: 100 };
 let lightGameActive = false, lightGameCompleted = false, hasSecondKey = false, currentLevel = 0, mirrors = [], rayLines = [];
 const levels = [
@@ -1250,8 +1253,7 @@ function handleMirrorRotate() {
     for(let m of mirrors) if(!m.userData.fixed) { const d = Math.hypot(rabbit.position.x - m.position.x, rabbit.position.z - m.position.z); if(d<minD) { minD=d; closest=m; } }
     if(closest) { closest.rotation.y += Math.PI/4; updateLaserLight(); showMessage("Ayna döndürüldü", 800); }
 }
-// ==========================================================================
-
+// ===================== ANA DÖNGÜ =====================
 let legWiggle = 0;
 function animate() {
     requestAnimationFrame(animate);
