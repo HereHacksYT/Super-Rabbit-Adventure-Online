@@ -7,6 +7,8 @@ let maxPlayersLimit = 4;
 let isDead = false;
 let respawnTimer = null;
 let respawnCountdown = 15;
+let lastTeleportTime = 0;
+const teleportCooldown = 3; // saniye
 
 // 3D SAHNE
 const scene = new THREE.Scene();
@@ -38,6 +40,7 @@ scene.add(sunLight);
 const gameplayGroup = new THREE.Group();
 scene.add(gameplayGroup);
 const obstacles = [];
+const portals = []; // portal listesi
 
 // --- PROSEDÜREL DOKU OLUŞTURUCU ---
 function createCanvasTexture(width, height, drawFunc) {
@@ -234,13 +237,13 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
-// --- DUVAR (tek parça) ---
-function createWall(x, z, width, height, depth) {
+// --- DUVAR (gölgesiz versiyon) ---
+function createShadowlessWall(x, z, width, height, depth) {
     const geo = new THREE.BoxGeometry(width, height, depth);
     const wall = new THREE.Mesh(geo, stoneWallMat);
     wall.position.set(x, height / 2, z);
-    wall.castShadow = true;
-    wall.receiveShadow = true;
+    wall.castShadow = false;   // gölge yok
+    wall.receiveShadow = false; // gölge almaz
     gameplayGroup.add(wall);
     obstacles.push(wall);
     return wall;
@@ -315,6 +318,26 @@ function createBigTree(x, z, scale = 2) {
     return group;
 }
 
+// --- PORTAL (güzel görünümlü) ---
+function createPortal(x, z, targetX, targetZ, color = 0x00ffff) {
+    const group = new THREE.Group();
+    const ringGeo = new THREE.TorusGeometry(1.2, 0.15, 16, 40);
+    const ringMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.8, roughness: 0.2 });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = 1.4;
+    group.add(ring);
+    const pillarGeo = new THREE.CylinderGeometry(0.35, 0.35, 2.8, 16);
+    const pillarMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0.35 });
+    const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+    pillar.position.y = 1.4;
+    group.add(pillar);
+    group.position.set(x, 0, z);
+    gameplayGroup.add(group);
+    portals.push({ mesh: group, target: new THREE.Vector3(targetX, 0, targetZ), color: color });
+    return group;
+}
+
 // ============ HARİTA ELEMANLARI ============
 createWoodenHouse(-20, -16, 0.2);
 createWoodenHouse(18, 13, -0.3);
@@ -339,18 +362,14 @@ createBigTree(40, 14, 2);
 createBigTree(-16, -38, 1.8);
 createBigTree(16, 38, 1.8);
 
-// ============ 4 BÜYÜK DUVAR ============
-// x:-45 z:45 → x:45 z:45 (üst kenar, yatay, dışa doğru)
-createWall(0, 46, 90, 100, 2);
+// ============ 4 BÜYÜK DUVAR (gölgesiz) ============
+createShadowlessWall(0, 46, 90, 100, 2);
+createShadowlessWall(46, 0, 2, 100, 90);
+createShadowlessWall(0, -46, 90, 100, 2);
+createShadowlessWall(-46, 0, 2, 100, 90);
 
-// x:45 z:45 → x:45 z:-45 (sağ kenar, dikey, dışa doğru)
-createWall(46, 0, 2, 100, 90);
-
-// x:45 z:-45 → x:-45 z:-45 (alt kenar, yatay, dışa doğru)
-createWall(0, -46, 90, 100, 2);
-
-// x:-45 z:-45 → x:-45 z:45 (sol kenar, dikey, dışa doğru)
-createWall(-46, 0, 2, 100, 90);
+// ============ PORTAL (x:0, z:35) ============
+createPortal(0, 35, 0, 0, 0x44ffff);
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
@@ -583,7 +602,7 @@ document.getElementById('attack-button').addEventListener('touchstart', (e) => {
     }
 });
 
-// ANA DÖNGÜ
+// ANA DÖNGÜ + PORTAL TELEPORT
 let legWiggle = 0;
 function animate() {
     requestAnimationFrame(animate);
@@ -591,6 +610,29 @@ function animate() {
     let hasMoved = false;
 
     document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Z:${Math.round(rabbit.position.z)}`;
+
+    // Portal kontrolü
+    if (gameActive && !isDead) {
+        const now = Date.now() / 1000;
+        for (let i = 0; i < portals.length; i++) {
+            const p = portals[i];
+            const dist = new THREE.Vector2(rabbit.position.x - p.mesh.position.x, rabbit.position.z - p.mesh.position.z).length();
+            if (dist < 2.5 && (now - lastTeleportTime > teleportCooldown)) {
+                lastTeleportTime = now;
+                // Hızlı kararma efekti
+                document.getElementById('death-screen').style.display = 'flex';
+                document.getElementById('death-screen').style.background = 'rgba(0,0,0,0.95)';
+                document.querySelector('.death-text').innerText = 'YÜKLENİYOR...';
+                document.getElementById('countdown-display').innerText = '';
+                setTimeout(() => {
+                    rabbit.position.x = p.target.x;
+                    rabbit.position.z = p.target.z;
+                    document.getElementById('death-screen').style.display = 'none';
+                }, 600);
+                break;
+            }
+        }
+    }
 
     if (isOnlineMode && !gameActive && !isDead) {
         rabbit.rotation.y += 1.2 * deltaTime;
