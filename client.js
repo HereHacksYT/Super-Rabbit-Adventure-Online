@@ -895,7 +895,34 @@ function createKey(x, y, z) {
     return group;
 }
 
-// === YENİ createCage FONKSİYONU (üstü kapalı, oyuncu modeli) ===
+// ======================= TAVŞAN MODELİ (ÖNCE TANIMLANMALI) =======================
+const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+const otherBodyMat = new THREE.MeshStandardMaterial({ color: 0xddf0ff });
+const noseMat = new THREE.MeshStandardMaterial({ color: 0xffaaaa });
+const eyeMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+
+function createRabbitModel(isLocal = false) {
+    const group = new THREE.Group(); const visualGroup = new THREE.Group(); group.add(visualGroup);
+    const currentMat = isLocal ? bodyMat : otherBodyMat;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.75, 0.75), currentMat); body.position.y = 0.4; body.castShadow = true; visualGroup.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), currentMat); head.position.y = 0.95; head.position.z = 0.1; head.castShadow = true; visualGroup.add(head);
+    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), noseMat); nose.position.y = -0.05; nose.position.z = 0.33; head.add(nose);
+    const eyeGeo = new THREE.BoxGeometry(0.07, 0.07, 0.07);
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.18, 0.1, 0.25); head.add(eyeL);
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.18, 0.1, 0.25); head.add(eyeR);
+    const earGeo = new THREE.BoxGeometry(0.12, 0.55, 0.06);
+    const earL = new THREE.Mesh(earGeo, currentMat); earL.position.set(-0.16, 0.45, -0.05); head.add(earL);
+    const earR = new THREE.Mesh(earGeo, currentMat); earR.position.set(0.16, 0.45, -0.05); head.add(earR);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), currentMat); tail.position.set(0, 0.25, -0.4); visualGroup.add(tail);
+    const footGeo = new THREE.BoxGeometry(0.24, 0.16, 0.34); const footMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+    const fFL = new THREE.Mesh(footGeo, footMat); fFL.position.set(-0.32, 0.08, 0.22); group.add(fFL);
+    const fFR = new THREE.Mesh(footGeo, footMat); fFR.position.set(0.32, 0.08, 0.22); group.add(fFR);
+    const fBL = new THREE.Mesh(footGeo, footMat); fBL.position.set(-0.32, -0.08, -0.22); group.add(fBL);
+    const fBR = new THREE.Mesh(footGeo, footMat); fBR.position.set(0.32, -0.08, -0.22); group.add(fBR);
+    return { mesh: group, visual: visualGroup, head: head, feet: [fFL, fFR, fBL, fBR] };
+}
+
+// ======================= KAFES (üstü kapalı, oyuncu modeli) =======================
 function createCage(x, z) {
     const group = new THREE.Group();
     const barMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.3 });
@@ -955,7 +982,7 @@ function createCage(x, z) {
     
     return group;
 }
-// ========================================
+// ============================================================================
 
 createKey(180, 25.5, 140);
 createCage(190, 150);
@@ -995,33 +1022,7 @@ coordSpan.style.marginLeft = '15px';
 coordSpan.style.color = '#ffeb3b';
 document.getElementById('game-info-ui').appendChild(coordSpan);
 
-// --- MODEL FABRİKASI (TAVŞAN) ---
-const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const otherBodyMat = new THREE.MeshStandardMaterial({ color: 0xddf0ff });
-const noseMat = new THREE.MeshStandardMaterial({ color: 0xffaaaa });
-const eyeMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
-
-function createRabbitModel(isLocal = false) {
-    const group = new THREE.Group(); const visualGroup = new THREE.Group(); group.add(visualGroup);
-    const currentMat = isLocal ? bodyMat : otherBodyMat;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.75, 0.75), currentMat); body.position.y = 0.4; body.castShadow = true; visualGroup.add(body);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), currentMat); head.position.y = 0.95; head.position.z = 0.1; head.castShadow = true; visualGroup.add(head);
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), noseMat); nose.position.y = -0.05; nose.position.z = 0.33; head.add(nose);
-    const eyeGeo = new THREE.BoxGeometry(0.07, 0.07, 0.07);
-    const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.18, 0.1, 0.25); head.add(eyeL);
-    const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.18, 0.1, 0.25); head.add(eyeR);
-    const earGeo = new THREE.BoxGeometry(0.12, 0.55, 0.06);
-    const earL = new THREE.Mesh(earGeo, currentMat); earL.position.set(-0.16, 0.45, -0.05); head.add(earL);
-    const earR = new THREE.Mesh(earGeo, currentMat); earR.position.set(0.16, 0.45, -0.05); head.add(earR);
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), currentMat); tail.position.set(0, 0.25, -0.4); visualGroup.add(tail);
-    const footGeo = new THREE.BoxGeometry(0.24, 0.16, 0.34); const footMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
-    const fFL = new THREE.Mesh(footGeo, footMat); fFL.position.set(-0.32, 0.08, 0.22); group.add(fFL);
-    const fFR = new THREE.Mesh(footGeo, footMat); fFR.position.set(0.32, 0.08, 0.22); group.add(fFR);
-    const fBL = new THREE.Mesh(footGeo, footMat); fBL.position.set(-0.32, -0.08, -0.22); group.add(fBL);
-    const fBR = new THREE.Mesh(footGeo, footMat); fBR.position.set(0.32, -0.08, -0.22); group.add(fBR);
-    return { mesh: group, visual: visualGroup, head: head, feet: [fFL, fFR, fBL, fBR] };
-}
-
+// --- TAVŞAN MODELİNİ SAHNEYE EKLE ---
 const localPlayer = createRabbitModel(true);
 const rabbit = localPlayer.mesh; const rabbitVisualGroup = localPlayer.visual; const head = localPlayer.head;
 const [footFL, footFR, footBL, footBR] = localPlayer.feet;
@@ -1286,7 +1287,7 @@ function updateAllMonkeys(deltaTime) {
         }
     }
     
-    // === KURTARMA BLOĞU (güncel) ===
+    // KURTARMA BLOĞU
     if (hasKey && cageGroup && !cageOpened) {
         const cageDist = rabbit.position.distanceTo(cageGroup.position);
         if (cageDist < 3.0) {
@@ -1302,7 +1303,6 @@ function updateAllMonkeys(deltaTime) {
             showMessage('Pamuk Kurtuldu! 🎉');
         }
     }
-    // ===============================
 }
 
 function showMessage(text) {
