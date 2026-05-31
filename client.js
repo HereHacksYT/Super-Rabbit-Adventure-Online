@@ -16,12 +16,10 @@ let joystickActive = false;
 let moveX = 0;
 let moveZ = 0;
 
-// Maymunlar dizisi
 const monkeys = [];
 let hasKey = false;
 let cageOpened = false;
 
-// 3D SAHNE
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB);
 scene.fog = new THREE.Fog(0x87CEEB, 120, 400);
@@ -34,7 +32,6 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-// IŞIK
 const ambientLight = new THREE.AmbientLight(0xfff5e6, 0.7);
 scene.add(ambientLight);
 const sunLight = new THREE.DirectionalLight(0xfff5e6, 1.0);
@@ -53,7 +50,6 @@ scene.add(gameplayGroup);
 const obstacles = [];
 const portals = [];
 
-// --- PROSEDÜREL DOKU OLUŞTURUCU ---
 function createCanvasTexture(width, height, drawFunc) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -67,7 +63,6 @@ function createCanvasTexture(width, height, drawFunc) {
     return texture;
 }
 
-// ZEMİN ÇİMEN DOKUSU
 const groundTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     ctx.fillStyle = '#5a8a3c';
     ctx.fillRect(0, 0, w, h);
@@ -94,7 +89,6 @@ const groundTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     }
 });
 
-// BLOK ÜSTÜ ÇİMEN DOKUSU
 const blockGrassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#6daa2e';
     ctx.fillRect(0, 0, w, h);
@@ -110,7 +104,6 @@ const blockGrassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     }
 });
 
-// YAĞMURLU ORMAN ZEMİN DOKUSU
 const rainforestGroundTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     ctx.fillStyle = '#3d5a1e';
     ctx.fillRect(0, 0, w, h);
@@ -131,7 +124,6 @@ const rainforestGroundTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     }
 });
 
-// YOSUNLU TAŞ DUVAR DOKUSU
 const mossyStoneTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     ctx.fillStyle = '#8a8a8a';
     ctx.fillRect(0, 0, w, h);
@@ -166,7 +158,6 @@ const mossyStoneTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     }
 });
 
-// Toprak dokusu
 const dirtTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#8B6B4D';
     ctx.fillRect(0, 0, w, h);
@@ -177,7 +168,6 @@ const dirtTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     }
 });
 
-// Ahşap dokusu
 const woodTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     ctx.fillStyle = '#c49a6c';
     ctx.fillRect(0, 0, w, h);
@@ -207,7 +197,6 @@ const woodTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     }
 });
 
-// TAŞ DUVAR DOKUSU (ana merkez)
 const stoneTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     ctx.fillStyle = '#8a8a8a';
     ctx.fillRect(0, 0, w, h);
@@ -230,7 +219,6 @@ const stoneTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     }
 });
 
-// Kiremit çatı dokusu
 const roofTileTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     ctx.fillStyle = '#7a2e2e';
     ctx.fillRect(0, 0, w, h);
@@ -254,7 +242,6 @@ const roofTileTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     }
 });
 
-// Ağaç kabuğu dokusu
 const barkTexture = createCanvasTexture(256, 512, (ctx, w, h) => {
     ctx.fillStyle = '#6B4F3C';
     ctx.fillRect(0, 0, w, h);
@@ -268,7 +255,6 @@ const barkTexture = createCanvasTexture(256, 512, (ctx, w, h) => {
     }
 });
 
-// Yaprak dokusu
 const leafTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     ctx.fillStyle = '#3d7a1c';
     ctx.fillRect(0, 0, w, h);
@@ -278,19 +264,14 @@ const leafTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     }
 });
 
-// --- MALZEMELER ---
 const groundMat = new THREE.MeshStandardMaterial({ map: groundTexture, roughness: 0.9 });
 groundTexture.repeat.set(12, 12);
-
 const rainforestGroundMat = new THREE.MeshStandardMaterial({ map: rainforestGroundTexture, roughness: 0.85 });
 rainforestGroundTexture.repeat.set(16, 16);
-
 const blockGrassMat = new THREE.MeshStandardMaterial({ map: blockGrassTexture, roughness: 0.85 });
 blockGrassTexture.repeat.set(8, 8);
-
 const dirtMat = new THREE.MeshStandardMaterial({ map: dirtTexture, roughness: 0.75 });
 dirtTexture.repeat.set(4, 4);
-
 const woodMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.65 });
 const stoneWallMat = new THREE.MeshStandardMaterial({ map: stoneTexture, roughness: 0.6 });
 const mossyWallMat = new THREE.MeshStandardMaterial({ map: mossyStoneTexture, roughness: 0.65 });
@@ -299,7 +280,6 @@ const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.
 const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.55 });
 const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.2 });
 
-// --- MOD MENÜ HTML ---
 const modMenuHTML = `
 <div id="mod-menu" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); padding:25px; border-radius:15px; z-index:30; color:white; text-align:center; border:2px solid gold; min-width:250px;">
     <h2 style="color:gold; margin-bottom:15px;">🔧 Mod Menü</h2>
@@ -311,7 +291,6 @@ const modMenuHTML = `
 document.body.insertAdjacentHTML('beforeend', modMenuHTML);
 
 window.closeModMenu = function() { document.getElementById('mod-menu').style.display = 'none'; };
-
 document.getElementById('btn-infinite-jump').addEventListener('click', function() {
     infiniteJump = !infiniteJump;
     this.textContent = '999 Zıplama: ' + (infiniteJump ? 'AÇIK' : 'KAPALI');
@@ -324,14 +303,12 @@ window.openModPrompt = function() {
     else { alert('Hatalı kod!'); }
 };
 
-// --- MOBİL KAYDIRMAYI ENGELLE ---
 document.addEventListener('touchmove', function(e) {
     if (!e.target.closest('#joystick-zone') && !e.target.closest('.action-btn') && !e.target.closest('#mod-btn')) {
         e.preventDefault();
     }
 }, { passive: false });
 
-// --- KLAVYE KONTROLLERİ ---
 const keys = {};
 document.addEventListener('keydown', (e) => {
     keys[e.key.toLowerCase()] = true;
@@ -363,7 +340,6 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
-// --- JOYSTICK ---
 const zone = document.getElementById('joystick-zone');
 const stick = document.getElementById('joystick-stick');
 const maxRadius = 35;
@@ -404,7 +380,6 @@ function handleJoystick(clientX, clientY) {
     moveZ = dy / maxRadius;
 }
 
-// --- ZIPLAMA VE VURMA BUTONLARI ---
 document.getElementById('jump-button').addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (gameActive && !isDead) {
@@ -432,7 +407,6 @@ document.getElementById('attack-button').addEventListener('touchstart', (e) => {
     }
 }, { passive: false });
 
-// --- ANA MERKEZ ---
 const squareSize = 94;
 const groundGeo = new THREE.PlaneGeometry(squareSize, squareSize);
 const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -471,28 +445,24 @@ function createEnclosingWalls(minX, minZ, maxX, maxZ, height = 25) {
     const widthX = maxX - minX;
     const widthZ = maxZ - minZ;
     const segLen = 50;
-    
     const topCount = Math.ceil(widthX / segLen);
     const topSegLen = widthX / topCount + 1;
     for (let i = 0; i < topCount; i++) {
         const x = minX + (i + 0.5) * (widthX / topCount);
         createMossyWallSegment(x, maxZ, topSegLen, height, 2, 0);
     }
-    
     const bottomCount = Math.ceil(widthX / segLen);
     const bottomSegLen = widthX / bottomCount + 1;
     for (let i = 0; i < bottomCount; i++) {
         const x = minX + (i + 0.5) * (widthX / bottomCount);
         createMossyWallSegment(x, minZ, bottomSegLen, height, 2, 0);
     }
-    
     const leftCount = Math.ceil(widthZ / segLen);
     const leftSegLen = widthZ / leftCount + 1;
     for (let i = 0; i < leftCount; i++) {
         const z = minZ + (i + 0.5) * (widthZ / leftCount);
         createMossyWallSegment(minX, z, leftSegLen, height, 2, Math.PI/2);
     }
-    
     const rightCount = Math.ceil(widthZ / segLen);
     const rightSegLen = widthZ / rightCount + 1;
     for (let i = 0; i < rightCount; i++) {
@@ -645,8 +615,6 @@ function createRainSystem(x, z, width, depth) {
     if (rainParticles) { gameplayGroup.remove(rainParticles); }
     const particleCount = 5000;
     const positions = new Float32Array(particleCount * 3);
-    const halfW = width / 2;
-    const halfD = depth / 2;
     for (let i = 0; i < particleCount; i++) {
         positions[i * 3] = x + (Math.random() - 0.5) * width;
         positions[i * 3 + 1] = Math.random() * 60;
@@ -665,8 +633,6 @@ function updateRain(active, x, z, width, depth) {
     rainParticles.visible = active;
     if (!active) return;
     const positions = rainParticles.geometry.attributes.position.array;
-    const halfW = width / 2;
-    const halfD = depth / 2;
     for (let i = 0; i < positions.length / 3; i++) {
         positions[i * 3 + 1] -= 0.6 + Math.random() * 0.4;
         if (positions[i * 3 + 1] < 0) {
@@ -678,7 +644,6 @@ function updateRain(active, x, z, width, depth) {
     rainParticles.geometry.attributes.position.needsUpdate = true;
 }
 
-// ============ YAĞMURLU ORMAN BÖLGESİ ============
 const rfMinX = 75, rfMaxX = 325, rfMinZ = 75, rfMaxZ = 325;
 const rfCenterX = (rfMinX + rfMaxX) / 2;
 const rfCenterZ = (rfMinZ + rfMaxZ) / 2;
@@ -695,22 +660,18 @@ gameplayGroup.add(rfGround);
 createEnclosingWalls(rfMinX, rfMinZ, rfMaxX, rfMaxZ, 25);
 createRainSystem(rfCenterX, rfCenterZ, rfWidth, rfDepth);
 
-const treeSpacing = 30;
-for (let row = -100; row <= 100; row += treeSpacing) {
-    for (let col = -100; col <= 100; col += treeSpacing) {
+for (let row = -100; row <= 100; row += 30) {
+    for (let col = -100; col <= 100; col += 30) {
         if (Math.abs(row) <= 30 && Math.abs(col) <= 30) continue;
         createBigTree(rfCenterX + col, rfCenterZ + row, 1.5 + Math.random() * 1.0);
     }
 }
-
-const rockSpacing = 45;
-for (let row = -90; row <= 90; row += rockSpacing) {
-    for (let col = -90; col <= 90; col += rockSpacing) {
+for (let row = -90; row <= 90; row += 45) {
+    for (let col = -90; col <= 90; col += 45) {
         createRock(rfCenterX + col + 10, rfCenterZ + row + 10, 0.8 + Math.random() * 0.8);
     }
 }
 
-// ============ BÜYÜK KÜP VE PARKUR ============
 const cubeMinX = 165, cubeMaxX = 185, cubeMinZ = 125, cubeMaxZ = 155, cubeHeight = 25;
 const cubeGeo = new THREE.BoxGeometry(cubeMaxX - cubeMinX, cubeHeight, cubeMaxZ - cubeMinZ);
 const cubeMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.7 });
@@ -727,12 +688,9 @@ cubeTop.receiveShadow = true;
 gameplayGroup.add(cubeTop);
 obstacles.push(cubeTop);
 
-// --- 3 MAYMUN (kısa kuyruklu) ---
 function createMonkey(x, y, z) {
     const monkeyGroup = new THREE.Group();
     monkeyGroup.name = 'monkey';
-    
-    // Ayaklar
     const footGeo = new THREE.BoxGeometry(0.25, 0.15, 0.3);
     const footMat = new THREE.MeshStandardMaterial({ color: 0x6B4226, roughness: 0.6 });
     const footL = new THREE.Mesh(footGeo, footMat);
@@ -741,8 +699,6 @@ function createMonkey(x, y, z) {
     const footR = new THREE.Mesh(footGeo, footMat);
     footR.position.set(0.2, 0.1, 0.1);
     monkeyGroup.add(footR);
-    
-    // Bacaklar
     const legGeo = new THREE.CylinderGeometry(0.1, 0.12, 0.6, 6);
     const legMat = new THREE.MeshStandardMaterial({ color: 0x8B5A3C, roughness: 0.6 });
     const legL = new THREE.Mesh(legGeo, legMat);
@@ -751,16 +707,12 @@ function createMonkey(x, y, z) {
     const legR = new THREE.Mesh(legGeo, legMat);
     legR.position.set(0.2, 0.4, 0.05);
     monkeyGroup.add(legR);
-    
-    // Gövde
     const bodyGeo = new THREE.CylinderGeometry(0.35, 0.4, 1.0, 8);
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x8B5A3C, roughness: 0.6 });
     const body = new THREE.Mesh(bodyGeo, bodyMat);
     body.position.y = 0.8;
     body.castShadow = true; body.receiveShadow = true;
     monkeyGroup.add(body);
-    
-    // Kollar
     const armGeo = new THREE.CylinderGeometry(0.08, 0.1, 0.7, 6);
     const armMat = new THREE.MeshStandardMaterial({ color: 0x8B5A3C, roughness: 0.6 });
     const armL = new THREE.Mesh(armGeo, armMat);
@@ -771,8 +723,6 @@ function createMonkey(x, y, z) {
     armR.position.set(0.45, 1.1, 0);
     armR.rotation.z = -0.5;
     monkeyGroup.add(armR);
-    
-    // Muz
     const bananaGroup = new THREE.Group();
     bananaGroup.position.set(0.65, 1.25, 0.15);
     const bananaCurve = new THREE.CatmullRomCurve3([
@@ -787,67 +737,48 @@ function createMonkey(x, y, z) {
     const banana = new THREE.Mesh(bananaGeo, bananaMat);
     bananaGroup.add(banana);
     monkeyGroup.add(bananaGroup);
-    
-    // Kafa
     const headGeo = new THREE.SphereGeometry(0.3, 8, 8);
     const headMat = new THREE.MeshStandardMaterial({ color: 0xA0704A, roughness: 0.5 });
     const head = new THREE.Mesh(headGeo, headMat);
     head.position.y = 1.5;
     head.castShadow = true; head.receiveShadow = true;
     monkeyGroup.add(head);
-    
-    // Kulaklar
     const earGeo = new THREE.SphereGeometry(0.1, 6, 6);
     const earMat = new THREE.MeshStandardMaterial({ color: 0xD4956B, roughness: 0.5 });
-    const earL = new THREE.Mesh(earGeo, earMat);
-    earL.position.set(-0.25, 1.65, 0);
-    monkeyGroup.add(earL);
-    const earR = new THREE.Mesh(earGeo, earMat);
-    earR.position.set(0.25, 1.65, 0);
-    monkeyGroup.add(earR);
-    
-    // Gözler
+    const earL2 = new THREE.Mesh(earGeo, earMat);
+    earL2.position.set(-0.25, 1.65, 0);
+    monkeyGroup.add(earL2);
+    const earR2 = new THREE.Mesh(earGeo, earMat);
+    earR2.position.set(0.25, 1.65, 0);
+    monkeyGroup.add(earR2);
     const eyeGeo = new THREE.SphereGeometry(0.06, 6, 6);
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeL.position.set(-0.1, 1.6, 0.25);
-    monkeyGroup.add(eyeL);
-    const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeR.position.set(0.1, 1.6, 0.25);
-    monkeyGroup.add(eyeR);
-    
-    // Burun
+    const eyeL3 = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeL3.position.set(-0.1, 1.6, 0.25);
+    monkeyGroup.add(eyeL3);
+    const eyeR3 = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeR3.position.set(0.1, 1.6, 0.25);
+    monkeyGroup.add(eyeR3);
     const noseGeo = new THREE.SphereGeometry(0.07, 6, 6);
     const noseMat = new THREE.MeshStandardMaterial({ color: 0x4A2A1A, roughness: 0.4 });
     const nose = new THREE.Mesh(noseGeo, noseMat);
     nose.position.set(0, 1.52, 0.28);
     monkeyGroup.add(nose);
-    
-    // Kısa kuyruk
     const tailGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.5, 6);
     const tailMat = new THREE.MeshStandardMaterial({ color: 0x8B5A3C, roughness: 0.6 });
     const tail = new THREE.Mesh(tailGeo, tailMat);
     tail.position.set(0, 0.5, -0.35);
     tail.rotation.x = 0.6;
     monkeyGroup.add(tail);
-    
     monkeyGroup.position.set(x, y, z);
     monkeyGroup.userData = {
-        homeX: x, homeY: y, homeZ: z,
-        bananaGroup: bananaGroup,
-        targetX: x, targetZ: z,
-        speed: 0.25,
-        attackRange: 1.5,
-        chaseRange: 10,
-        homeRange: 15,
-        health: 50, maxHealth: 50,
-        isDead: false, deathTime: 0
+        homeX: x, homeY: y, homeZ: z, bananaGroup: bananaGroup,
+        targetX: x, targetZ: z, speed: 0.25, attackRange: 1.5, chaseRange: 10,
+        homeRange: 15, health: 50, maxHealth: 50, isDead: false, deathTime: 0
     };
-    
     gameplayGroup.add(monkeyGroup);
     obstacles.push(monkeyGroup);
     monkeys.push(monkeyGroup);
-    
     return monkeyGroup;
 }
 
@@ -855,39 +786,30 @@ createMonkey(175, 25.3, 140);
 createMonkey(168, 25.3, 130);
 createMonkey(182, 25.3, 150);
 
-// Maymun sağlık barı
 const monkeyHealthBarContainer = document.createElement('div');
 monkeyHealthBarContainer.id = 'monkey-health-container';
 monkeyHealthBarContainer.style.cssText = 'display:none; position:absolute; top:55px; left:15px; z-index:5; width:180px; height:15px; background:rgba(0,0,0,0.6); border-radius:7px; border:1px solid white; overflow:hidden;';
 monkeyHealthBarContainer.innerHTML = '<div id="monkey-health-fill" style="width:100%; height:100%; background:linear-gradient(90deg, #f44336, #ff5722); transition:width 0.2s;"></div><div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:white; font-size:10px; text-shadow:0 1px 2px black;" id="monkey-health-text">50/50</div>';
 document.body.appendChild(monkeyHealthBarContainer);
 
-// --- ANAHTAR (başlangıçta görünmez) ---
 let keyMesh = null;
 function createKey(x, y, z) {
     const group = new THREE.Group();
     const goldKeyMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.2, metalness: 0.9, emissive: 0x886600, emissiveIntensity: 0.5 });
-    
-    // Anahtar başı (halka)
     const ringGeo = new THREE.TorusGeometry(0.2, 0.06, 8, 16);
     const ring = new THREE.Mesh(ringGeo, goldKeyMat);
     ring.position.y = 0.6;
     group.add(ring);
-    
-    // Anahtar gövdesi
     const bodyGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.7, 8);
     const body = new THREE.Mesh(bodyGeo, goldKeyMat);
     body.position.y = 0.15;
     group.add(body);
-    
-    // Anahtar dişleri
     for (let i = 0; i < 2; i++) {
         const toothGeo = new THREE.BoxGeometry(0.1, 0.08, 0.08);
         const tooth = new THREE.Mesh(toothGeo, goldKeyMat);
         tooth.position.set(0.08, 0.0 + i * 0.15, 0);
         group.add(tooth);
     }
-    
     group.position.set(x, y, z);
     group.visible = false;
     gameplayGroup.add(group);
@@ -895,26 +817,30 @@ function createKey(x, y, z) {
     return group;
 }
 
-// ======================= TAVŞAN MODELİ (ÖNCE TANIMLANMALI) =======================
-const bodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const otherBodyMat = new THREE.MeshStandardMaterial({ color: 0xddf0ff });
-const noseMat = new THREE.MeshStandardMaterial({ color: 0xffaaaa });
-const eyeMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+const bodyMatRabbit = new THREE.MeshStandardMaterial({ color: 0xffffff });
+const otherBodyMatRabbit = new THREE.MeshStandardMaterial({ color: 0xddf0ff });
+const noseMatRabbit = new THREE.MeshStandardMaterial({ color: 0xffaaaa });
+const eyeMatRabbit = new THREE.MeshBasicMaterial({ color: 0x333333 });
 
 function createRabbitModel(isLocal = false) {
     const group = new THREE.Group(); const visualGroup = new THREE.Group(); group.add(visualGroup);
-    const currentMat = isLocal ? bodyMat : otherBodyMat;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.75, 0.75), currentMat); body.position.y = 0.4; body.castShadow = true; visualGroup.add(body);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), currentMat); head.position.y = 0.95; head.position.z = 0.1; head.castShadow = true; visualGroup.add(head);
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), noseMat); nose.position.y = -0.05; nose.position.z = 0.33; head.add(nose);
+    const currentMat = isLocal ? bodyMatRabbit : otherBodyMatRabbit;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.75, 0.75), currentMat);
+    body.position.y = 0.4; body.castShadow = true; visualGroup.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), currentMat);
+    head.position.y = 0.95; head.position.z = 0.1; head.castShadow = true; visualGroup.add(head);
+    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), noseMatRabbit);
+    nose.position.y = -0.05; nose.position.z = 0.33; head.add(nose);
     const eyeGeo = new THREE.BoxGeometry(0.07, 0.07, 0.07);
-    const eyeL = new THREE.Mesh(eyeGeo, eyeMat); eyeL.position.set(-0.18, 0.1, 0.25); head.add(eyeL);
-    const eyeR = new THREE.Mesh(eyeGeo, eyeMat); eyeR.position.set(0.18, 0.1, 0.25); head.add(eyeR);
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMatRabbit); eyeL.position.set(-0.18, 0.1, 0.25); head.add(eyeL);
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMatRabbit); eyeR.position.set(0.18, 0.1, 0.25); head.add(eyeR);
     const earGeo = new THREE.BoxGeometry(0.12, 0.55, 0.06);
     const earL = new THREE.Mesh(earGeo, currentMat); earL.position.set(-0.16, 0.45, -0.05); head.add(earL);
     const earR = new THREE.Mesh(earGeo, currentMat); earR.position.set(0.16, 0.45, -0.05); head.add(earR);
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), currentMat); tail.position.set(0, 0.25, -0.4); visualGroup.add(tail);
-    const footGeo = new THREE.BoxGeometry(0.24, 0.16, 0.34); const footMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), currentMat);
+    tail.position.set(0, 0.25, -0.4); visualGroup.add(tail);
+    const footGeo = new THREE.BoxGeometry(0.24, 0.16, 0.34);
+    const footMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
     const fFL = new THREE.Mesh(footGeo, footMat); fFL.position.set(-0.32, 0.08, 0.22); group.add(fFL);
     const fFR = new THREE.Mesh(footGeo, footMat); fFR.position.set(0.32, 0.08, 0.22); group.add(fFR);
     const fBL = new THREE.Mesh(footGeo, footMat); fBL.position.set(-0.32, -0.08, -0.22); group.add(fBL);
@@ -922,19 +848,14 @@ function createRabbitModel(isLocal = false) {
     return { mesh: group, visual: visualGroup, head: head, feet: [fFL, fFR, fBL, fBR] };
 }
 
-// ======================= KAFES (üstü kapalı, oyuncu modeli) =======================
 function createCage(x, z) {
     const group = new THREE.Group();
     const barMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.3 });
-    
-    // Kafes tabanı
     const floorGeo = new THREE.BoxGeometry(3, 0.2, 3);
     const floor = new THREE.Mesh(floorGeo, barMat);
     floor.position.y = 0.1;
     floor.receiveShadow = true;
     group.add(floor);
-    
-    // Dikey parmaklıklar (12 tane)
     for (let i = 0; i < 12; i++) {
         const angle = (i / 12) * Math.PI * 2;
         const barGeo = new THREE.CylinderGeometry(0.08, 0.08, 3, 8);
@@ -943,51 +864,64 @@ function createCage(x, z) {
         bar.castShadow = true;
         group.add(bar);
     }
-    
-    // Alt halka
     const bottomRingGeo = new THREE.TorusGeometry(1.3, 0.08, 8, 16);
     const bottomRing = new THREE.Mesh(bottomRingGeo, barMat);
     bottomRing.rotation.x = Math.PI / 2;
     bottomRing.position.y = 0.3;
     group.add(bottomRing);
-    
-    // ÜSTÜ KAPATAN KAPAK
     const roofGeo = new THREE.CylinderGeometry(1.45, 1.45, 0.15, 8);
     const roofMat = new THREE.MeshStandardMaterial({ color: 0xaa8866, roughness: 0.7 });
     const roof = new THREE.Mesh(roofGeo, roofMat);
     roof.position.y = 3.25;
     roof.castShadow = true;
     group.add(roof);
-    
-    // Kilit
     const lockGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
     const lockMat = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.3, emissive: 0x330000, emissiveIntensity: 0.5 });
     const lock = new THREE.Mesh(lockGeo, lockMat);
     lock.position.set(0, 1.8, 1.35);
     lock.name = 'lock';
     group.add(lock);
-    
-    // Kafesteki tavşan (oyuncu modeli)
     const captiveModel = createRabbitModel(true);
     const captiveRabbitMesh = captiveModel.mesh;
     captiveRabbitMesh.position.set(0, 0.5, 0);
     captiveRabbitMesh.scale.set(0.9, 0.9, 0.9);
     group.add(captiveRabbitMesh);
-    
     group.position.set(x, 0, z);
     gameplayGroup.add(group);
-    
     cageGroup = group;
     cageRabbit = captiveRabbitMesh;
-    
     return group;
 }
-// ============================================================================
+
+// ======================= PARKUR =======================
+function createParkourStep(x, z, y, w, d) {
+    const geo = new THREE.BoxGeometry(w, 0.5, d);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xcccc99, roughness: 0.4, metalness: 0.1 });
+    const step = new THREE.Mesh(geo, mat);
+    step.position.set(x, y, z);
+    step.castShadow = true;
+    step.receiveShadow = true;
+    gameplayGroup.add(step);
+    obstacles.push(step);
+    return step;
+}
+
+const parkourData = [
+    {x: 167, z: 124}, {x: 171, z: 124}, {x: 175, z: 124}, {x: 179, z: 124},
+    {x: 186, z: 128}, {x: 186, z: 133}, {x: 186, z: 138}, {x: 186, z: 143},
+    {x: 179, z: 156}, {x: 175, z: 156}, {x: 171, z: 156}, {x: 167, z: 156},
+    {x: 164, z: 143}, {x: 164, z: 138}, {x: 164, z: 133}, {x: 164, z: 128}
+];
+
+parkourData.forEach((pos, i) => {
+    const y = 0.25 + i * (25 / 16);
+    createParkourStep(pos.x, pos.z, y, 3, 3);
+});
+// ======================================================
 
 createKey(180, 25.5, 140);
 createCage(190, 150);
 
-// ============ ANA MERKEZ ELEMANLARI ============
 createWoodenHouse(-25, -20, 0.2);
 createWoodenHouse(20, 15, -0.3);
 createWoodenHouse(-25, 25, 0.5);
@@ -1011,18 +945,15 @@ createBigTree(15, 40, 1.8);
 
 createGoldenPortal(0, 40, 200, 80);
 createSign(0, 43, "Yağmurlu Orman", Math.PI);
-
 createGoldenPortal(200, 80, 0, 37);
 createSign(200, 76, "Geri Dön", 0);
 
-// --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
 coordSpan.id = 'coords-display';
 coordSpan.style.marginLeft = '15px';
 coordSpan.style.color = '#ffeb3b';
 document.getElementById('game-info-ui').appendChild(coordSpan);
 
-// --- TAVŞAN MODELİNİ SAHNEYE EKLE ---
 const localPlayer = createRabbitModel(true);
 const rabbit = localPlayer.mesh; const rabbitVisualGroup = localPlayer.visual; const head = localPlayer.head;
 const [footFL, footFR, footBL, footBR] = localPlayer.feet;
@@ -1173,7 +1104,6 @@ socket.on('knockback', (angle) => { if (!gameActive || isDead) return; rabbit.po
 socket.on('playerDisconnected', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id].mesh); delete otherPlayers[id]; } });
 socket.on('hostDisconnected', () => { alert('Oda sahibi ayrıldı.'); location.reload(); });
 
-// --- KAMERA KONTROLLERİ ---
 let cameraAngleY = 0, cameraAngleX = 0.4, cameraDistance = 10, touchStartX = 0, touchStartY = 0, isTurningCamera = false;
 window.addEventListener('touchstart', (e) => {
     const jBtn = document.getElementById('jump-button'), aBtn = document.getElementById('attack-button');
@@ -1201,20 +1131,16 @@ window.addEventListener('touchmove', (e) => {
 
 window.addEventListener('touchend', () => { isTurningCamera = false; });
 
-// --- MAYMUN YAPAY ZEKA ---
 let monkeyAttackCooldown = 0;
 function updateAllMonkeys(deltaTime) {
     if (monkeyAttackCooldown > 0) monkeyAttackCooldown -= deltaTime;
-    
     let allDead = monkeys.length > 0;
-    
     monkeys.forEach((monkey) => {
         const ud = monkey.userData;
         const monkeyPos = monkey.position;
         const playerPos = rabbit.position;
         const dist = new THREE.Vector2(monkeyPos.x - playerPos.x, monkeyPos.z - playerPos.z).length();
         const distFromHome = new THREE.Vector2(monkeyPos.x - ud.homeX, monkeyPos.z - ud.homeZ).length();
-        
         if (ud.isDead) {
             if (Date.now() - ud.deathTime > 60000) {
                 ud.isDead = false;
@@ -1224,15 +1150,12 @@ function updateAllMonkeys(deltaTime) {
             }
             return;
         }
-        
         allDead = false;
-        
         if (dist < ud.chaseRange && distFromHome < ud.homeRange) {
             const angle = Math.atan2(playerPos.x - monkeyPos.x, playerPos.z - monkeyPos.z);
             ud.targetX = monkeyPos.x + Math.sin(angle) * ud.speed;
             ud.targetZ = monkeyPos.z + Math.cos(angle) * ud.speed;
             monkey.rotation.y = angle;
-            
             if (dist < ud.attackRange && monkeyAttackCooldown <= 0) {
                 monkeyAttackCooldown = 1.5;
                 myHealth -= 10;
@@ -1245,18 +1168,15 @@ function updateAllMonkeys(deltaTime) {
             ud.targetZ = monkeyPos.z + Math.cos(angle) * ud.speed;
             monkey.rotation.y = angle;
         }
-        
         monkey.position.x += (ud.targetX - monkeyPos.x) * 0.1;
         monkey.position.z += (ud.targetZ - monkeyPos.z) * 0.1;
         monkey.position.y = ud.homeY + Math.abs(Math.sin(Date.now() * 0.005 + ud.homeX)) * 0.2;
-        
         if (dist < ud.chaseRange) {
             monkeyHealthBarContainer.style.display = 'block';
             const healthPercent = (ud.health / ud.maxHealth) * 100;
             document.getElementById('monkey-health-fill').style.width = healthPercent + '%';
             document.getElementById('monkey-health-text').innerText = ud.health + '/' + ud.maxHealth;
         }
-        
         if (isAttacking && dist < ud.attackRange + 0.5 && attackAnimTime < 0.2) {
             ud.health -= 25;
             if (ud.health <= 0) {
@@ -1268,12 +1188,9 @@ function updateAllMonkeys(deltaTime) {
             }
         }
     });
-    
     if (allDead && !hasKey && keyMesh) {
         keyMesh.visible = true;
     }
-    
-    // Anahtar kontrolü
     if (keyMesh && keyMesh.visible && !hasKey) {
         const keyDist = rabbit.position.distanceTo(keyMesh.position);
         if (keyDist < 2.0) {
@@ -1286,8 +1203,6 @@ function updateAllMonkeys(deltaTime) {
             keyMesh.visible = true;
         }
     }
-    
-    // KURTARMA BLOĞU
     if (hasKey && cageGroup && !cageOpened) {
         const cageDist = rabbit.position.distanceTo(cageGroup.position);
         if (cageDist < 3.0) {
@@ -1317,34 +1232,27 @@ function showMessage(text) {
     }, 2000);
 }
 
-// --- ANA DÖNGÜ ---
 let legWiggle = 0;
 function animate() {
     requestAnimationFrame(animate);
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
-    
     updateAllMonkeys(deltaTime);
-    
     let finalMoveX = 0, finalMoveZ = 0;
     if (joystickActive) { finalMoveX = moveX; finalMoveZ = moveZ; }
     if (keys['w'] || keys['arrowup']) finalMoveZ = -1;
     if (keys['s'] || keys['arrowdown']) finalMoveZ = 1;
     if (keys['a'] || keys['arrowleft']) finalMoveX = -1;
     if (keys['d'] || keys['arrowright']) finalMoveX = 1;
-
     document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
     const modCoordEl = document.getElementById('mod-coords');
     if (modCoordEl && isModerator) modCoordEl.innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
-
     const inRFX = rabbit.position.x > rfMinX && rabbit.position.x < rfMaxX;
     const inRFZ = rabbit.position.z > rfMinZ && rabbit.position.z < rfMaxZ;
     inRainforest = inRFX && inRFZ;
     updateRain(inRainforest, rfCenterX, rfCenterZ, rfWidth, rfDepth);
-    
     if (inRainforest) { scene.fog = new THREE.Fog(0x556633, 40, 120); ambientLight.intensity = 0.4; }
     else { scene.fog = new THREE.Fog(0x87CEEB, 120, 400); ambientLight.intensity = 0.7; }
-
     if (gameActive && !isDead) {
         const now = Date.now() / 1000;
         for (let i = 0; i < portals.length; i++) {
@@ -1365,13 +1273,11 @@ function animate() {
             }
         }
     }
-
     if (isOnlineMode && !gameActive && !isDead) {
         rabbit.rotation.y += 1.2 * deltaTime;
         Object.keys(otherPlayers).forEach((id) => { otherPlayers[id].mesh.rotation.y += 1.2 * deltaTime; });
         camera.position.set(0, 3.5, 43); camera.lookAt(0, 1.2, 50);
     }
-
     if (gameActive && !isDead) {
         if (Math.abs(finalMoveX) > 0.05 || Math.abs(finalMoveZ) > 0.05) {
             const fx = Math.sin(cameraAngleY), fz = Math.cos(cameraAngleY);
@@ -1402,12 +1308,10 @@ function animate() {
                 else { op.isAttacking = false; op.visual.position.z = 0; op.head.position.z = 0.1; op.head.rotation.x = 0; }
             }
         });
-
         const floorY = getFloorY(rabbit.position.x, rabbit.position.y, rabbit.position.z);
         velocityY -= gravity * 60 * deltaTime;
         rabbit.position.y += velocityY * deltaTime;
         if (rabbit.position.y <= floorY) { rabbit.position.y = floorY; velocityY = 0; jumpCount = 0; }
-
         if (isOnlineMode) {
             Object.keys(otherPlayers).forEach((id) => {
                 const other = otherPlayers[id].mesh;
@@ -1421,7 +1325,6 @@ function animate() {
             });
         }
         if (hasMoved || isAttacking) socket.emit('playerMovement', { x: rabbit.position.x, y: rabbit.position.y, z: rabbit.position.z, ry: rabbit.rotation.y });
-
         camera.position.x = rabbit.position.x - Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
         camera.position.z = rabbit.position.z - Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
         camera.position.y = rabbit.position.y + Math.sin(cameraAngleX) * cameraDistance;
