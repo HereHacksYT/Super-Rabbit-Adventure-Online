@@ -12,6 +12,11 @@ const teleportCooldown = 3;
 let isModerator = false;
 let infiniteJump = false;
 
+// Joystick değişkenleri (tanımlanmamıştı, hata veriyordu)
+let joystickActive = false;
+let moveX = 0;
+let moveZ = 0;
+
 // 3D SAHNE
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB);
@@ -323,18 +328,18 @@ window.openModPrompt = function() {
     else { alert('Hatalı kod!'); }
 };
 
-// --- MOBİL KAYDIRMAYI ENGELLE ---
+// --- MOBİL KAYDIRMAYI ENGELLE (joystick ve butonlar hariç) ---
 document.addEventListener('touchmove', function(e) {
-    if (e.target.closest('#joystick-zone') || e.target.closest('.action-btn') || e.target.closest('#mod-btn')) {
-        e.preventDefault(); // Joystick ve butonlar hariç
+    if (!e.target.closest('#joystick-zone') && !e.target.closest('.action-btn') && !e.target.closest('#mod-btn')) {
+        e.preventDefault();
     }
 }, { passive: false });
 
 // --- KLAVYE KONTROLLERİ ---
 const keys = {};
 document.addEventListener('keydown', (e) => {
-    keys[e.key] = true;
-    // Zıplama
+    keys[e.key.toLowerCase()] = true;
+    // Zıplama (Space)
     if (e.key === ' ' && gameActive && !isDead) {
         e.preventDefault();
         if (infiniteJump || jumpCount < 3) {
@@ -342,7 +347,7 @@ document.addEventListener('keydown', (e) => {
             jumpCount++;
         }
     }
-    // Saldırı
+    // Saldırı (E veya F)
     if ((e.key === 'e' || e.key === 'f') && gameActive && !isDead && !isAttacking) {
         e.preventDefault();
         isAttacking = true;
@@ -358,8 +363,56 @@ document.addEventListener('keydown', (e) => {
             });
         }
     }
+    // Mod menü (M tuşu)
+    if (e.key === 'm' && e.ctrlKey && e.shiftKey) {
+        const code = prompt('Mod kodu:');
+        if (code === '1234') { isModerator = true; document.getElementById('mod-menu').style.display = 'block'; }
+    }
 });
-document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+// --- JOYSTICK KONTROLLERİ ---
+const zone = document.getElementById('joystick-zone');
+const stick = document.getElementById('joystick-stick');
+const maxRadius = 35;
+
+zone.addEventListener('touchstart', (e) => {
+    if (!gameActive || isDead) return;
+    joystickActive = true;
+    handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
+}, { passive: true });
+
+window.addEventListener('touchmove', (e) => {
+    if (joystickActive && gameActive && !isDead) {
+        for (let i = 0; i < e.touches.length; i++) {
+            if (zone.contains(e.touches[i].target)) {
+                handleJoystick(e.touches[i].clientX, e.touches[i].clientY);
+                break;
+            }
+        }
+    }
+}, { passive: true });
+
+zone.addEventListener('touchend', () => {
+    joystickActive = false;
+    stick.style.transform = 'translate(0px, 0px)';
+    moveX = 0;
+    moveZ = 0;
+});
+
+function handleJoystick(clientX, clientY) {
+    const zoneRect = zone.getBoundingClientRect();
+    let dx = clientX - (zoneRect.left + zoneRect.width / 2);
+    let dy = clientY - (zoneRect.top + zoneRect.height / 2);
+    let dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > maxRadius) {
+        dx = (dx / dist) * maxRadius;
+        dy = (dy / dist) * maxRadius;
+    }
+    stick.style.transform = `translate(${dx}px, ${dy}px)`;
+    moveX = dx / maxRadius;
+    moveZ = dy / maxRadius;
+}
 
 // --- ANA MERKEZ ---
 const squareSize = 94;
@@ -891,23 +944,33 @@ socket.on('knockback', (angle) => { if (!gameActive || isDead) return; rabbit.po
 socket.on('playerDisconnected', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id].mesh); delete otherPlayers[id]; } });
 socket.on('hostDisconnected', () => { alert('Oda sahibi ayrıldı.'); location.reload(); });
 
-// --- HAREKET GÜNCELLEME (joystick + klavye) ---
-function updateMovement(deltaTime) {
-    let moveX = 0, moveZ = 0;
-    // Klavye
-    if (keys['w'] || keys['arrowup']) moveZ = -1;
-    if (keys['s'] || keys['arrowdown']) moveZ = 1;
-    if (keys['a'] || keys['arrowleft']) moveX = -1;
-    if (keys['d'] || keys['arrowright']) moveX = 1;
-    
-    // Joystick (dokunmatik)
-    if (joystickActive) {
-        moveX = window.moveX || 0;
-        moveZ = window.moveZ || 0;
+// --- KAMERA KONTROLLERİ (dokunmatik) ---
+let cameraAngleY = 0, cameraAngleX = 0.4, cameraDistance = 10, touchStartX = 0, touchStartY = 0, isTurningCamera = false;
+window.addEventListener('touchstart', (e) => {
+    const jBtn = document.getElementById('jump-button'), aBtn = document.getElementById('attack-button');
+    if (e.touches.length === 1 && !zone.contains(e.target) && !jBtn.contains(e.target) && !aBtn.contains(e.target)) {
+        isTurningCamera = true;
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
     }
-    
-    return { moveX, moveZ };
-}
+}, { passive: true });
+
+window.addEventListener('touchmove', (e) => {
+    if (!isTurningCamera) return;
+    const jBtn = document.getElementById('jump-button'), aBtn = document.getElementById('attack-button');
+    for (let i = 0; i < e.touches.length; i++) {
+        if (!zone.contains(e.touches[i].target) && !jBtn.contains(e.touches[i].target) && !aBtn.contains(e.touches[i].target)) {
+            cameraAngleY -= (e.touches[i].clientX - touchStartX) * 0.005;
+            cameraAngleX += (e.touches[i].clientY - touchStartY) * 0.005;
+            cameraAngleX = Math.max(0.1, Math.min(1.2, cameraAngleX));
+            touchStartX = e.touches[i].clientX;
+            touchStartY = e.touches[i].clientY;
+            break;
+        }
+    }
+}, { passive: true });
+
+window.addEventListener('touchend', () => { isTurningCamera = false; });
 
 // --- ANA DÖNGÜ ---
 let legWiggle = 0;
@@ -916,7 +979,16 @@ function animate() {
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
     
-    const { moveX, moveZ } = updateMovement(deltaTime);
+    // Klavye + Joystick hareket birleştirme
+    let finalMoveX = 0, finalMoveZ = 0;
+    if (joystickActive) {
+        finalMoveX = moveX;
+        finalMoveZ = moveZ;
+    }
+    if (keys['w'] || keys['arrowup']) finalMoveZ = -1;
+    if (keys['s'] || keys['arrowdown']) finalMoveZ = 1;
+    if (keys['a'] || keys['arrowleft']) finalMoveX = -1;
+    if (keys['d'] || keys['arrowright']) finalMoveX = 1;
 
     document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
     const modCoordEl = document.getElementById('mod-coords');
@@ -963,11 +1035,11 @@ function animate() {
     }
 
     if (gameActive && !isDead) {
-        if (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05) {
+        if (Math.abs(finalMoveX) > 0.05 || Math.abs(finalMoveZ) > 0.05) {
             const fx = Math.sin(cameraAngleY), fz = Math.cos(cameraAngleY);
             const rx = Math.sin(cameraAngleY + Math.PI / 2), rz = Math.cos(cameraAngleY + Math.PI / 2);
-            const dx = (fx * -moveZ) - (rx * moveX);
-            const dz = (fz * -moveZ) - (rz * moveX);
+            const dx = (fx * -finalMoveZ) - (rx * finalMoveX);
+            const dz = (fz * -finalMoveZ) - (rz * finalMoveX);
             const nx = rabbit.position.x + dx * 12.0 * deltaTime, nz = rabbit.position.z + dz * 12.0 * deltaTime;
             if (!checkCollision(nx, rabbit.position.y, rabbit.position.z)) rabbit.position.x = nx;
             if (!checkCollision(rabbit.position.x, rabbit.position.y, nz)) rabbit.position.z = nz;
