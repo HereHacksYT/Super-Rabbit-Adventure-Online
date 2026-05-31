@@ -8,7 +8,7 @@ let isDead = false;
 let respawnTimer = null;
 let respawnCountdown = 15;
 let lastTeleportTime = 0;
-const teleportCooldown = 3; // saniye
+const teleportCooldown = 3;
 
 // 3D SAHNE
 const scene = new THREE.Scene();
@@ -40,7 +40,7 @@ scene.add(sunLight);
 const gameplayGroup = new THREE.Group();
 scene.add(gameplayGroup);
 const obstacles = [];
-const portals = []; // portal listesi
+const portals = [];
 
 // --- PROSEDÜREL DOKU OLUŞTURUCU ---
 function createCanvasTexture(width, height, drawFunc) {
@@ -230,6 +230,12 @@ const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.
 
 const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.55 });
 
+// Altın malzeme
+const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.2, metalness: 0.9, emissive: 0xff8800, emissiveIntensity: 0.4 });
+
+// Mavi portal malzemesi
+const portalBlueMat = new THREE.MeshStandardMaterial({ color: 0x4488ff, roughness: 0.1, metalness: 0.2, emissive: 0x2266cc, emissiveIntensity: 0.8 });
+
 // --- ZEMİN ---
 const groundGeo = new THREE.CircleGeometry(120, 128);
 const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -237,13 +243,13 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
-// --- DUVAR (gölgesiz versiyon) ---
+// --- DUVAR (gölgesiz) ---
 function createShadowlessWall(x, z, width, height, depth) {
     const geo = new THREE.BoxGeometry(width, height, depth);
     const wall = new THREE.Mesh(geo, stoneWallMat);
     wall.position.set(x, height / 2, z);
-    wall.castShadow = false;   // gölge yok
-    wall.receiveShadow = false; // gölge almaz
+    wall.castShadow = false;
+    wall.receiveShadow = false;
     gameplayGroup.add(wall);
     obstacles.push(wall);
     return wall;
@@ -318,23 +324,49 @@ function createBigTree(x, z, scale = 2) {
     return group;
 }
 
-// --- PORTAL (güzel görünümlü) ---
-function createPortal(x, z, targetX, targetZ, color = 0x00ffff) {
+// --- ÖZEL PORTAL (altın kaideli, mavi halkalı, altın dikilitaşlı) ---
+function createSpecialPortal(x, z, targetX, targetZ) {
     const group = new THREE.Group();
-    const ringGeo = new THREE.TorusGeometry(1.2, 0.15, 16, 40);
-    const ringMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.8, roughness: 0.2 });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
+    
+    // Altın kaide (altta)
+    const baseGeo = new THREE.CylinderGeometry(0.9, 1.1, 0.4, 24);
+    const base = new THREE.Mesh(baseGeo, goldMat);
+    base.position.y = 0.2;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    group.add(base);
+    
+    // Mavi portal halkası (kaidenin üstünde, biraz daha küçük)
+    const ringGeo = new THREE.TorusGeometry(0.7, 0.12, 16, 32);
+    const ring = new THREE.Mesh(ringGeo, portalBlueMat);
     ring.rotation.x = Math.PI / 2;
-    ring.position.y = 1.4;
+    ring.position.y = 1.2;
     group.add(ring);
-    const pillarGeo = new THREE.CylinderGeometry(0.35, 0.35, 2.8, 16);
-    const pillarMat = new THREE.MeshStandardMaterial({ color: color, emissive: color, emissiveIntensity: 0.4, transparent: true, opacity: 0.35 });
-    const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-    pillar.position.y = 1.4;
+    
+    // Mavi iç ışık silindiri
+    const innerGeo = new THREE.CylinderGeometry(0.25, 0.25, 2.0, 16);
+    const innerMat = new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x2266cc, emissiveIntensity: 0.5, transparent: true, opacity: 0.3 });
+    const inner = new THREE.Mesh(innerGeo, innerMat);
+    inner.position.y = 1.2;
+    group.add(inner);
+    
+    // Altın dikilitaş (arkanın hemen arkasında)
+    const pillarGeo = new THREE.CylinderGeometry(0.15, 0.22, 3.5, 8);
+    const pillar = new THREE.Mesh(pillarGeo, goldMat);
+    pillar.position.set(0, 2.0, -0.8);
+    pillar.castShadow = true;
     group.add(pillar);
+    
+    // Dikilitaşın üstünde küçük altın piramit
+    const tipGeo = new THREE.ConeGeometry(0.22, 0.6, 8);
+    const tip = new THREE.Mesh(tipGeo, goldMat);
+    tip.position.set(0, 3.9, -0.8);
+    tip.castShadow = true;
+    group.add(tip);
+    
     group.position.set(x, 0, z);
     gameplayGroup.add(group);
-    portals.push({ mesh: group, target: new THREE.Vector3(targetX, 0, targetZ), color: color });
+    portals.push({ mesh: group, target: new THREE.Vector3(targetX, 0, targetZ), color: 0xffcc00 });
     return group;
 }
 
@@ -368,8 +400,8 @@ createShadowlessWall(46, 0, 2, 100, 90);
 createShadowlessWall(0, -46, 90, 100, 2);
 createShadowlessWall(-46, 0, 2, 100, 90);
 
-// ============ PORTAL (x:0, z:35) ============
-createPortal(0, 35, 0, 0, 0x44ffff);
+// ============ ÖZEL PORTAL (x:0, z:35) ============
+createSpecialPortal(0, 35, 0, 0);
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
@@ -619,7 +651,6 @@ function animate() {
             const dist = new THREE.Vector2(rabbit.position.x - p.mesh.position.x, rabbit.position.z - p.mesh.position.z).length();
             if (dist < 2.5 && (now - lastTeleportTime > teleportCooldown)) {
                 lastTeleportTime = now;
-                // Hızlı kararma efekti
                 document.getElementById('death-screen').style.display = 'flex';
                 document.getElementById('death-screen').style.background = 'rgba(0,0,0,0.95)';
                 document.querySelector('.death-text').innerText = 'YÜKLENİYOR...';
