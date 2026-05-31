@@ -859,6 +859,7 @@ function createMonkey(x, y, z) {
     return monkeyGroup;
 }
 
+// 3 maymun (tam istediğin konumlarda)
 createMonkey(175, 25.3, 140);
 createMonkey(168, 25.3, 130);
 createMonkey(182, 25.3, 150);
@@ -876,19 +877,16 @@ function createKey(x, y, z) {
     const group = new THREE.Group();
     const goldKeyMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.2, metalness: 0.9, emissive: 0x886600, emissiveIntensity: 0.5 });
     
-    // Anahtar başı (halka)
     const ringGeo = new THREE.TorusGeometry(0.2, 0.06, 8, 16);
     const ring = new THREE.Mesh(ringGeo, goldKeyMat);
     ring.position.y = 0.6;
     group.add(ring);
     
-    // Anahtar gövdesi
     const bodyGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.7, 8);
     const body = new THREE.Mesh(bodyGeo, goldKeyMat);
     body.position.y = 0.15;
     group.add(body);
     
-    // Anahtar dişleri
     for (let i = 0; i < 2; i++) {
         const toothGeo = new THREE.BoxGeometry(0.1, 0.08, 0.08);
         const tooth = new THREE.Mesh(toothGeo, goldKeyMat);
@@ -903,9 +901,9 @@ function createKey(x, y, z) {
     return group;
 }
 
-// --- KAFES VE TAVŞAN ---
+// --- KAFES VE PAMUK (heykel) ---
 let cageGroup = null;
-let cageRabbit = null;
+let pamukStatue = null;
 function createCage(x, z) {
     const group = new THREE.Group();
     const barMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.3 });
@@ -916,6 +914,7 @@ function createCage(x, z) {
     floor.position.y = 0.1;
     floor.receiveShadow = true;
     group.add(floor);
+    obstacles.push(floor); // İçinden geçilmez
     
     // Dikey parmaklıklar
     for (let i = 0; i < 8; i++) {
@@ -925,6 +924,7 @@ function createCage(x, z) {
         bar.position.set(Math.cos(angle) * 1.3, 1.7, Math.sin(angle) * 1.3);
         bar.castShadow = true;
         group.add(bar);
+        obstacles.push(bar); // İçinden geçilmez
     }
     
     // Üst halka
@@ -933,14 +933,16 @@ function createCage(x, z) {
     topRing.rotation.x = Math.PI / 2;
     topRing.position.y = 3.1;
     group.add(topRing);
+    obstacles.push(topRing);
     
     // Alt halka
     const bottomRing = new THREE.Mesh(topRingGeo, barMat);
     bottomRing.rotation.x = Math.PI / 2;
     bottomRing.position.y = 0.3;
     group.add(bottomRing);
+    obstacles.push(bottomRing);
     
-    // Kafes kapısı (kilitli)
+    // Kilit
     const lockGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
     const lockMat = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.3, emissive: 0x330000, emissiveIntensity: 0.5 });
     const lock = new THREE.Mesh(lockGeo, lockMat);
@@ -948,27 +950,12 @@ function createCage(x, z) {
     lock.name = 'lock';
     group.add(lock);
     
-    // Tavşan (kafesin içinde)
-    const rabbitGroup = new THREE.Group();
-    const rabbitBodyGeo = new THREE.BoxGeometry(0.5, 0.6, 0.5);
-    const rabbitMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-    const rabbitBody = new THREE.Mesh(rabbitBodyGeo, rabbitMat);
-    rabbitBody.position.y = 0.4;
-    rabbitGroup.add(rabbitBody);
-    const rabbitHeadGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
-    const rabbitHead = new THREE.Mesh(rabbitHeadGeo, rabbitMat);
-    rabbitHead.position.y = 0.8;
-    rabbitGroup.add(rabbitHead);
-    const earGeo = new THREE.BoxGeometry(0.1, 0.3, 0.06);
-    const earL = new THREE.Mesh(earGeo, rabbitMat);
-    earL.position.set(-0.12, 0.6, 0);
-    rabbitGroup.add(earL);
-    const earR = new THREE.Mesh(earGeo, rabbitMat);
-    earR.position.set(0.12, 0.6, 0);
-    rabbitGroup.add(earR);
-    rabbitGroup.position.set(0, 0.5, 0);
-    group.add(rabbitGroup);
-    cageRabbit = rabbitGroup;
+    // PAMUK HEYKELİ (bizim modelin aynısı, beyaz)
+    const statueGroup = createRabbitModel(false);
+    statueGroup.position.set(0, 0.5, 0);
+    statueGroup.scale.set(0.8, 0.8, 0.8);
+    group.add(statueGroup);
+    pamukStatue = statueGroup;
     
     group.position.set(x, 0, z);
     gameplayGroup.add(group);
@@ -1063,7 +1050,7 @@ function createRabbitModel(isLocal = false) {
     const fFR = new THREE.Mesh(footGeo, footMat); fFR.position.set(0.32, 0.08, 0.22); group.add(fFR);
     const fBL = new THREE.Mesh(footGeo, footMat); fBL.position.set(-0.32, -0.08, -0.22); group.add(fBL);
     const fBR = new THREE.Mesh(footGeo, footMat); fBR.position.set(0.32, -0.08, -0.22); group.add(fBR);
-    return { mesh: group, visual: visualGroup, head: head, feet: [fFL, fFR, fBL, fBR] };
+    return group;
 }
 
 const localPlayer = createRabbitModel(true);
@@ -1244,7 +1231,7 @@ window.addEventListener('touchmove', (e) => {
 
 window.addEventListener('touchend', () => { isTurningCamera = false; });
 
-// --- MAYMUN YAPAY ZEKA ---
+// --- MAYMUN YAPAY ZEKA + ANAHTAR + KAFES ---
 let monkeyAttackCooldown = 0;
 function updateAllMonkeys(deltaTime) {
     if (monkeyAttackCooldown > 0) monkeyAttackCooldown -= deltaTime;
@@ -1268,7 +1255,7 @@ function updateAllMonkeys(deltaTime) {
             return;
         }
         
-        allDead = false; // En az bir maymun hayatta
+        allDead = false;
         
         if (dist < ud.chaseRange && distFromHome < ud.homeRange) {
             const angle = Math.atan2(playerPos.x - monkeyPos.x, playerPos.z - monkeyPos.z);
@@ -1323,7 +1310,6 @@ function updateAllMonkeys(deltaTime) {
         if (keyDist < 2.0) {
             hasKey = true;
             keyMesh.visible = false;
-            // Anahtarı kafamızda göster
             keyMesh.position.set(0, 0, 0);
             keyMesh.scale.set(0.5, 0.5, 0.5);
             rabbit.add(keyMesh);
@@ -1337,16 +1323,16 @@ function updateAllMonkeys(deltaTime) {
         const cageDist = rabbit.position.distanceTo(cageGroup.position);
         if (cageDist < 3.0) {
             cageOpened = true;
-            // Kafesi ve tavşanı kaldır
-            if (cageRabbit) {
-                cageGroup.remove(cageRabbit);
-                cageRabbit = null;
-            }
-            // Kilit rengini değiştir
-            const lock = cageGroup.children.find(c => c.name === 'lock');
-            if (lock) {
-                lock.material.color.set(0x00ff00);
-                lock.material.emissive.set(0x003300);
+            // Kafesi ve Pamuk'u yok et
+            if (cageGroup) {
+                // Engel listesinden kafes parçalarını çıkar
+                cageGroup.children.forEach(child => {
+                    const idx = obstacles.indexOf(child);
+                    if (idx > -1) obstacles.splice(idx, 1);
+                });
+                gameplayGroup.remove(cageGroup);
+                cageGroup = null;
+                pamukStatue = null;
             }
             // Anahtarı kaldır
             if (keyMesh) {
