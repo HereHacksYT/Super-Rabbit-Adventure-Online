@@ -723,6 +723,7 @@ cube.castShadow = true; cube.receiveShadow = true;
 gameplayGroup.add(cube);
 obstacles.push(cube);
 
+// Küp üstü çimen
 const cubeTopGeo = new THREE.BoxGeometry(cubeMaxX - cubeMinX - 0.2, 0.3, cubeMaxZ - cubeMinZ - 0.2);
 const cubeTop = new THREE.Mesh(cubeTopGeo, blockGrassMat);
 cubeTop.position.set((cubeMinX + cubeMaxX) / 2, cubeHeight + 0.15, (cubeMinZ + cubeMaxZ) / 2);
@@ -730,6 +731,81 @@ cubeTop.receiveShadow = true;
 gameplayGroup.add(cubeTop);
 obstacles.push(cubeTop);
 
+// --- MAYMUN (X:180, Y:25.3, Z:140) ---
+function createMonkey(x, y, z) {
+    const monkeyGroup = new THREE.Group();
+    
+    // Gövde
+    const bodyGeo = new THREE.CylinderGeometry(0.4, 0.45, 1.2, 8);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x8B5A3C, roughness: 0.6 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 0.6;
+    body.castShadow = true; body.receiveShadow = true;
+    monkeyGroup.add(body);
+    
+    // Kafa
+    const headGeo = new THREE.SphereGeometry(0.35, 8, 8);
+    const headMat = new THREE.MeshStandardMaterial({ color: 0xA0704A, roughness: 0.5 });
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 1.4;
+    head.castShadow = true; head.receiveShadow = true;
+    monkeyGroup.add(head);
+    
+    // Kulaklar
+    const earGeo = new THREE.SphereGeometry(0.12, 6, 6);
+    const earMat = new THREE.MeshStandardMaterial({ color: 0xD4956B, roughness: 0.5 });
+    const earL = new THREE.Mesh(earGeo, earMat);
+    earL.position.set(-0.3, 1.55, 0);
+    monkeyGroup.add(earL);
+    const earR = new THREE.Mesh(earGeo, earMat);
+    earR.position.set(0.3, 1.55, 0);
+    monkeyGroup.add(earR);
+    
+    // Gözler
+    const eyeGeo = new THREE.SphereGeometry(0.07, 6, 6);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeL.position.set(-0.12, 1.5, 0.28);
+    monkeyGroup.add(eyeL);
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeR.position.set(0.12, 1.5, 0.28);
+    monkeyGroup.add(eyeR);
+    
+    // Burun
+    const noseGeo = new THREE.SphereGeometry(0.08, 6, 6);
+    const noseMat = new THREE.MeshStandardMaterial({ color: 0x4A2A1A, roughness: 0.4 });
+    const nose = new THREE.Mesh(noseGeo, noseMat);
+    nose.position.set(0, 1.42, 0.32);
+    monkeyGroup.add(nose);
+    
+    // Kuyruk
+    const tailPoints = [];
+    for (let i = 0; i < 8; i++) {
+        const angle = i * 0.5;
+        tailPoints.push(new THREE.Vector3(
+            Math.sin(angle) * 0.3,
+            0.3 - i * 0.2,
+            Math.cos(angle) * 0.3 - 0.4
+        ));
+    }
+    const tailCurve = new THREE.CatmullRomCurve3(tailPoints);
+    const tailGeo = new THREE.TubeGeometry(tailCurve, 16, 0.06, 6, false);
+    const tailMat = new THREE.MeshStandardMaterial({ color: 0x8B5A3C, roughness: 0.6 });
+    const tail = new THREE.Mesh(tailGeo, tailMat);
+    tail.position.y = 1.1;
+    monkeyGroup.add(tail);
+    
+    monkeyGroup.position.set(x, y, z);
+    monkeyGroup.rotation.y = Math.random() * Math.PI * 2;
+    gameplayGroup.add(monkeyGroup);
+    obstacles.push(monkeyGroup);
+    
+    return monkeyGroup;
+}
+
+createMonkey(180, 25.3, 140);
+
+// --- PARKUR (4 BASAMAKLI, TOPLAM 16 BASAMAK) ---
 function createParkourStep(x, z, y, w, d) {
     const geo = new THREE.BoxGeometry(w, 0.5, d);
     const mat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.5 });
@@ -742,14 +818,18 @@ function createParkourStep(x, z, y, w, d) {
 }
 
 const parkourData = [
-    {x: 168, z: 124}, {x: 173, z: 124}, {x: 178, z: 124},
-    {x: 186, z: 129}, {x: 186, z: 135}, {x: 186, z: 141},
-    {x: 178, z: 156}, {x: 173, z: 156}, {x: 168, z: 156},
-    {x: 164, z: 141}, {x: 164, z: 135}, {x: 164, z: 129}
+    // üst kenar
+    {x: 167, z: 124}, {x: 171, z: 124}, {x: 175, z: 124}, {x: 179, z: 124},
+    // sağ kenar
+    {x: 186, z: 128}, {x: 186, z: 133}, {x: 186, z: 138}, {x: 186, z: 143},
+    // alt kenar
+    {x: 179, z: 156}, {x: 175, z: 156}, {x: 171, z: 156}, {x: 167, z: 156},
+    // sol kenar
+    {x: 164, z: 143}, {x: 164, z: 138}, {x: 164, z: 133}, {x: 164, z: 128}
 ];
 
 parkourData.forEach((pos, i) => {
-    const y = 0.25 + i * (25 / 12);
+    const y = 0.25 + i * (25 / 16);
     createParkourStep(pos.x, pos.z, y, 3, 3);
 });
 
