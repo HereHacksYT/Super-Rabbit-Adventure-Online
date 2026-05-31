@@ -366,19 +366,21 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
-// --- JOYSTICK ---
+// --- JOYSTICK (ZOOM SORUNU ÇÖZÜLDÜ) ---
 const zone = document.getElementById('joystick-zone');
 const stick = document.getElementById('joystick-stick');
 const maxRadius = 35;
 
 zone.addEventListener('touchstart', (e) => {
+    e.preventDefault();
     if (!gameActive || isDead) return;
     joystickActive = true;
     handleJoystick(e.touches[0].clientX, e.touches[0].clientY);
-}, { passive: true });
+}, { passive: false });
 
 window.addEventListener('touchmove', (e) => {
     if (joystickActive && gameActive && !isDead) {
+        e.preventDefault();
         for (let i = 0; i < e.touches.length; i++) {
             if (zone.contains(e.touches[i].target)) {
                 handleJoystick(e.touches[i].clientX, e.touches[i].clientY);
@@ -386,7 +388,7 @@ window.addEventListener('touchmove', (e) => {
             }
         }
     }
-}, { passive: true });
+}, { passive: false });
 
 zone.addEventListener('touchend', () => {
     joystickActive = false;
@@ -405,7 +407,7 @@ function handleJoystick(clientX, clientY) {
     moveZ = dy / maxRadius;
 }
 
-// --- ZIPLAMA VE VURMA BUTONLARI (passive: false ile) ---
+// --- ZIPLAMA VE VURMA BUTONLARI ---
 document.getElementById('jump-button').addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (gameActive && !isDead) {
