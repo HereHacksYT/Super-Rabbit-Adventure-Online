@@ -325,7 +325,7 @@ createShadowlessWall(0, -48, squareSize, 100, 2);
 createShadowlessWall(48, 0, 2, 100, squareSize);
 createShadowlessWall(-48, 0, 2, 100, squareSize);
 
-// --- YOSUNLU DUVAR PARÇASI (50 birimlik, uçları örtüşmeli) ---
+// --- YOSUNLU DUVAR PARÇASI (50 birimlik) ---
 function createMossyWallSegment(x, z, width, height, depth, rotY = 0) {
     const geo = new THREE.BoxGeometry(width, height, depth);
     const wall = new THREE.Mesh(geo, mossyWallMat);
@@ -338,21 +338,18 @@ function createMossyWallSegment(x, z, width, height, depth, rotY = 0) {
     return wall;
 }
 
-// 4 kenarı da tam kapatan, 50 birimlik parçalı duvar sistemi
 function createEnclosingWalls(minX, minZ, maxX, maxZ, height = 25) {
     const widthX = maxX - minX;
     const widthZ = maxZ - minZ;
     const segLen = 50;
     
-    // Üst kenar (z = maxZ, x: minX → maxX)
     const topCount = Math.ceil(widthX / segLen);
-    const topSegLen = widthX / topCount + 1; // +1 birim örtüşme
+    const topSegLen = widthX / topCount + 1;
     for (let i = 0; i < topCount; i++) {
         const x = minX + (i + 0.5) * (widthX / topCount);
         createMossyWallSegment(x, maxZ, topSegLen, height, 2, 0);
     }
     
-    // Alt kenar (z = minZ, x: minX → maxX)
     const bottomCount = Math.ceil(widthX / segLen);
     const bottomSegLen = widthX / bottomCount + 1;
     for (let i = 0; i < bottomCount; i++) {
@@ -360,7 +357,6 @@ function createEnclosingWalls(minX, minZ, maxX, maxZ, height = 25) {
         createMossyWallSegment(x, minZ, bottomSegLen, height, 2, 0);
     }
     
-    // Sol kenar (x = minX, z: minZ → maxZ)
     const leftCount = Math.ceil(widthZ / segLen);
     const leftSegLen = widthZ / leftCount + 1;
     for (let i = 0; i < leftCount; i++) {
@@ -368,7 +364,6 @@ function createEnclosingWalls(minX, minZ, maxX, maxZ, height = 25) {
         createMossyWallSegment(minX, z, leftSegLen, height, 2, Math.PI/2);
     }
     
-    // Sağ kenar (x = maxX, z: minZ → maxZ)
     const rightCount = Math.ceil(widthZ / segLen);
     const rightSegLen = widthZ / rightCount + 1;
     for (let i = 0; i < rightCount; i++) {
@@ -498,6 +493,54 @@ function createGoldenPortal(x, z, targetX, targetZ) {
     return group;
 }
 
+// --- TABELA ---
+function createSign(x, z, text, rotY = 0) {
+    const group = new THREE.Group();
+    
+    // Direk
+    const poleGeo = new THREE.CylinderGeometry(0.1, 0.15, 3.5, 8);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.7 });
+    const pole = new THREE.Mesh(poleGeo, poleMat);
+    pole.position.y = 1.75;
+    pole.castShadow = true;
+    group.add(pole);
+    
+    // Tabela tahtası
+    const boardGeo = new THREE.BoxGeometry(4.0, 1.2, 0.2);
+    const boardMat = new THREE.MeshStandardMaterial({ color: 0xc49a6c, roughness: 0.7 });
+    const board = new THREE.Mesh(boardGeo, boardMat);
+    board.position.y = 3.0;
+    board.castShadow = true;
+    board.receiveShadow = true;
+    group.add(board);
+    
+    // Canvas yazı
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#c49a6c';
+    ctx.fillRect(0, 0, 512, 128);
+    ctx.fillStyle = '#2d1a0a';
+    ctx.font = 'bold 48px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, 256, 64);
+    
+    const textTexture = new THREE.CanvasTexture(canvas);
+    const textMat = new THREE.MeshBasicMaterial({ map: textTexture });
+    const textPlaneGeo = new THREE.PlaneGeometry(3.8, 1.0);
+    const textPlane = new THREE.Mesh(textPlaneGeo, textMat);
+    textPlane.position.set(0, 3.0, 0.11);
+    textPlane.rotation.y = 0;
+    group.add(textPlane);
+    
+    group.position.set(x, 0, z);
+    group.rotation.y = rotY;
+    gameplayGroup.add(group);
+    return group;
+}
+
 // --- YAĞMUR PARTİKÜL SİSTEMİ ---
 let rainParticles = null;
 function createRainSystem(x, z, width, depth) {
@@ -539,7 +582,7 @@ function updateRain(active, x, z, width, depth) {
     rainParticles.geometry.attributes.position.needsUpdate = true;
 }
 
-// ============ YAĞMURLU ORMAN BÖLGESİ (250x250) ============
+// ============ YAĞMURLU ORMAN BÖLGESİ ============
 const rfMinX = 75, rfMaxX = 325, rfMinZ = 75, rfMaxZ = 325;
 const rfCenterX = (rfMinX + rfMaxX) / 2;
 const rfCenterZ = (rfMinZ + rfMaxZ) / 2;
@@ -553,9 +596,7 @@ rfGround.position.set(rfCenterX, 0, rfCenterZ);
 rfGround.receiveShadow = true;
 gameplayGroup.add(rfGround);
 
-// 4 kenarı tam kapatan yosunlu duvarlar (50 birimlik parçalar, köşelerde örtüşmeli)
 createEnclosingWalls(rfMinX, rfMinZ, rfMaxX, rfMaxZ, 25);
-
 createRainSystem(rfCenterX, rfCenterZ, rfWidth, rfDepth);
 
 const treeSpacing = 30;
@@ -572,16 +613,6 @@ for (let row = -90; row <= 90; row += rockSpacing) {
         createRock(rfCenterX + col + 10, rfCenterZ + row + 10, 0.8 + Math.random() * 0.8);
     }
 }
-
-const returnPortalGroup = new THREE.Group();
-const returnRingGeo = new THREE.TorusGeometry(1.0, 0.12, 16, 32);
-const returnRing = new THREE.Mesh(returnRingGeo, goldMat);
-returnRing.rotation.x = Math.PI / 2;
-returnRing.position.y = 1.2;
-returnPortalGroup.add(returnRing);
-returnPortalGroup.position.set(rfCenterX, 0, rfMaxZ - 20);
-gameplayGroup.add(returnPortalGroup);
-portals.push({ mesh: returnPortalGroup, target: new THREE.Vector3(0, 0, 34), color: 0xffcc00 });
 
 // ============ ANA MERKEZ ELEMANLARI ============
 createWoodenHouse(-25, -20, 0.2);
@@ -605,7 +636,14 @@ createBigTree(40, 15, 2);
 createBigTree(-15, -40, 1.8);
 createBigTree(15, 40, 1.8);
 
-createGoldenPortal(0, 40, rfCenterX, rfMinZ + 20);
+// Gidiş portalı (X:0 Z:40)
+createGoldenPortal(0, 40, 200, 80);
+
+// Tabela (X:0 Z:43)
+createSign(0, 43, "Yağmurlu Orman", 0);
+
+// Geri dönüş portalı (X:200 Z:80 → X:0 Z:37)
+createGoldenPortal(200, 80, 0, 37);
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
