@@ -492,12 +492,11 @@ function updateRain(active, x, z, width, depth) {
     rainParticles.geometry.attributes.position.needsUpdate = true;
 }
 
-// ============ YAĞMURLU ORMAN BÖLGESİ (5 KAT BÜYÜK) ============
+// ============ YAĞMURLU ORMAN BÖLGESİ (500x500) ============
 const rfX = 200, rfZ = 200;
-const rfWidth = 500, rfDepth = 500; // 5 katına çıkarıldı
+const rfWidth = 500, rfDepth = 500;
 const rfHalfW = rfWidth / 2, rfHalfD = rfDepth / 2;
 
-// Kare zemin
 const rfGroundGeo = new THREE.PlaneGeometry(rfWidth, rfDepth);
 const rfGround = new THREE.Mesh(rfGroundGeo, rainforestGroundMat);
 rfGround.rotation.x = -Math.PI / 2;
@@ -505,25 +504,21 @@ rfGround.position.set(rfX, 0, rfZ);
 rfGround.receiveShadow = true;
 gameplayGroup.add(rfGround);
 
-// Yosunlu duvarlar (4 kenar)
 createMossyWall(rfX, rfZ - rfHalfD, rfWidth, 25, 2, 0);
 createMossyWall(rfX, rfZ + rfHalfD, rfWidth, 25, 2, 0);
 createMossyWall(rfX - rfHalfW, rfZ, 2, 25, rfDepth, Math.PI/2);
 createMossyWall(rfX + rfHalfW, rfZ, 2, 25, rfDepth, Math.PI/2);
 
-// Yağmur sistemi
 createRainSystem(rfX, rfZ, rfWidth, rfDepth);
 
-// SABİT AĞAÇLAR (daha geniş aralıklı ızgara)
-const treeSpacing = 40; // 5 kat daha geniş aralık
+const treeSpacing = 40;
 for (let row = -200; row <= 200; row += treeSpacing) {
     for (let col = -200; col <= 200; col += treeSpacing) {
-        if (Math.abs(row) <= 50 && Math.abs(col) <= 50) continue; // portal bölgesi boş
+        if (Math.abs(row) <= 50 && Math.abs(col) <= 50) continue;
         createBigTree(rfX + col, rfZ + row, 1.5 + Math.random() * 1.0);
     }
 }
 
-// SABİT KAYALAR
 const rockSpacing = 60;
 for (let row = -180; row <= 180; row += rockSpacing) {
     for (let col = -180; col <= 180; col += rockSpacing) {
@@ -531,7 +526,6 @@ for (let row = -180; row <= 180; row += rockSpacing) {
     }
 }
 
-// Geri dönüş portalı (yağmurlu ormanda)
 const returnPortalGroup = new THREE.Group();
 const returnRingGeo = new THREE.TorusGeometry(1.0, 0.12, 16, 32);
 const returnRing = new THREE.Mesh(returnRingGeo, goldMat);
@@ -542,7 +536,7 @@ returnPortalGroup.position.set(rfX, 0, rfZ + rfHalfD - 40);
 gameplayGroup.add(returnPortalGroup);
 portals.push({ mesh: returnPortalGroup, target: new THREE.Vector3(0, 0, 32), color: 0xffcc00 });
 
-// ============ ANA MERKEZ ============
+// ============ ANA MERKEZ (ORTADA AĞAÇ YOK!) ============
 createWoodenHouse(-20, -16, 0.2);
 createWoodenHouse(18, 13, -0.3);
 createWoodenHouse(-20, 20, 0.5);
@@ -553,14 +547,13 @@ createBigGrassBlock(33, 22, 10, 8, 7);
 createBigGrassBlock(-30, -30, 9, 9, 10);
 createBigGrassBlock(22, 0, 8, 8, 6);
 
+// Ağaçlar (0,0 ve yakınında hiç yok!)
 createBigTree(-36, -36, 2);
 createBigTree(36, -32, 1.8);
 createBigTree(-32, 36, 2.2);
 createBigTree(34, 34, 2);
 createBigTree(-38, 8, 1.8);
 createBigTree(38, -8, 2);
-createBigTree(0, -40, 2.2);
-createBigTree(0, 40, 2.2);
 createBigTree(-40, -14, 2);
 createBigTree(40, 14, 2);
 createBigTree(-16, -38, 1.8);
