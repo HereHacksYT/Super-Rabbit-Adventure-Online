@@ -10,6 +10,7 @@ let respawnCountdown = 15;
 let lastTeleportTime = 0;
 const teleportCooldown = 3;
 let isModerator = false;
+let infiniteJump = false;
 
 // 3D SAHNE
 const scene = new THREE.Scene();
@@ -295,15 +296,14 @@ const mossyWallMat = new THREE.MeshStandardMaterial({ map: mossyStoneTexture, ro
 const barkMat = new THREE.MeshStandardMaterial({ map: barkTexture, roughness: 0.7 });
 const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.4 });
 const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.55 });
-
-// Altın malzeme
 const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.2 });
 
-// --- MOD MENÜ HTML (dinamik) ---
+// --- MOD MENÜ HTML ---
 const modMenuHTML = `
 <div id="mod-menu" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); padding:25px; border-radius:15px; z-index:30; color:white; text-align:center; border:2px solid gold; min-width:250px;">
     <h2 style="color:gold; margin-bottom:15px;">🔧 Mod Menü</h2>
     <p id="mod-coords" style="color:#ffeb3b; font-size:16px; margin:10px 0;"></p>
+    <button id="btn-infinite-jump" style="padding:12px 20px; margin:8px; background:#444; color:white; border:1px solid white; border-radius:8px; cursor:pointer; width:90%;">999 Zıplama: KAPALI</button>
     <button onclick="closeModMenu()" style="padding:12px 20px; margin:8px; background:#c44; color:white; border:1px solid white; border-radius:8px; cursor:pointer; width:90%;">Kapat</button>
 </div>
 `;
@@ -313,7 +313,12 @@ window.closeModMenu = function() {
     document.getElementById('mod-menu').style.display = 'none';
 };
 
-// Mobil için mod butonu işlevi
+document.getElementById('btn-infinite-jump').addEventListener('click', function() {
+    infiniteJump = !infiniteJump;
+    this.textContent = '999 Zıplama: ' + (infiniteJump ? 'AÇIK' : 'KAPALI');
+    this.style.background = infiniteJump ? '#4a4' : '#444';
+});
+
 window.openModPrompt = function() {
     const code = prompt('Mod kodu:');
     if (code === '1234') {
@@ -324,7 +329,6 @@ window.openModPrompt = function() {
     }
 };
 
-// Masaüstü için klavye kısayolu
 document.addEventListener('keydown', (e) => {
     if (e.key === 'm' && e.ctrlKey && e.shiftKey) {
         const code = prompt('Mod kodu:');
@@ -348,8 +352,7 @@ function createShadowlessWall(x, z, width, height, depth) {
     const geo = new THREE.BoxGeometry(width, height, depth);
     const wall = new THREE.Mesh(geo, stoneWallMat);
     wall.position.set(x, height / 2, z);
-    wall.castShadow = false;
-    wall.receiveShadow = false;
+    wall.castShadow = false; wall.receiveShadow = false;
     gameplayGroup.add(wall);
     obstacles.push(wall);
     return wall;
@@ -365,8 +368,7 @@ function createMossyWallSegment(x, z, width, height, depth, rotY = 0) {
     const wall = new THREE.Mesh(geo, mossyWallMat);
     wall.position.set(x, height / 2, z);
     wall.rotation.y = rotY;
-    wall.castShadow = true;
-    wall.receiveShadow = true;
+    wall.castShadow = true; wall.receiveShadow = true;
     gameplayGroup.add(wall);
     obstacles.push(wall);
     return wall;
@@ -411,8 +413,7 @@ function createBigGrassBlock(x, z, width, depth, height) {
     const bodyGeo = new THREE.BoxGeometry(width, height, depth);
     const body = new THREE.Mesh(bodyGeo, dirtMat);
     body.position.y = height / 2;
-    body.castShadow = true;
-    body.receiveShadow = true;
+    body.castShadow = true; body.receiveShadow = true;
     group.add(body);
     obstacles.push(body);
     const topGeo = new THREE.BoxGeometry(width - 0.1, 0.2, depth - 0.1);
@@ -486,36 +487,26 @@ function createRock(x, z, scale = 1) {
 
 function createGoldenPortal(x, z, targetX, targetZ) {
     const group = new THREE.Group();
-    
     const baseGeo = new THREE.CylinderGeometry(1.0, 1.2, 0.5, 32);
     const base = new THREE.Mesh(baseGeo, goldMat);
-    base.position.y = 0.25;
-    base.castShadow = true;
-    base.receiveShadow = true;
+    base.position.y = 0.25; base.castShadow = true; base.receiveShadow = true;
     group.add(base);
-    
     const ringGeo = new THREE.TorusGeometry(0.75, 0.14, 16, 40);
     const ring = new THREE.Mesh(ringGeo, goldMat);
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = 1.0;
+    ring.rotation.x = Math.PI / 2; ring.position.y = 1.0;
     group.add(ring);
-    
     const innerGeo = new THREE.CylinderGeometry(0.25, 0.25, 1.8, 16);
     const inner = new THREE.Mesh(innerGeo, new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.0, transparent: true, opacity: 0.6 }));
     inner.position.y = 1.0;
     group.add(inner);
-    
     const topRingGeo = new THREE.TorusGeometry(0.5, 0.08, 8, 24);
     const topRing = new THREE.Mesh(topRingGeo, goldMat);
-    topRing.rotation.x = Math.PI / 2;
-    topRing.position.y = 1.8;
+    topRing.rotation.x = Math.PI / 2; topRing.position.y = 1.8;
     group.add(topRing);
-    
     const topBallGeo = new THREE.SphereGeometry(0.2, 16, 12);
     const topBall = new THREE.Mesh(topBallGeo, goldMat);
     topBall.position.y = 1.9;
     group.add(topBall);
-    
     group.position.set(x, 0, z);
     gameplayGroup.add(group);
     portals.push({ mesh: group, target: new THREE.Vector3(targetX, 0, targetZ), color: 0xffcc00 });
@@ -524,25 +515,18 @@ function createGoldenPortal(x, z, targetX, targetZ) {
 
 function createSign(x, z, text, rotY = 0) {
     const group = new THREE.Group();
-    
     const poleGeo = new THREE.CylinderGeometry(0.1, 0.15, 3.5, 8);
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x8B5A2B, roughness: 0.7 });
     const pole = new THREE.Mesh(poleGeo, poleMat);
-    pole.position.y = 1.75;
-    pole.castShadow = true;
+    pole.position.y = 1.75; pole.castShadow = true;
     group.add(pole);
-    
     const boardGeo = new THREE.BoxGeometry(4.0, 1.2, 0.2);
     const boardMat = new THREE.MeshStandardMaterial({ color: 0xc49a6c, roughness: 0.7 });
     const board = new THREE.Mesh(boardGeo, boardMat);
-    board.position.y = 3.0;
-    board.castShadow = true;
-    board.receiveShadow = true;
+    board.position.y = 3.0; board.castShadow = true; board.receiveShadow = true;
     group.add(board);
-    
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 128;
+    canvas.width = 512; canvas.height = 128;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#c49a6c';
     ctx.fillRect(0, 0, 512, 128);
@@ -551,14 +535,12 @@ function createSign(x, z, text, rotY = 0) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, 256, 64);
-    
     const textTexture = new THREE.CanvasTexture(canvas);
     const textMat = new THREE.MeshBasicMaterial({ map: textTexture });
     const textPlaneGeo = new THREE.PlaneGeometry(3.8, 1.0);
     const textPlane = new THREE.Mesh(textPlaneGeo, textMat);
     textPlane.position.set(0, 3.0, 0.11);
     group.add(textPlane);
-    
     group.position.set(x, 0, z);
     group.rotation.y = rotY;
     gameplayGroup.add(group);
@@ -567,9 +549,7 @@ function createSign(x, z, text, rotY = 0) {
 
 let rainParticles = null;
 function createRainSystem(x, z, width, depth) {
-    if (rainParticles) {
-        gameplayGroup.remove(rainParticles);
-    }
+    if (rainParticles) { gameplayGroup.remove(rainParticles); }
     const particleCount = 5000;
     const positions = new Float32Array(particleCount * 3);
     const halfW = width / 2;
@@ -637,16 +617,23 @@ for (let row = -90; row <= 90; row += rockSpacing) {
     }
 }
 
-// KÜP (X:165 Z:125 → X:185 Z:155, yükseklik: 25)
+// KÜP (X:165 Z:125 → X:185 Z:155, yükseklik: 25, üstü çimen)
 const cubeMinX = 165, cubeMaxX = 185, cubeMinZ = 125, cubeMaxZ = 155, cubeHeight = 25;
 const cubeGeo = new THREE.BoxGeometry(cubeMaxX - cubeMinX, cubeHeight, cubeMaxZ - cubeMinZ);
 const cubeMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.7 });
 const cube = new THREE.Mesh(cubeGeo, cubeMat);
 cube.position.set((cubeMinX + cubeMaxX) / 2, cubeHeight / 2, (cubeMinZ + cubeMaxZ) / 2);
-cube.castShadow = true;
-cube.receiveShadow = true;
+cube.castShadow = true; cube.receiveShadow = true;
 gameplayGroup.add(cube);
 obstacles.push(cube);
+
+// Küpün üstüne çimen
+const cubeTopGeo = new THREE.BoxGeometry(cubeMaxX - cubeMinX - 0.2, 0.3, cubeMaxZ - cubeMinZ - 0.2);
+const cubeTop = new THREE.Mesh(cubeTopGeo, blockGrassMat);
+cubeTop.position.set((cubeMinX + cubeMaxX) / 2, cubeHeight + 0.15, (cubeMinZ + cubeMaxZ) / 2);
+cubeTop.receiveShadow = true;
+gameplayGroup.add(cubeTop);
+obstacles.push(cubeTop);
 
 // ============ ANA MERKEZ ELEMANLARI ============
 createWoodenHouse(-25, -20, 0.2);
@@ -676,7 +663,7 @@ createSign(0, 43, "Yağmurlu Orman", Math.PI);
 createGoldenPortal(200, 80, 0, 37);
 createSign(200, 76, "Geri Dön", 0);
 
-// --- KOORDİNAT GÖSTERGESİ ---
+// --- KOORDİNAT GÖSTERGESİ (HER ZAMAN X Y Z) ---
 const coordSpan = document.createElement('span');
 coordSpan.id = 'coords-display';
 coordSpan.style.marginLeft = '15px';
@@ -720,7 +707,6 @@ let isAttacking = false, attackAnimTime = 0;
 let myHealth = 100; const maxHealth = 100;
 let inRainforest = false;
 
-// Mod butonunu göster (oyun başlayınca)
 function showModButton() {
     document.getElementById('mod-btn').style.display = 'flex';
 }
@@ -897,7 +883,16 @@ window.addEventListener('touchmove', (e) => {
 }, { passive: true });
 window.addEventListener('touchend', () => { isTurningCamera = false; });
 
-document.getElementById('jump-button').addEventListener('touchstart', (e) => { e.preventDefault(); if (gameActive && !isDead && jumpCount < 3) { velocityY = jumpForce; jumpCount++; } });
+document.getElementById('jump-button').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (gameActive && !isDead) {
+        if (infiniteJump || jumpCount < 3) {
+            velocityY = jumpForce;
+            jumpCount++;
+        }
+    }
+});
+
 document.getElementById('attack-button').addEventListener('touchstart', (e) => {
     e.preventDefault();
     if (gameActive && !isDead && !isAttacking) {
@@ -922,14 +917,10 @@ function animate() {
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
 
-    // Koordinat gösterimi (mod açıkken Y de görünür)
-    if (isModerator) {
-        document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
-        const modCoordEl = document.getElementById('mod-coords');
-        if (modCoordEl) modCoordEl.innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
-    } else {
-        document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Z:${Math.round(rabbit.position.z)}`;
-    }
+    // HER ZAMAN X Y Z göster
+    document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
+    const modCoordEl = document.getElementById('mod-coords');
+    if (modCoordEl && isModerator) modCoordEl.innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
 
     const inRFX = rabbit.position.x > rfMinX && rabbit.position.x < rfMaxX;
     const inRFZ = rabbit.position.z > rfMinZ && rabbit.position.z < rfMaxZ;
