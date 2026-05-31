@@ -75,18 +75,6 @@ const groundTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
         ctx.fillStyle = `rgb(${shade}, ${g}, ${b})`;
         ctx.fillRect(x, y, 1 + Math.random() * 3, 2 + Math.random() * 5);
     }
-    for (let i = 0; i < 500; i++) {
-        ctx.fillStyle = `rgba(30, 50, 10, ${Math.random() * 0.25})`;
-        ctx.beginPath();
-        ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 3 + 0.5, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    for (let i = 0; i < 300; i++) {
-        ctx.fillStyle = `rgba(160, 200, 80, ${Math.random() * 0.2})`;
-        ctx.beginPath();
-        ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 2 + 0.3, 0, Math.PI * 2);
-        ctx.fill();
-    }
 });
 
 const blockGrassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
@@ -95,12 +83,6 @@ const blockGrassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     for (let i = 0; i < 2000; i++) {
         ctx.fillStyle = `rgb(${100 + Math.random()*40}, ${150 + Math.random()*60}, ${30 + Math.random()*30})`;
         ctx.fillRect(Math.random()*w, Math.random()*h, 4, 6);
-    }
-    for (let i = 0; i < 300; i++) {
-        ctx.fillStyle = `rgba(50,80,20,${Math.random()*0.3})`;
-        ctx.beginPath();
-        ctx.arc(Math.random()*w, Math.random()*h, Math.random()*3+1, 0, Math.PI*2);
-        ctx.fill();
     }
 });
 
@@ -116,12 +98,6 @@ const rainforestGroundTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
         ctx.fillStyle = `rgb(${shade}, ${g}, ${b})`;
         ctx.fillRect(x, y, 2 + Math.random() * 4, 2 + Math.random() * 4);
     }
-    for (let i = 0; i < 400; i++) {
-        ctx.fillStyle = `rgba(20, 30, 5, ${Math.random() * 0.35})`;
-        ctx.beginPath();
-        ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 4 + 1, 0, Math.PI * 2);
-        ctx.fill();
-    }
 });
 
 const mossyStoneTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
@@ -135,26 +111,7 @@ const mossyStoneTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
             const shade = 120 + Math.random() * 40;
             ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
             ctx.fillRect(x + 2, y + 2, 60, 28);
-            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-            ctx.lineWidth = 1.5;
-            ctx.strokeRect(x + 2, y + 2, 60, 28);
         }
-    }
-    for (let i = 0; i < 300; i++) {
-        const x = Math.random() * w;
-        const y = Math.random() * h;
-        ctx.fillStyle = `rgba(60, 110, 40, ${Math.random() * 0.6})`;
-        ctx.beginPath();
-        ctx.arc(x, y, Math.random() * 12 + 3, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    for (let i = 0; i < 200; i++) {
-        const x = Math.random() * w;
-        const y = Math.random() * h;
-        ctx.fillStyle = `rgba(80, 140, 50, ${Math.random() * 0.4})`;
-        ctx.beginPath();
-        ctx.arc(x, y, Math.random() * 8 + 2, 0, Math.PI * 2);
-        ctx.fill();
     }
 });
 
@@ -175,26 +132,6 @@ const woodTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
         ctx.fillStyle = 'rgba(0,0,0,0.15)';
         ctx.fillRect(x, 0, 2, h);
     }
-    for (let i = 0; i < 600; i++) {
-        ctx.strokeStyle = `rgba(100, 60, 20, ${Math.random()*0.5})`;
-        ctx.lineWidth = Math.random()*3+0.5;
-        ctx.beginPath();
-        const y = Math.random() * h;
-        ctx.moveTo(0, y);
-        for (let x = 0; x < w; x += 10) {
-            ctx.lineTo(x, y + Math.sin(x*0.05)*8);
-        }
-        ctx.stroke();
-    }
-    for (let i = 0; i < 15; i++) {
-        const bx = Math.random() * w;
-        const by = Math.random() * h;
-        const r = 3 + Math.random() * 8;
-        ctx.fillStyle = `rgba(80, 40, 20, 0.7)`;
-        ctx.beginPath();
-        ctx.ellipse(bx, by, r, r*1.5, 0, 0, Math.PI*2);
-        ctx.fill();
-    }
 });
 
 const stoneTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
@@ -208,14 +145,7 @@ const stoneTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
             const shade = 120 + Math.random() * 40;
             ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
             ctx.fillRect(x + 2, y + 2, 60, 28);
-            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-            ctx.lineWidth = 1.5;
-            ctx.strokeRect(x + 2, y + 2, 60, 28);
         }
-    }
-    for (let i = 0; i < 400; i++) {
-        ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.2})`;
-        ctx.fillRect(Math.random()*w, Math.random()*h, 4, 3);
     }
 });
 
@@ -229,16 +159,7 @@ const roofTileTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
             const x = col * 42 + offset;
             ctx.fillStyle = `rgb(${150 + Math.random()*30}, ${40 + Math.random()*20}, ${30 + Math.random()*20})`;
             ctx.fillRect(x + 2, y + 2, 38, 18);
-            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(x + 2, y + 2, 38, 18);
-            ctx.fillStyle = 'rgba(0,0,0,0.15)';
-            ctx.fillRect(x + 2, y + 30, 38, 10);
         }
-    }
-    for (let i = 0; i < 300; i++) {
-        ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.2})`;
-        ctx.fillRect(Math.random()*w, Math.random()*h, 3, 2);
     }
 });
 
@@ -280,14 +201,12 @@ const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.
 const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.55 });
 const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.2 });
 
-const modMenuHTML = `
-<div id="mod-menu" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); padding:25px; border-radius:15px; z-index:30; color:white; text-align:center; border:2px solid gold; min-width:250px;">
+const modMenuHTML = `<div id="mod-menu" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); padding:25px; border-radius:15px; z-index:30; color:white; text-align:center; border:2px solid gold; min-width:250px;">
     <h2 style="color:gold; margin-bottom:15px;">🔧 Mod Menü</h2>
     <p id="mod-coords" style="color:#ffeb3b; font-size:16px; margin:10px 0;"></p>
     <button id="btn-infinite-jump" style="padding:12px 20px; margin:8px; background:#444; color:white; border:1px solid white; border-radius:8px; cursor:pointer; width:90%;">999 Zıplama: KAPALI</button>
     <button onclick="closeModMenu()" style="padding:12px 20px; margin:8px; background:#c44; color:white; border:1px solid white; border-radius:8px; cursor:pointer; width:90%;">Kapat</button>
-</div>
-`;
+</div>`;
 document.body.insertAdjacentHTML('beforeend', modMenuHTML);
 
 window.closeModMenu = function() { document.getElementById('mod-menu').style.display = 'none'; };
@@ -332,6 +251,10 @@ document.addEventListener('keydown', (e) => {
                 }
             });
         }
+    }
+    // Işık oyunu için ayna döndürme
+    if (lightGameActive && (e.key === 'e' || e.key === 'f')) {
+        handleMirrorRotate();
     }
     if (e.key === 'm' && e.ctrlKey && e.shiftKey) {
         const code = prompt('Mod kodu:');
@@ -893,7 +816,6 @@ function createCage(x, z) {
     return group;
 }
 
-// ======================= PARKUR =======================
 function createParkourStep(x, z, y, w, d) {
     const geo = new THREE.BoxGeometry(w, 0.5, d);
     const mat = new THREE.MeshStandardMaterial({ color: 0xcccc99, roughness: 0.4, metalness: 0.1 });
@@ -917,7 +839,6 @@ parkourData.forEach((pos, i) => {
     const y = 0.25 + i * (25 / 16);
     createParkourStep(pos.x, pos.z, y, 3, 3);
 });
-// ======================================================
 
 createKey(180, 25.5, 140);
 createCage(190, 150);
@@ -1232,12 +1153,114 @@ function showMessage(text) {
     }, 2000);
 }
 
+// ===================== IŞIK YANSITMA OYUNU (X:310 Z:100) =====================
+const lightGameZone = { x: 310, z: 100 };
+let lightGameActive = false, lightGameCompleted = false, hasSecondKey = false, currentLevel = 0, mirrors = [], rayLines = [];
+const levels = [
+    { sourceAngle: 0, targetPos: { x: 7, z: 0 }, mirrors: [{ x: 3, z: 2, angle: Math.PI/4, fixed: false }] },
+    { sourceAngle: Math.PI/4, targetPos: { x: -2, z: 5 }, mirrors: [{ x: 1, z: 1, angle: Math.PI/4, fixed: false }, { x: 4, z: 3, angle: -Math.PI/4, fixed: false }] },
+    { sourceAngle: Math.PI/2, targetPos: { x: 0, z: -4 }, mirrors: [{ x: 2, z: -1, angle: Math.PI/4, fixed: true }, { x: -1, z: 2, angle: -Math.PI/4, fixed: false }, { x: -3, z: -2, angle: Math.PI/4, fixed: false }] }
+];
+function createMirrorLight(x, z, angle, fixed) {
+    const group = new THREE.Group();
+    const mirrorMat = new THREE.MeshStandardMaterial({ color: 0xffaa66, metalness: 0.9 });
+    const surface = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 0.8), mirrorMat);
+    surface.position.y = 0.2;
+    group.add(surface);
+    group.position.set(lightGameZone.x + x, 0.2, lightGameZone.z + z);
+    group.rotation.y = angle;
+    gameplayGroup.add(group);
+    if (!fixed) group.userData = { selectable: true };
+    return group;
+}
+function drawRayLight(from, to) {
+    const points = [new THREE.Vector3(from.x + lightGameZone.x, 0.4, from.y + lightGameZone.z), new THREE.Vector3(to.x + lightGameZone.x, 0.4, to.y + lightGameZone.z)];
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: 0xff3366 }));
+    gameplayGroup.add(line);
+    rayLines.push(line);
+}
+function updateLaserLight() {
+    rayLines.forEach(l => gameplayGroup.remove(l));
+    rayLines = [];
+    let pos = new THREE.Vector2(0, 0), dir = new THREE.Vector2(Math.sin(levels[currentLevel].sourceAngle), Math.cos(levels[currentLevel].sourceAngle));
+    const target = new THREE.Vector2(levels[currentLevel].targetPos.x, levels[currentLevel].targetPos.z);
+    for (let b = 0; b < 20; b++) {
+        let minT = Infinity, hitMirror = null, hitPoint = null, newDir = null;
+        for (let m of mirrors) {
+            const mpos = new THREE.Vector2(m.position.x - lightGameZone.x, m.position.z - lightGameZone.z);
+            const normal = new THREE.Vector2(Math.sin(m.rotation.y), Math.cos(m.rotation.y));
+            const toMirror = new THREE.Vector2(mpos.x - pos.x, mpos.y - pos.y);
+            const t = toMirror.dot(normal) / dir.dot(normal);
+            if (t > 0.001) {
+                const intersect = pos.clone().add(dir.clone().multiplyScalar(t));
+                const along = intersect.clone().sub(mpos).dot(new THREE.Vector2(-normal.y, normal.x));
+                if (Math.abs(along) < 0.7 && t < minT) {
+                    minT = t; hitMirror = m; hitPoint = intersect;
+                    const dot = dir.dot(normal);
+                    newDir = dir.clone().sub(normal.clone().multiplyScalar(2 * dot)).normalize();
+                }
+            }
+        }
+        const toTarget = target.clone().sub(pos);
+        const tTarget = toTarget.dot(dir);
+        if (tTarget > 0 && tTarget < minT) {
+            drawRayLight(pos, pos.clone().add(dir.clone().multiplyScalar(tTarget)));
+            if (!lightGameCompleted) {
+                if (currentLevel + 1 < levels.length) { currentLevel++; resetLightGame(); initLightLevel(); showMessage(`Seviye ${currentLevel+1}`, 1500); }
+                else { lightGameCompleted = true; showMessage("Işık Anahtarı kazanıldı! 🔑", 3000); hasSecondKey = true; const keyReward = new THREE.Mesh(new THREE.TorusGeometry(0.2,0.05,16,32), new THREE.MeshStandardMaterial({color:0xffcc00, metalness:0.9})); keyReward.position.set(0,1.2,0); rabbit.add(keyReward); setTimeout(()=>rabbit.remove(keyReward),8000); }
+            }
+            return;
+        }
+        if (hitMirror) { drawRayLight(pos, hitPoint); pos = hitPoint; dir = newDir; }
+        else { drawRayLight(pos, pos.clone().add(dir.clone().multiplyScalar(12))); break; }
+    }
+}
+let laserSourceLight = null, laserTargetLight = null;
+function initLightLevel() {
+    mirrors.forEach(m=>gameplayGroup.remove(m)); mirrors = [];
+    if(laserTargetLight) gameplayGroup.remove(laserTargetLight);
+    const targetMat = new THREE.MeshStandardMaterial({ color: 0x33ff33, emissive: 0x22ff22 });
+    laserTargetLight = new THREE.Mesh(new THREE.SphereGeometry(0.5,16,16), targetMat);
+    laserTargetLight.position.set(lightGameZone.x + levels[currentLevel].targetPos.x, 0.6, lightGameZone.z + levels[currentLevel].targetPos.z);
+    gameplayGroup.add(laserTargetLight);
+    levels[currentLevel].mirrors.forEach((m,idx)=>{ const mo = createMirrorLight(m.x, m.z, m.angle, m.fixed); mo.userData = { fixed: m.fixed }; mirrors.push(mo); });
+    updateLaserLight();
+}
+function resetLightGame() { mirrors.forEach(m=>gameplayGroup.remove(m)); mirrors = []; rayLines.forEach(l=>gameplayGroup.remove(l)); rayLines = []; if(laserSourceLight) gameplayGroup.remove(laserSourceLight); if(laserTargetLight) gameplayGroup.remove(laserTargetLight); }
+function buildLightPlatform() {
+    const platform = new THREE.Mesh(new THREE.BoxGeometry(20,0.5,20), new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8 }));
+    platform.position.set(lightGameZone.x,0,lightGameZone.z); platform.receiveShadow=true;
+    gameplayGroup.add(platform);
+    const grid = new THREE.GridHelper(20,20,0x88aaff,0x335588); grid.position.set(lightGameZone.x,0.26,lightGameZone.z);
+    gameplayGroup.add(grid);
+    const srcMat = new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0xff2200 });
+    laserSourceLight = new THREE.Mesh(new THREE.SphereGeometry(0.5,16,16), srcMat);
+    laserSourceLight.position.set(lightGameZone.x,0.6,lightGameZone.z);
+    gameplayGroup.add(laserSourceLight);
+}
+function checkLightProximity() {
+    if(lightGameCompleted) return;
+    const dist = Math.hypot(rabbit.position.x - lightGameZone.x, rabbit.position.z - lightGameZone.z);
+    if(!lightGameActive && dist<5) { lightGameActive=true; currentLevel=0; buildLightPlatform(); initLightLevel(); showMessage("Işık oyunu başladı! Aynalara yaklaşıp E ile döndür.", 3500); }
+    else if(lightGameActive && dist>8) { resetLightGame(); lightGameActive=false; }
+}
+function handleMirrorRotate() {
+    if(!lightGameActive) return;
+    let closest=null, minD=2.5;
+    for(let m of mirrors) if(!m.userData.fixed) { const d = Math.hypot(rabbit.position.x - m.position.x, rabbit.position.z - m.position.z); if(d<minD) { minD=d; closest=m; } }
+    if(closest) { closest.rotation.y += Math.PI/4; updateLaserLight(); showMessage("Ayna döndürüldü", 800); }
+}
+// ==========================================================================
+
 let legWiggle = 0;
 function animate() {
     requestAnimationFrame(animate);
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
+    
+    checkLightProximity();
     updateAllMonkeys(deltaTime);
+    
     let finalMoveX = 0, finalMoveZ = 0;
     if (joystickActive) { finalMoveX = moveX; finalMoveZ = moveZ; }
     if (keys['w'] || keys['arrowup']) finalMoveZ = -1;
