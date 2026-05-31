@@ -309,9 +309,7 @@ const modMenuHTML = `
 `;
 document.body.insertAdjacentHTML('beforeend', modMenuHTML);
 
-window.closeModMenu = function() {
-    document.getElementById('mod-menu').style.display = 'none';
-};
+window.closeModMenu = function() { document.getElementById('mod-menu').style.display = 'none'; };
 
 document.getElementById('btn-infinite-jump').addEventListener('click', function() {
     infiniteJump = !infiniteJump;
@@ -321,23 +319,9 @@ document.getElementById('btn-infinite-jump').addEventListener('click', function(
 
 window.openModPrompt = function() {
     const code = prompt('Mod kodu:');
-    if (code === '1234') {
-        isModerator = true;
-        document.getElementById('mod-menu').style.display = 'block';
-    } else {
-        alert('Hatalı kod!');
-    }
+    if (code === '1234') { isModerator = true; document.getElementById('mod-menu').style.display = 'block'; }
+    else { alert('Hatalı kod!'); }
 };
-
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'm' && e.ctrlKey && e.shiftKey) {
-        const code = prompt('Mod kodu:');
-        if (code === '1234') {
-            isModerator = true;
-            document.getElementById('mod-menu').style.display = 'block';
-        }
-    }
-});
 
 // --- ANA MERKEZ ---
 const squareSize = 94;
@@ -617,7 +601,7 @@ for (let row = -90; row <= 90; row += rockSpacing) {
     }
 }
 
-// KÜP (X:165 Z:125 → X:185 Z:155, yükseklik: 25, üstü çimen)
+// ============ BÜYÜK KÜP VE PARKUR ============
 const cubeMinX = 165, cubeMaxX = 185, cubeMinZ = 125, cubeMaxZ = 155, cubeHeight = 25;
 const cubeGeo = new THREE.BoxGeometry(cubeMaxX - cubeMinX, cubeHeight, cubeMaxZ - cubeMinZ);
 const cubeMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.7 });
@@ -627,13 +611,41 @@ cube.castShadow = true; cube.receiveShadow = true;
 gameplayGroup.add(cube);
 obstacles.push(cube);
 
-// Küpün üstüne çimen
+// Küp üstü çimen
 const cubeTopGeo = new THREE.BoxGeometry(cubeMaxX - cubeMinX - 0.2, 0.3, cubeMaxZ - cubeMinZ - 0.2);
 const cubeTop = new THREE.Mesh(cubeTopGeo, blockGrassMat);
 cubeTop.position.set((cubeMinX + cubeMaxX) / 2, cubeHeight + 0.15, (cubeMinZ + cubeMaxZ) / 2);
 cubeTop.receiveShadow = true;
 gameplayGroup.add(cubeTop);
 obstacles.push(cubeTop);
+
+// --- PARKUR (spiral basamaklar, küpün etrafında) ---
+function createParkourStep(x, z, y, w, d) {
+    const geo = new THREE.BoxGeometry(w, 0.5, d);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.5 });
+    const step = new THREE.Mesh(geo, mat);
+    step.position.set(x, y, z);
+    step.castShadow = true; step.receiveShadow = true;
+    gameplayGroup.add(step);
+    obstacles.push(step);
+    return step;
+}
+
+const parkourData = [
+    // üst kenar (z=122)
+    {x:167, z:122}, {x:171, z:122}, {x:175, z:122}, {x:179, z:122},
+    // sağ kenar (x=188)
+    {x:188, z:128}, {x:188, z:133}, {x:188, z:138}, {x:188, z:143},
+    // alt kenar (z=158)
+    {x:179, z:158}, {x:175, z:158}, {x:171, z:158}, {x:167, z:158},
+    // sol kenar (x=162)
+    {x:162, z:143}, {x:162, z:138}, {x:162, z:133}, {x:162, z:128}
+];
+
+parkourData.forEach((pos, i) => {
+    const y = 0.25 + i * 1.56; // 25 / 16 ≈ 1.56 basamak aralığı
+    createParkourStep(pos.x, pos.z, y, 3, 3);
+});
 
 // ============ ANA MERKEZ ELEMANLARI ============
 createWoodenHouse(-25, -20, 0.2);
@@ -707,9 +719,7 @@ let isAttacking = false, attackAnimTime = 0;
 let myHealth = 100; const maxHealth = 100;
 let inRainforest = false;
 
-function showModButton() {
-    document.getElementById('mod-btn').style.display = 'flex';
-}
+function showModButton() { document.getElementById('mod-btn').style.display = 'flex'; }
 
 function updateHealthBar() {
     const percent = (myHealth / maxHealth) * 100;
@@ -917,7 +927,6 @@ function animate() {
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
 
-    // HER ZAMAN X Y Z göster
     document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
     const modCoordEl = document.getElementById('mod-coords');
     if (modCoordEl && isModerator) modCoordEl.innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
