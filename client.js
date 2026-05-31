@@ -733,7 +733,7 @@ cubeTop.receiveShadow = true;
 gameplayGroup.add(cubeTop);
 obstacles.push(cubeTop);
 
-// --- 3 MAYMUN (gelişmiş, 2 kat hızlı, muz düzgün konumda) ---
+// --- 3 MAYMUN (hız: 0.25) ---
 function createMonkey(x, y, z) {
     const monkeyGroup = new THREE.Group();
     monkeyGroup.name = 'monkey';
@@ -780,7 +780,7 @@ function createMonkey(x, y, z) {
     
     // Muz (sağ elin ucunda)
     const bananaGroup = new THREE.Group();
-    bananaGroup.position.set(0.65, 1.25, 0.15); // Düzeltilmiş pozisyon
+    bananaGroup.position.set(0.65, 1.25, 0.15);
     const bananaCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(0.05, 0.2, 0.05),
@@ -854,7 +854,7 @@ function createMonkey(x, y, z) {
         bananaGroup: bananaGroup,
         targetX: x,
         targetZ: z,
-        speed: 0.10, // 2 kat hızlı
+        speed: 0.25,
         attackRange: 1.5,
         chaseRange: 10,
         homeRange: 15,
@@ -871,12 +871,12 @@ function createMonkey(x, y, z) {
     return monkeyGroup;
 }
 
-// 3 maymun oluştur (aralarında boşluk olacak)
-createMonkey(175, 25.3, 140); // Ortada
-createMonkey(168, 25.3, 130); // Solda
-createMonkey(182, 25.3, 150); // Sağda
+// 3 maymun oluştur
+createMonkey(175, 25.3, 140);
+createMonkey(168, 25.3, 130);
+createMonkey(182, 25.3, 150);
 
-// Maymun sağlık barı konteyneri
+// Maymun sağlık barı
 const monkeyHealthBarContainer = document.createElement('div');
 monkeyHealthBarContainer.id = 'monkey-health-container';
 monkeyHealthBarContainer.style.cssText = 'display:none; position:absolute; top:55px; left:15px; z-index:5; width:180px; height:15px; background:rgba(0,0,0,0.6); border-radius:7px; border:1px solid white; overflow:hidden;';
@@ -1147,7 +1147,7 @@ window.addEventListener('touchmove', (e) => {
 
 window.addEventListener('touchend', () => { isTurningCamera = false; });
 
-// --- MAYMUN YAPAY ZEKA (TÜM MAYMUNLAR İÇİN) ---
+// --- MAYMUN YAPAY ZEKA ---
 let monkeyAttackCooldown = 0;
 function updateAllMonkeys(deltaTime) {
     if (monkeyAttackCooldown > 0) monkeyAttackCooldown -= deltaTime;
@@ -1192,7 +1192,6 @@ function updateAllMonkeys(deltaTime) {
         monkey.position.z += (ud.targetZ - monkeyPos.z) * 0.1;
         monkey.position.y = ud.homeY + Math.abs(Math.sin(Date.now() * 0.005 + ud.homeX)) * 0.2;
         
-        // En yakın maymunun sağlık barını göster
         if (dist < ud.chaseRange) {
             monkeyHealthBarContainer.style.display = 'block';
             const healthPercent = (ud.health / ud.maxHealth) * 100;
