@@ -6,109 +6,37 @@
     <title>Super Rabbit Adventure (Online)</title>
     <style>
         * { box-sizing: border-box; user-select: none; -webkit-user-select: none; margin: 0; padding: 0; }
-        body, html { 
-            width: 100%; height: 100%; overflow: hidden; background-color: #000; 
-            font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
-            touch-action: none;
-        }
-        
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif; touch-action: none; }
         #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; touch-action: none; }
-
-        #main-menu {
-            position: absolute; width: 100%; height: 100%; z-index: 10;
-            display: flex; flex-direction: column; justify-content: center; align-items: center;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-        }
+        #main-menu { position: absolute; width: 100%; height: 100%; z-index: 10; display: flex; flex-direction: column; justify-content: center; align-items: center; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
         .menu-title { color: white; font-size: 32px; margin-bottom: 30px; text-shadow: 0 4px 8px rgba(0,0,0,0.3); text-align: center; }
-        .menu-btn {
-            width: 220px; padding: 15px; margin: 10px; border: none; border-radius: 25px;
-            font-size: 18px; font-weight: bold; cursor: pointer; color: white;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: transform 0.1s;
-        }
+        .menu-btn { width: 220px; padding: 15px; margin: 10px; border: none; border-radius: 25px; font-size: 18px; font-weight: bold; cursor: pointer; color: white; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: transform 0.1s; }
         .btn-solo { background-color: #4caf50; }
         .btn-create { background-color: #ff9800; }
         .btn-join { background-color: #2196f3; }
         .menu-btn:active { transform: scale(0.95); }
-        
         #join-input-container { display: none; flex-direction: column; align-items: center; margin-top: 15px; }
         #room-code-input { padding: 10px 20px; border-radius: 20px; border: 2px solid white; font-size: 16px; text-align: center; width: 160px; margin-bottom: 10px; }
-
         #lobby-ui { display: none; position: absolute; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
-        
-        .code-panel {
-            position: absolute; top: 20px; left: 20px; pointer-events: auto;
-            background: rgba(0, 0, 0, 0.4); padding: 10px 20px; border-radius: 15px;
-            border: 2px solid rgba(255,255,255,0.2); color: white; text-align: center;
-        }
+        .code-panel { position: absolute; top: 20px; left: 20px; pointer-events: auto; background: rgba(0, 0, 0, 0.4); padding: 10px 20px; border-radius: 15px; border: 2px solid rgba(255,255,255,0.2); color: white; text-align: center; }
         .code-label { font-size: 12px; color: #ddd; margin-bottom: 2px; }
         .code-text { font-size: 24px; font-weight: bold; letter-spacing: 2px; color: #ffeb3b; }
-
-        .bottom-panel {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            display: flex; flex-direction: column; align-items: center; pointer-events: auto;
-        }
-        .player-count-badge {
-            background: rgba(0, 0, 0, 0.5); color: white; padding: 6px 16px;
-            border-radius: 20px; font-size: 15px; margin-bottom: 15px; font-weight: bold;
-        }
-        .start-match-btn {
-            display: none; background: linear-gradient(to bottom, #ff5252, #e53935);
-            color: white; border: 3px solid white; font-size: 22px; font-weight: bold;
-            padding: 12px 40px; border-radius: 30px; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.4);
-        }
+        .bottom-panel { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; pointer-events: auto; }
+        .player-count-badge { background: rgba(0, 0, 0, 0.5); color: white; padding: 6px 16px; border-radius: 20px; font-size: 15px; margin-bottom: 15px; font-weight: bold; }
+        .start-match-btn { display: none; background: linear-gradient(to bottom, #ff5252, #e53935); color: white; border: 3px solid white; font-size: 22px; font-weight: bold; padding: 12px 40px; border-radius: 30px; cursor: pointer; box-shadow: 0 6px 20px rgba(0,0,0,0.4); }
         .waiting-msg { color: white; font-size: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); font-weight: bold; }
-
-        #game-info-ui {
-            display: none; position: absolute; top: 15px; right: 15px; z-index: 5;
-            background: rgba(0,0,0,0.5); color: white; padding: 10px 20px; border-radius: 12px; font-weight: bold;
-        }
-
-        #health-bar-container {
-            position: absolute; top: 15px; left: 15px; z-index: 5;
-            width: 180px; height: 22px; background: rgba(0,0,0,0.6); border-radius: 11px;
-            border: 2px solid white; display: none; overflow: hidden;
-        }
-        #health-bar-fill {
-            width: 100%; height: 100%; background: linear-gradient(90deg, #4caf50, #8bc34a);
-            transition: width 0.2s;
-        }
-        #health-text {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            display: flex; align-items: center; justify-content: center;
-            color: white; font-weight: bold; font-size: 13px; text-shadow: 0 1px 3px black;
-        }
-
+        #game-info-ui { display: none; position: absolute; top: 15px; right: 15px; z-index: 5; background: rgba(0,0,0,0.5); color: white; padding: 10px 20px; border-radius: 12px; font-weight: bold; }
+        #health-bar-container { position: absolute; top: 15px; left: 15px; z-index: 5; width: 180px; height: 22px; background: rgba(0,0,0,0.6); border-radius: 11px; border: 2px solid white; display: none; overflow: hidden; }
+        #health-bar-fill { width: 100%; height: 100%; background: linear-gradient(90deg, #4caf50, #8bc34a); transition: width 0.2s; }
+        #health-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 13px; text-shadow: 0 1px 3px black; }
         #controls-ui { display: none; position: absolute; width: 100%; height: 100%; z-index: 6; pointer-events: none; }
-        #joystick-zone { 
-            position: absolute; bottom: 40px; left: 40px; width: 110px; height: 110px; 
-            background: rgba(255,255,255,0.15); border: 3px solid rgba(255,255,255,0.4); 
-            border-radius: 50%; pointer-events: auto; display: flex; justify-content: center; align-items: center;
-            touch-action: manipulation;
-        }
+        #joystick-zone { position: absolute; bottom: 40px; left: 40px; width: 110px; height: 110px; background: rgba(255,255,255,0.15); border: 3px solid rgba(255,255,255,0.4); border-radius: 50%; pointer-events: auto; display: flex; justify-content: center; align-items: center; touch-action: manipulation; }
         #joystick-stick { width: 45px; height: 45px; background: white; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: transform 0.05s; }
-        
-        .action-btn { 
-            position: absolute; bottom: 50px; width: 75px; height: 75px; border-radius: 50%; 
-            border: 3px solid rgba(255,255,255,0.5); color: white; font-weight: bold; font-size: 16px; 
-            display: flex; justify-content: center; align-items: center; pointer-events: auto; 
-            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
-            touch-action: manipulation;
-        }
+        .action-btn { position: absolute; bottom: 50px; width: 75px; height: 75px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.5); color: white; font-weight: bold; font-size: 16px; display: flex; justify-content: center; align-items: center; pointer-events: auto; box-shadow: 0 6px 15px rgba(0,0,0,0.3); touch-action: manipulation; }
         #attack-button { right: 135px; background: linear-gradient(135deg, #a1887f, #8d6e63); }
         #jump-button { right: 40px; background: linear-gradient(135deg, #81c784, #4caf50); }
-
-        #mod-btn {
-            position: absolute; top: 15px; right: 15px; z-index: 25;
-            width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.6);
-            border: 2px solid gold; color: gold; font-size: 14px; font-weight: bold;
-            display: none; justify-content: center; align-items: center; cursor: pointer;
-            touch-action: manipulation;
-        }
-
-        #death-screen {
-            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 20; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; flex-direction: column;
-        }
+        #mod-btn { position: absolute; top: 15px; right: 15px; z-index: 25; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.6); border: 2px solid gold; color: gold; font-size: 14px; font-weight: bold; display: none; justify-content: center; align-items: center; cursor: pointer; touch-action: manipulation; }
+        #death-screen { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; flex-direction: column; }
         .death-text { color: white; font-size: 48px; font-weight: bold; margin-bottom: 20px; text-shadow: 0 0 20px red; }
         .countdown-text { color: #ffeb3b; font-size: 36px; font-weight: bold; }
     </style>
@@ -116,59 +44,47 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-
     <div id="canvas-container"></div>
-
     <div id="main-menu">
         <h1 class="menu-title">Super Rabbit Adventure<br><span style="font-size:20px; color:#ffeb3b;">Online Mod</span></h1>
         <button class="menu-btn btn-solo" onclick="playSolo()">TEK BAŞINA OYNA</button>
-        <button class="menu-btn btn-create" onclick="openCreateOptions()">ODA OLUŞTUR</button>
+        <button class="menu-btn btn-create" onclick="createRoom()">ODA OLUŞTUR</button>
         <button class="menu-btn btn-join" onclick="openJoinOptions()">ODAYA KATIL</button>
-        
         <div id="join-input-container">
             <input type="number" id="room-code-input" placeholder="5 Haneli Kod">
             <button class="menu-btn btn-join" style="width:140px; padding:8px;" onclick="joinRoom()">GİRİŞ YAP</button>
         </div>
     </div>
-
     <div id="lobby-ui">
         <div class="code-panel">
             <div class="code-label">DAVET KODUNUZ</div>
             <div class="code-text" id="ui-room-code">00000</div>
         </div>
-        
         <div class="bottom-panel">
             <div class="player-count-badge" id="ui-player-count">Oyuncu: 1 / 4</div>
             <button class="start-match-btn" id="ui-start-btn" onclick="hostStartGame()">HAZIR / BAŞLAT</button>
             <div class="waiting-msg" id="ui-waiting-msg">Kurucunun oyunu başlatması bekleniyor...</div>
         </div>
     </div>
-
     <div id="game-info-ui">
         <span id="game-room-title">ODA: -</span> | Oyuncu: <span id="game-player-count">1</span>
     </div>
-
     <div id="health-bar-container">
         <div id="health-bar-fill"></div>
         <div id="health-text">100/100</div>
     </div>
-
     <button id="mod-btn" onclick="openModPrompt()">⚙️</button>
-
     <div id="controls-ui">
         <div id="joystick-zone"><div id="joystick-stick"></div></div>
         <div class="action-btn" id="attack-button">HIT</div>
         <div class="action-btn" id="jump-button">JUMP</div>
     </div>
-
     <div id="death-screen">
         <div class="death-text">ÖLDÜN!</div>
         <div class="countdown-text" id="countdown-display">15</div>
     </div>
-
     <script src="client.js"></script>
     <script>
-        function openCreateOptions() { createRoom(); }
         function openJoinOptions() { document.getElementById('join-input-container').style.display = 'flex'; }
     </script>
 </body>
