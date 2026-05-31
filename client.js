@@ -299,7 +299,7 @@ const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness
 const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.2 });
 
 // --- ANA MERKEZ (KARE: x:-47 z:-47 ile x:47 z:47 arası) ---
-const squareSize = 94; // 47 - (-47) = 94
+const squareSize = 94;
 const groundGeo = new THREE.PlaneGeometry(squareSize, squareSize);
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
@@ -319,14 +319,14 @@ function createShadowlessWall(x, z, width, height, depth) {
     return wall;
 }
 
-// Kare duvarlar (x:-47 z:-47 ile x:47 z:47 arası, dışa doğru)
-createShadowlessWall(0, 48, squareSize, 100, 2);  // üst
-createShadowlessWall(0, -48, squareSize, 100, 2); // alt
-createShadowlessWall(48, 0, 2, 100, squareSize);  // sağ
-createShadowlessWall(-48, 0, 2, 100, squareSize); // sol
+// Kare duvarlar
+createShadowlessWall(0, 48, squareSize, 100, 2);
+createShadowlessWall(0, -48, squareSize, 100, 2);
+createShadowlessWall(48, 0, 2, 100, squareSize);
+createShadowlessWall(-48, 0, 2, 100, squareSize);
 
-// --- YOSUNLU DUVAR (yağmurlu orman için) ---
-function createMossyWall(x, z, width, height, depth, rotY = 0) {
+// --- YOSUNLU DUVAR PARÇASI (50 birimlik) ---
+function createMossyWallSegment(x, z, width, height, depth, rotY = 0) {
     const geo = new THREE.BoxGeometry(width, height, depth);
     const wall = new THREE.Mesh(geo, mossyWallMat);
     wall.position.set(x, height / 2, z);
@@ -336,6 +336,24 @@ function createMossyWall(x, z, width, height, depth, rotY = 0) {
     gameplayGroup.add(wall);
     obstacles.push(wall);
     return wall;
+}
+
+// Uzun duvarı 50 birimlik parçalara bölen yardımcı fonksiyon
+function createMossyWallSegmented(startX, startZ, endX, endZ, height = 25) {
+    const dx = endX - startX;
+    const dz = endZ - startZ;
+    const length = Math.sqrt(dx * dx + dz * dz);
+    const rotY = Math.atan2(dx, dz);
+    const segmentLength = 50;
+    const segmentCount = Math.ceil(length / segmentLength);
+    const actualSegmentLength = length / segmentCount;
+    
+    for (let i = 0; i < segmentCount; i++) {
+        const t = (i + 0.5) / segmentCount;
+        const x = startX + dx * t;
+        const z = startZ + dz * t;
+        createMossyWallSegment(x, z, actualSegmentLength, height, 2, rotY);
+    }
 }
 
 // --- BÜYÜK ÇİMEN BLOK ---
@@ -512,10 +530,15 @@ rfGround.position.set(rfX, 0, rfZ);
 rfGround.receiveShadow = true;
 gameplayGroup.add(rfGround);
 
-createMossyWall(rfX, rfZ - rfHalfD, rfWidth, 25, 2, 0);
-createMossyWall(rfX, rfZ + rfHalfD, rfWidth, 25, 2, 0);
-createMossyWall(rfX - rfHalfW, rfZ, 2, 25, rfDepth, Math.PI/2);
-createMossyWall(rfX + rfHalfW, rfZ, 2, 25, rfDepth, Math.PI/2);
+// Yosunlu duvarlar (segmentli, 50 birim parçalar halinde)
+// Üst kenar: x:75, z:75 → x:325, z:75
+createMossyWallSegmented(75, 75, 325, 75, 25);
+// Alt kenar: x:75, z:325 → x:325, z:325
+createMossyWallSegmented(75, 325, 325, 325, 25);
+// Sol kenar: x:75, z:75 → x:75, z:325
+createMossyWallSegmented(75, 75, 75, 325, 25);
+// Sağ kenar: x:325, z:75 → x:325, z:325
+createMossyWallSegmented(325, 75, 325, 325, 25);
 
 createRainSystem(rfX, rfZ, rfWidth, rfDepth);
 
@@ -544,7 +567,7 @@ returnPortalGroup.position.set(rfX, 0, rfZ + rfHalfD - 20);
 gameplayGroup.add(returnPortalGroup);
 portals.push({ mesh: returnPortalGroup, target: new THREE.Vector3(0, 0, 34), color: 0xffcc00 });
 
-// ============ ANA MERKEZ ELEMANLARI (KARE SINIRLAR İÇİNDE) ============
+// ============ ANA MERKEZ ELEMANLARI ============
 createWoodenHouse(-25, -20, 0.2);
 createWoodenHouse(20, 15, -0.3);
 createWoodenHouse(-25, 25, 0.5);
@@ -555,7 +578,6 @@ createBigGrassBlock(30, 25, 10, 8, 7);
 createBigGrassBlock(-30, -30, 9, 9, 10);
 createBigGrassBlock(25, 0, 8, 8, 6);
 
-// Ağaçlar (0,0 ve yakınında hiç yok!)
 createBigTree(-35, -35, 2);
 createBigTree(35, -30, 1.8);
 createBigTree(-30, 35, 2.2);
@@ -567,7 +589,6 @@ createBigTree(40, 15, 2);
 createBigTree(-15, -40, 1.8);
 createBigTree(15, 40, 1.8);
 
-// ALTIN PORTAL (merkez → yağmurlu orman)
 createGoldenPortal(0, 40, rfX, rfZ - rfHalfD + 20);
 
 // --- KOORDİNAT GÖSTERGESİ ---
@@ -811,8 +832,8 @@ function animate() {
 
     document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Z:${Math.round(rabbit.position.z)}`;
 
-    const inRFX = Math.abs(rabbit.position.x - rfX) < rfHalfW;
-    const inRFZ = Math.abs(rabbit.position.z - rfZ) < rfHalfD;
+    const inRFX = rabbit.position.x > 75 && rabbit.position.x < 325;
+    const inRFZ = rabbit.position.z > 75 && rabbit.position.z < 325;
     inRainforest = inRFX && inRFZ;
     updateRain(inRainforest, rfX, rfZ, rfWidth, rfDepth);
     
