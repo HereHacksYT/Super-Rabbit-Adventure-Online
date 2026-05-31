@@ -12,7 +12,6 @@ const teleportCooldown = 3;
 let isModerator = false;
 let infiniteJump = false;
 
-// Joystick değişkenleri (tanımlanmamıştı, hata veriyordu)
 let joystickActive = false;
 let moveX = 0;
 let moveZ = 0;
@@ -328,7 +327,7 @@ window.openModPrompt = function() {
     else { alert('Hatalı kod!'); }
 };
 
-// --- MOBİL KAYDIRMAYI ENGELLE (joystick ve butonlar hariç) ---
+// --- MOBİL KAYDIRMAYI ENGELLE ---
 document.addEventListener('touchmove', function(e) {
     if (!e.target.closest('#joystick-zone') && !e.target.closest('.action-btn') && !e.target.closest('#mod-btn')) {
         e.preventDefault();
@@ -339,7 +338,6 @@ document.addEventListener('touchmove', function(e) {
 const keys = {};
 document.addEventListener('keydown', (e) => {
     keys[e.key.toLowerCase()] = true;
-    // Zıplama (Space)
     if (e.key === ' ' && gameActive && !isDead) {
         e.preventDefault();
         if (infiniteJump || jumpCount < 3) {
@@ -347,11 +345,9 @@ document.addEventListener('keydown', (e) => {
             jumpCount++;
         }
     }
-    // Saldırı (E veya F)
     if ((e.key === 'e' || e.key === 'f') && gameActive && !isDead && !isAttacking) {
         e.preventDefault();
-        isAttacking = true;
-        attackAnimTime = 0;
+        isAttacking = true; attackAnimTime = 0;
         if (isOnlineMode) socket.emit('playerAttack');
         if (isOnlineMode && gameActive) {
             Object.keys(otherPlayers).forEach((id) => {
@@ -363,7 +359,6 @@ document.addEventListener('keydown', (e) => {
             });
         }
     }
-    // Mod menü (M tuşu)
     if (e.key === 'm' && e.ctrlKey && e.shiftKey) {
         const code = prompt('Mod kodu:');
         if (code === '1234') { isModerator = true; document.getElementById('mod-menu').style.display = 'block'; }
@@ -371,7 +366,7 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
-// --- JOYSTICK KONTROLLERİ ---
+// --- JOYSTICK ---
 const zone = document.getElementById('joystick-zone');
 const stick = document.getElementById('joystick-stick');
 const maxRadius = 35;
@@ -396,8 +391,7 @@ window.addEventListener('touchmove', (e) => {
 zone.addEventListener('touchend', () => {
     joystickActive = false;
     stick.style.transform = 'translate(0px, 0px)';
-    moveX = 0;
-    moveZ = 0;
+    moveX = 0; moveZ = 0;
 });
 
 function handleJoystick(clientX, clientY) {
@@ -405,14 +399,39 @@ function handleJoystick(clientX, clientY) {
     let dx = clientX - (zoneRect.left + zoneRect.width / 2);
     let dy = clientY - (zoneRect.top + zoneRect.height / 2);
     let dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > maxRadius) {
-        dx = (dx / dist) * maxRadius;
-        dy = (dy / dist) * maxRadius;
-    }
+    if (dist > maxRadius) { dx = (dx / dist) * maxRadius; dy = (dy / dist) * maxRadius; }
     stick.style.transform = `translate(${dx}px, ${dy}px)`;
     moveX = dx / maxRadius;
     moveZ = dy / maxRadius;
 }
+
+// --- ZIPLAMA VE VURMA BUTONLARI (passive: false ile) ---
+document.getElementById('jump-button').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (gameActive && !isDead) {
+        if (infiniteJump || jumpCount < 3) {
+            velocityY = jumpForce;
+            jumpCount++;
+        }
+    }
+}, { passive: false });
+
+document.getElementById('attack-button').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (gameActive && !isDead && !isAttacking) {
+        isAttacking = true; attackAnimTime = 0;
+        if (isOnlineMode) socket.emit('playerAttack');
+        if (isOnlineMode && gameActive) {
+            Object.keys(otherPlayers).forEach((id) => {
+                const op = otherPlayers[id].mesh.position;
+                if (rabbit.position.distanceTo(op) < 2.0) {
+                    const angle = Math.atan2(op.x - rabbit.position.x, op.z - rabbit.position.z);
+                    socket.emit('playerKnockback', { targetId: id, angle: angle });
+                }
+            });
+        }
+    }
+}, { passive: false });
 
 // --- ANA MERKEZ ---
 const squareSize = 94;
@@ -979,12 +998,8 @@ function animate() {
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
     
-    // Klavye + Joystick hareket birleştirme
     let finalMoveX = 0, finalMoveZ = 0;
-    if (joystickActive) {
-        finalMoveX = moveX;
-        finalMoveZ = moveZ;
-    }
+    if (joystickActive) { finalMoveX = moveX; finalMoveZ = moveZ; }
     if (keys['w'] || keys['arrowup']) finalMoveZ = -1;
     if (keys['s'] || keys['arrowdown']) finalMoveZ = 1;
     if (keys['a'] || keys['arrowleft']) finalMoveX = -1;
@@ -999,13 +1014,8 @@ function animate() {
     inRainforest = inRFX && inRFZ;
     updateRain(inRainforest, rfCenterX, rfCenterZ, rfWidth, rfDepth);
     
-    if (inRainforest) {
-        scene.fog = new THREE.Fog(0x556633, 40, 120);
-        ambientLight.intensity = 0.4;
-    } else {
-        scene.fog = new THREE.Fog(0x87CEEB, 120, 400);
-        ambientLight.intensity = 0.7;
-    }
+    if (inRainforest) { scene.fog = new THREE.Fog(0x556633, 40, 120); ambientLight.intensity = 0.4; }
+    else { scene.fog = new THREE.Fog(0x87CEEB, 120, 400); ambientLight.intensity = 0.7; }
 
     if (gameActive && !isDead) {
         const now = Date.now() / 1000;
