@@ -10,7 +10,8 @@ let respawnCountdown = 15;
 let lastTeleportTime = 0;
 const teleportCooldown = 3;
 let isModerator = false;
-let showCoordsY = false;
+let showModMenu = false;
+let showYCoord = false;
 
 // 3D SAHNE
 const scene = new THREE.Scene();
@@ -299,6 +300,16 @@ const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness
 
 // Altın malzeme
 const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.2 });
+
+// --- MOD MENÜ HTML ---
+const modMenuHTML = `
+<div id="mod-menu" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); padding:25px; border-radius:15px; z-index:30; color:white; text-align:center; border:2px solid gold; min-width:250px;">
+    <h2 style="color:gold; margin-bottom:15px;">🔧 Mod Menü</h2>
+    <button id="btn-ycoord" style="padding:12px 20px; margin:8px; background:#444; color:white; border:1px solid white; border-radius:8px; cursor:pointer; width:90%;">Y Koordinatı: KAPALI</button>
+    <button onclick="closeModMenu()" style="padding:12px 20px; margin:8px; background:#c44; color:white; border:1px solid white; border-radius:8px; cursor:pointer; width:90%;">Kapat</button>
+</div>
+`;
+document.body.insertAdjacentHTML('beforeend', modMenuHTML);
 
 // --- ANA MERKEZ ---
 const squareSize = 94;
@@ -602,8 +613,8 @@ for (let row = -90; row <= 90; row += rockSpacing) {
     }
 }
 
-// KÜP (X:165 Z:125 → X:185 Z:155, yükseklik: 10)
-const cubeMinX = 165, cubeMaxX = 185, cubeMinZ = 125, cubeMaxZ = 155, cubeHeight = 10;
+// KÜP (X:165 Z:125 → X:185 Z:155, yükseklik: 25)
+const cubeMinX = 165, cubeMaxX = 185, cubeMinZ = 125, cubeMaxZ = 155, cubeHeight = 25;
 const cubeGeo = new THREE.BoxGeometry(cubeMaxX - cubeMinX, cubeHeight, cubeMaxZ - cubeMinZ);
 const cubeMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.7 });
 const cube = new THREE.Mesh(cubeGeo, cubeMat);
@@ -641,19 +652,9 @@ createSign(0, 43, "Yağmurlu Orman", Math.PI);
 createGoldenPortal(200, 80, 0, 37);
 createSign(200, 76, "Geri Dön", 0);
 
-// --- MOD MENÜ ---
-const modMenuHTML = `
-<div id="mod-menu" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.9); padding:25px; border-radius:15px; z-index:30; color:white; text-align:center; border:2px solid gold;">
-    <h2 style="color:gold; margin-bottom:15px;">Mod Menü</h2>
-    <button onclick="toggleYCoord()" style="padding:10px 20px; margin:5px; background:#444; color:white; border:1px solid white; border-radius:5px; cursor:pointer;">Y Koordinatı Göster</button>
-    <button onclick="closeModMenu()" style="padding:10px 20px; margin:5px; background:#c44; color:white; border:1px solid white; border-radius:5px; cursor:pointer;">Kapat</button>
-</div>
-`;
-document.body.insertAdjacentHTML('beforeend', modMenuHTML);
-
-// Mod girişi (1234)
+// --- MOD MENÜ İŞLEVLERİ ---
 document.addEventListener('keydown', (e) => {
-    if (e.key === '1' && e.ctrlKey && e.shiftKey) {
+    if (e.key === 'm' && e.ctrlKey && e.shiftKey) {
         const code = prompt('Mod kodu:');
         if (code === '1234') {
             isModerator = true;
@@ -662,10 +663,11 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-window.toggleYCoord = function() {
-    showCoordsY = !showCoordsY;
-    alert(showCoordsY ? 'Y koordinatı gösteriliyor' : 'Y koordinatı gizlendi');
-};
+document.getElementById('btn-ycoord').addEventListener('click', function() {
+    showYCoord = !showYCoord;
+    this.textContent = 'Y Koordinatı: ' + (showYCoord ? 'AÇIK' : 'KAPALI');
+    this.style.background = showYCoord ? '#4a4' : '#444';
+});
 
 window.closeModMenu = function() {
     document.getElementById('mod-menu').style.display = 'none';
@@ -911,7 +913,7 @@ function animate() {
     let hasMoved = false;
 
     // Koordinat gösterimi (Y dâhil mod)
-    if (showCoordsY && isModerator) {
+    if (showYCoord && isModerator) {
         document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
     } else {
         document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Z:${Math.round(rabbit.position.z)}`;
