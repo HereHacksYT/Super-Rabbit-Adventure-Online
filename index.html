@@ -9,7 +9,7 @@
         body, html { 
             width: 100%; height: 100%; overflow: hidden; background-color: #000; 
             font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
-            touch-action: none; /* Mobil kaydırmayı engelle */
+            touch-action: none;
         }
         
         #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; touch-action: none; }
@@ -82,7 +82,13 @@
         #joystick-zone { position: absolute; bottom: 40px; left: 40px; width: 110px; height: 110px; background: rgba(255,255,255,0.15); border: 3px solid rgba(255,255,255,0.4); border-radius: 50%; pointer-events: auto; display: flex; justify-content: center; align-items: center; }
         #joystick-stick { width: 45px; height: 45px; background: white; border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3); transition: transform 0.05s; }
         
-        .action-btn { position: absolute; bottom: 50px; width: 75px; height: 75px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.5); color: white; font-weight: bold; font-size: 16px; display: flex; justify-content: center; align-items: center; pointer-events: auto; box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
+        .action-btn { 
+            position: absolute; bottom: 50px; width: 75px; height: 75px; border-radius: 50%; 
+            border: 3px solid rgba(255,255,255,0.5); color: white; font-weight: bold; font-size: 16px; 
+            display: flex; justify-content: center; align-items: center; pointer-events: auto; 
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+            touch-action: manipulation; /* 🔥 Mobil çift tıklama zoom'u engelle */
+        }
         #attack-button { right: 135px; background: linear-gradient(135deg, #a1887f, #8d6e63); }
         #jump-button { right: 40px; background: linear-gradient(135deg, #81c784, #4caf50); }
 
@@ -92,6 +98,7 @@
             width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.6);
             border: 2px solid gold; color: gold; font-size: 14px; font-weight: bold;
             display: none; justify-content: center; align-items: center; cursor: pointer;
+            touch-action: manipulation;
         }
 
         #death-screen {
@@ -142,7 +149,6 @@
         <div id="health-text">100/100</div>
     </div>
 
-    <!-- MOD BUTONU (mobil için) -->
     <button id="mod-btn" onclick="openModPrompt()">⚙️</button>
 
     <div id="controls-ui">
