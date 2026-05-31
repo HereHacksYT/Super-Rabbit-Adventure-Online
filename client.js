@@ -325,7 +325,7 @@ createShadowlessWall(0, -48, squareSize, 100, 2);
 createShadowlessWall(48, 0, 2, 100, squareSize);
 createShadowlessWall(-48, 0, 2, 100, squareSize);
 
-// --- YOSUNLU DUVAR PARÇASI (50 birimlik) ---
+// --- YOSUNLU DUVAR PARÇASI (50 birimlik, uçları örtüşmeli) ---
 function createMossyWallSegment(x, z, width, height, depth, rotY = 0) {
     const geo = new THREE.BoxGeometry(width, height, depth);
     const wall = new THREE.Mesh(geo, mossyWallMat);
@@ -338,21 +338,42 @@ function createMossyWallSegment(x, z, width, height, depth, rotY = 0) {
     return wall;
 }
 
-// Uzun duvarı 50 birimlik parçalara bölen yardımcı fonksiyon
-function createMossyWallSegmented(startX, startZ, endX, endZ, height = 25) {
-    const dx = endX - startX;
-    const dz = endZ - startZ;
-    const length = Math.sqrt(dx * dx + dz * dz);
-    const rotY = Math.atan2(dx, dz);
-    const segmentLength = 50;
-    const segmentCount = Math.ceil(length / segmentLength);
-    const actualSegmentLength = length / segmentCount;
+// 4 kenarı da tam kapatan, 50 birimlik parçalı duvar sistemi
+function createEnclosingWalls(minX, minZ, maxX, maxZ, height = 25) {
+    const widthX = maxX - minX;
+    const widthZ = maxZ - minZ;
+    const segLen = 50;
     
-    for (let i = 0; i < segmentCount; i++) {
-        const t = (i + 0.5) / segmentCount;
-        const x = startX + dx * t;
-        const z = startZ + dz * t;
-        createMossyWallSegment(x, z, actualSegmentLength, height, 2, rotY);
+    // Üst kenar (z = maxZ, x: minX → maxX)
+    const topCount = Math.ceil(widthX / segLen);
+    const topSegLen = widthX / topCount + 1; // +1 birim örtüşme
+    for (let i = 0; i < topCount; i++) {
+        const x = minX + (i + 0.5) * (widthX / topCount);
+        createMossyWallSegment(x, maxZ, topSegLen, height, 2, 0);
+    }
+    
+    // Alt kenar (z = minZ, x: minX → maxX)
+    const bottomCount = Math.ceil(widthX / segLen);
+    const bottomSegLen = widthX / bottomCount + 1;
+    for (let i = 0; i < bottomCount; i++) {
+        const x = minX + (i + 0.5) * (widthX / bottomCount);
+        createMossyWallSegment(x, minZ, bottomSegLen, height, 2, 0);
+    }
+    
+    // Sol kenar (x = minX, z: minZ → maxZ)
+    const leftCount = Math.ceil(widthZ / segLen);
+    const leftSegLen = widthZ / leftCount + 1;
+    for (let i = 0; i < leftCount; i++) {
+        const z = minZ + (i + 0.5) * (widthZ / leftCount);
+        createMossyWallSegment(minX, z, leftSegLen, height, 2, Math.PI/2);
+    }
+    
+    // Sağ kenar (x = maxX, z: minZ → maxZ)
+    const rightCount = Math.ceil(widthZ / segLen);
+    const rightSegLen = widthZ / rightCount + 1;
+    for (let i = 0; i < rightCount; i++) {
+        const z = minZ + (i + 0.5) * (widthZ / rightCount);
+        createMossyWallSegment(maxX, z, rightSegLen, height, 2, Math.PI/2);
     }
 }
 
@@ -519,41 +540,36 @@ function updateRain(active, x, z, width, depth) {
 }
 
 // ============ YAĞMURLU ORMAN BÖLGESİ (250x250) ============
-const rfX = 200, rfZ = 200;
-const rfWidth = 250, rfDepth = 250;
-const rfHalfW = rfWidth / 2, rfHalfD = rfDepth / 2;
+const rfMinX = 75, rfMaxX = 325, rfMinZ = 75, rfMaxZ = 325;
+const rfCenterX = (rfMinX + rfMaxX) / 2;
+const rfCenterZ = (rfMinZ + rfMaxZ) / 2;
+const rfWidth = rfMaxX - rfMinX;
+const rfDepth = rfMaxZ - rfMinZ;
 
 const rfGroundGeo = new THREE.PlaneGeometry(rfWidth, rfDepth);
 const rfGround = new THREE.Mesh(rfGroundGeo, rainforestGroundMat);
 rfGround.rotation.x = -Math.PI / 2;
-rfGround.position.set(rfX, 0, rfZ);
+rfGround.position.set(rfCenterX, 0, rfCenterZ);
 rfGround.receiveShadow = true;
 gameplayGroup.add(rfGround);
 
-// Yosunlu duvarlar (segmentli, 50 birim parçalar halinde)
-// Üst kenar: x:75, z:75 → x:325, z:75
-createMossyWallSegmented(75, 75, 325, 75, 25);
-// Alt kenar: x:75, z:325 → x:325, z:325
-createMossyWallSegmented(75, 325, 325, 325, 25);
-// Sol kenar: x:75, z:75 → x:75, z:325
-createMossyWallSegmented(75, 75, 75, 325, 25);
-// Sağ kenar: x:325, z:75 → x:325, z:325
-createMossyWallSegmented(325, 75, 325, 325, 25);
+// 4 kenarı tam kapatan yosunlu duvarlar (50 birimlik parçalar, köşelerde örtüşmeli)
+createEnclosingWalls(rfMinX, rfMinZ, rfMaxX, rfMaxZ, 25);
 
-createRainSystem(rfX, rfZ, rfWidth, rfDepth);
+createRainSystem(rfCenterX, rfCenterZ, rfWidth, rfDepth);
 
 const treeSpacing = 30;
 for (let row = -100; row <= 100; row += treeSpacing) {
     for (let col = -100; col <= 100; col += treeSpacing) {
         if (Math.abs(row) <= 30 && Math.abs(col) <= 30) continue;
-        createBigTree(rfX + col, rfZ + row, 1.5 + Math.random() * 1.0);
+        createBigTree(rfCenterX + col, rfCenterZ + row, 1.5 + Math.random() * 1.0);
     }
 }
 
 const rockSpacing = 45;
 for (let row = -90; row <= 90; row += rockSpacing) {
     for (let col = -90; col <= 90; col += rockSpacing) {
-        createRock(rfX + col + 10, rfZ + row + 10, 0.8 + Math.random() * 0.8);
+        createRock(rfCenterX + col + 10, rfCenterZ + row + 10, 0.8 + Math.random() * 0.8);
     }
 }
 
@@ -563,7 +579,7 @@ const returnRing = new THREE.Mesh(returnRingGeo, goldMat);
 returnRing.rotation.x = Math.PI / 2;
 returnRing.position.y = 1.2;
 returnPortalGroup.add(returnRing);
-returnPortalGroup.position.set(rfX, 0, rfZ + rfHalfD - 20);
+returnPortalGroup.position.set(rfCenterX, 0, rfMaxZ - 20);
 gameplayGroup.add(returnPortalGroup);
 portals.push({ mesh: returnPortalGroup, target: new THREE.Vector3(0, 0, 34), color: 0xffcc00 });
 
@@ -589,7 +605,7 @@ createBigTree(40, 15, 2);
 createBigTree(-15, -40, 1.8);
 createBigTree(15, 40, 1.8);
 
-createGoldenPortal(0, 40, rfX, rfZ - rfHalfD + 20);
+createGoldenPortal(0, 40, rfCenterX, rfMinZ + 20);
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
@@ -832,10 +848,10 @@ function animate() {
 
     document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Z:${Math.round(rabbit.position.z)}`;
 
-    const inRFX = rabbit.position.x > 75 && rabbit.position.x < 325;
-    const inRFZ = rabbit.position.z > 75 && rabbit.position.z < 325;
+    const inRFX = rabbit.position.x > rfMinX && rabbit.position.x < rfMaxX;
+    const inRFZ = rabbit.position.z > rfMinZ && rabbit.position.z < rfMaxZ;
     inRainforest = inRFX && inRFZ;
-    updateRain(inRainforest, rfX, rfZ, rfWidth, rfDepth);
+    updateRain(inRainforest, rfCenterX, rfCenterZ, rfWidth, rfDepth);
     
     if (inRainforest) {
         scene.fog = new THREE.Fog(0x556633, 40, 120);
