@@ -82,6 +82,14 @@
         #attack-button { right: 135px; background: linear-gradient(135deg, #a1887f, #8d6e63); }
         #jump-button { right: 40px; background: linear-gradient(135deg, #81c784, #4caf50); }
 
+        /* MOD BUTONU */
+        #mod-btn {
+            position: absolute; top: 15px; right: 15px; z-index: 25;
+            width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.6);
+            border: 2px solid gold; color: gold; font-size: 14px; font-weight: bold;
+            display: none; justify-content: center; align-items: center; cursor: pointer;
+        }
+
         #death-screen {
             display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 20; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; flex-direction: column;
@@ -129,6 +137,9 @@
         <div id="health-bar-fill"></div>
         <div id="health-text">100/100</div>
     </div>
+
+    <!-- MOD BUTONU (mobil için) -->
+    <button id="mod-btn" onclick="openModPrompt()">⚙️</button>
 
     <div id="controls-ui">
         <div id="joystick-zone"><div id="joystick-stick"></div></div>
