@@ -47,12 +47,12 @@
     <div id="canvas-container"></div>
     <div id="main-menu">
         <h1 class="menu-title">Super Rabbit Adventure<br><span style="font-size:20px; color:#ffeb3b;">Online Mod</span></h1>
-        <button class="menu-btn btn-solo" onclick="playSolo()">TEK BAŞINA OYNA</button>
-        <button class="menu-btn btn-create" onclick="createRoom()">ODA OLUŞTUR</button>
-        <button class="menu-btn btn-join" onclick="openJoinOptions()">ODAYA KATIL</button>
+        <button class="menu-btn btn-solo" onclick="window.playSolo()">TEK BAŞINA OYNA</button>
+        <button class="menu-btn btn-create" onclick="window.createRoom()">ODA OLUŞTUR</button>
+        <button class="menu-btn btn-join" onclick="document.getElementById('join-input-container').style.display='flex'">ODAYA KATIL</button>
         <div id="join-input-container">
             <input type="number" id="room-code-input" placeholder="5 Haneli Kod">
-            <button class="menu-btn btn-join" style="width:140px; padding:8px;" onclick="joinRoom()">GİRİŞ YAP</button>
+            <button class="menu-btn btn-join" style="width:140px; padding:8px;" onclick="window.joinRoom()">GİRİŞ YAP</button>
         </div>
     </div>
     <div id="lobby-ui">
@@ -62,7 +62,7 @@
         </div>
         <div class="bottom-panel">
             <div class="player-count-badge" id="ui-player-count">Oyuncu: 1 / 4</div>
-            <button class="start-match-btn" id="ui-start-btn" onclick="hostStartGame()">HAZIR / BAŞLAT</button>
+            <button class="start-match-btn" id="ui-start-btn" onclick="window.hostStartGame()">HAZIR / BAŞLAT</button>
             <div class="waiting-msg" id="ui-waiting-msg">Kurucunun oyunu başlatması bekleniyor...</div>
         </div>
     </div>
@@ -73,7 +73,7 @@
         <div id="health-bar-fill"></div>
         <div id="health-text">100/100</div>
     </div>
-    <button id="mod-btn" onclick="openModPrompt()">⚙️</button>
+    <button id="mod-btn" onclick="window.openModPrompt()">⚙️</button>
     <div id="controls-ui">
         <div id="joystick-zone"><div id="joystick-stick"></div></div>
         <div class="action-btn" id="attack-button">HIT</div>
@@ -84,8 +84,5 @@
         <div class="countdown-text" id="countdown-display">15</div>
     </div>
     <script src="client.js"></script>
-    <script>
-        function openJoinOptions() { document.getElementById('join-input-container').style.display = 'flex'; }
-    </script>
 </body>
 </html>
