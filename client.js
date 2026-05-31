@@ -10,7 +10,6 @@ let respawnCountdown = 15;
 let lastTeleportTime = 0;
 const teleportCooldown = 3;
 let isModerator = false;
-let showYCoord = false;
 
 // 3D SAHNE
 const scene = new THREE.Scene();
@@ -300,28 +299,32 @@ const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness
 // Altın malzeme
 const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.2 });
 
-// --- MOD MENÜ HTML (dinamik ekleniyor) ---
+// --- MOD MENÜ HTML (dinamik) ---
 const modMenuHTML = `
 <div id="mod-menu" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); padding:25px; border-radius:15px; z-index:30; color:white; text-align:center; border:2px solid gold; min-width:250px;">
     <h2 style="color:gold; margin-bottom:15px;">🔧 Mod Menü</h2>
-    <button id="btn-ycoord" style="padding:12px 20px; margin:8px; background:#444; color:white; border:1px solid white; border-radius:8px; cursor:pointer; width:90%;">Y Koordinatı: KAPALI</button>
+    <p id="mod-coords" style="color:#ffeb3b; font-size:16px; margin:10px 0;"></p>
     <button onclick="closeModMenu()" style="padding:12px 20px; margin:8px; background:#c44; color:white; border:1px solid white; border-radius:8px; cursor:pointer; width:90%;">Kapat</button>
 </div>
 `;
 document.body.insertAdjacentHTML('beforeend', modMenuHTML);
 
-// Mod menü buton işlevi
-document.getElementById('btn-ycoord').addEventListener('click', function() {
-    showYCoord = !showYCoord;
-    this.textContent = 'Y Koordinatı: ' + (showYCoord ? 'AÇIK' : 'KAPALI');
-    this.style.background = showYCoord ? '#4a4' : '#444';
-});
-
 window.closeModMenu = function() {
     document.getElementById('mod-menu').style.display = 'none';
 };
 
-// Mod girişi (Ctrl+Shift+M)
+// Mobil için mod butonu işlevi
+window.openModPrompt = function() {
+    const code = prompt('Mod kodu:');
+    if (code === '1234') {
+        isModerator = true;
+        document.getElementById('mod-menu').style.display = 'block';
+    } else {
+        alert('Hatalı kod!');
+    }
+};
+
+// Masaüstü için klavye kısayolu
 document.addEventListener('keydown', (e) => {
     if (e.key === 'm' && e.ctrlKey && e.shiftKey) {
         const code = prompt('Mod kodu:');
@@ -717,6 +720,11 @@ let isAttacking = false, attackAnimTime = 0;
 let myHealth = 100; const maxHealth = 100;
 let inRainforest = false;
 
+// Mod butonunu göster (oyun başlayınca)
+function showModButton() {
+    document.getElementById('mod-btn').style.display = 'flex';
+}
+
 function updateHealthBar() {
     const percent = (myHealth / maxHealth) * 100;
     document.getElementById('health-bar-fill').style.width = percent + '%';
@@ -780,6 +788,7 @@ window.playSolo = function() {
     document.getElementById('health-bar-container').style.display = 'block';
     document.getElementById('game-room-title').innerText = "TEK OYUNCULU";
     document.getElementById('game-player-count').innerText = "1";
+    showModButton();
     gameplayGroup.visible = true;
     rabbit.position.set(0, 0, 0); rabbit.rotation.y = 0;
     myHealth = maxHealth; updateHealthBar();
@@ -830,6 +839,7 @@ socket.on('gameStartedAtAll', (ap) => {
     document.getElementById('health-bar-container').style.display = 'block';
     document.getElementById('game-room-title').innerText = "ODA: " + document.getElementById('ui-room-code').innerText;
     document.getElementById('game-player-count').innerText = Object.keys(ap).length;
+    showModButton();
     lobbyGroup.visible = false; gameplayGroup.visible = true;
     rabbit.position.set(0, 0, 0); rabbit.rotation.y = 0;
     myHealth = maxHealth; updateHealthBar();
@@ -912,9 +922,11 @@ function animate() {
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
 
-    // Koordinat gösterimi (Y dâhil mod)
-    if (showYCoord && isModerator) {
+    // Koordinat gösterimi (mod açıkken Y de görünür)
+    if (isModerator) {
         document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
+        const modCoordEl = document.getElementById('mod-coords');
+        if (modCoordEl) modCoordEl.innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
     } else {
         document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Z:${Math.round(rabbit.position.z)}`;
     }
