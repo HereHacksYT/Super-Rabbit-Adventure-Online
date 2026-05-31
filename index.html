@@ -56,33 +56,22 @@
         </div>
     </div>
     <div id="lobby-ui">
-        <div class="code-panel">
-            <div class="code-label">DAVET KODUNUZ</div>
-            <div class="code-text" id="ui-room-code">00000</div>
-        </div>
+        <div class="code-panel"><div class="code-label">DAVET KODUNUZ</div><div class="code-text" id="ui-room-code">00000</div></div>
         <div class="bottom-panel">
             <div class="player-count-badge" id="ui-player-count">Oyuncu: 1 / 4</div>
             <button class="start-match-btn" id="ui-start-btn" onclick="window.hostStartGame()">HAZIR / BAŞLAT</button>
             <div class="waiting-msg" id="ui-waiting-msg">Kurucunun oyunu başlatması bekleniyor...</div>
         </div>
     </div>
-    <div id="game-info-ui">
-        <span id="game-room-title">ODA: -</span> | Oyuncu: <span id="game-player-count">1</span>
-    </div>
-    <div id="health-bar-container">
-        <div id="health-bar-fill"></div>
-        <div id="health-text">100/100</div>
-    </div>
+    <div id="game-info-ui"><span id="game-room-title">ODA: -</span> | Oyuncu: <span id="game-player-count">1</span></div>
+    <div id="health-bar-container"><div id="health-bar-fill"></div><div id="health-text">100/100</div></div>
     <button id="mod-btn" onclick="window.openModPrompt()">⚙️</button>
     <div id="controls-ui">
         <div id="joystick-zone"><div id="joystick-stick"></div></div>
         <div class="action-btn" id="attack-button">HIT</div>
         <div class="action-btn" id="jump-button">JUMP</div>
     </div>
-    <div id="death-screen">
-        <div class="death-text">ÖLDÜN!</div>
-        <div class="countdown-text" id="countdown-display">15</div>
-    </div>
+    <div id="death-screen"><div class="death-text">ÖLDÜN!</div><div class="countdown-text" id="countdown-display">15</div></div>
     <script src="client.js"></script>
 </body>
 </html>
