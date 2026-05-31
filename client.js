@@ -619,7 +619,7 @@ cubeTop.receiveShadow = true;
 gameplayGroup.add(cubeTop);
 obstacles.push(cubeTop);
 
-// --- PARKUR (spiral basamaklar, küpün etrafında) ---
+// --- PARKUR (YENİLENMİŞ: boşluksuz, araları açık) ---
 function createParkourStep(x, z, y, w, d) {
     const geo = new THREE.BoxGeometry(w, 0.5, d);
     const mat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.5 });
@@ -631,19 +631,20 @@ function createParkourStep(x, z, y, w, d) {
     return step;
 }
 
+// Her kenarda 3 basamak, toplam 12 basamak, kübe 1 birim mesafede
 const parkourData = [
-    // üst kenar (z=122)
-    {x:167, z:122}, {x:171, z:122}, {x:175, z:122}, {x:179, z:122},
-    // sağ kenar (x=188)
-    {x:188, z:128}, {x:188, z:133}, {x:188, z:138}, {x:188, z:143},
-    // alt kenar (z=158)
-    {x:179, z:158}, {x:175, z:158}, {x:171, z:158}, {x:167, z:158},
-    // sol kenar (x=162)
-    {x:162, z:143}, {x:162, z:138}, {x:162, z:133}, {x:162, z:128}
+    // üst kenar (z = 124, küpün üstü 125)
+    {x: 168, z: 124}, {x: 173, z: 124}, {x: 178, z: 124},
+    // sağ kenar (x = 186, küpün sağı 185)
+    {x: 186, z: 129}, {x: 186, z: 135}, {x: 186, z: 141},
+    // alt kenar (z = 156, küpün altı 155)
+    {x: 178, z: 156}, {x: 173, z: 156}, {x: 168, z: 156},
+    // sol kenar (x = 164, küpün solu 165)
+    {x: 164, z: 141}, {x: 164, z: 135}, {x: 164, z: 129}
 ];
 
 parkourData.forEach((pos, i) => {
-    const y = 0.25 + i * 1.56; // 25 / 16 ≈ 1.56 basamak aralığı
+    const y = 0.25 + i * (25 / 12); // 12 basamak, her biri ~2.08 yükseklik farkı
     createParkourStep(pos.x, pos.z, y, 3, 3);
 });
 
