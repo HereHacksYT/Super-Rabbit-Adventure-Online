@@ -9,6 +9,8 @@ let respawnTimer = null;
 let respawnCountdown = 15;
 let lastTeleportTime = 0;
 const teleportCooldown = 3;
+let isModerator = false;
+let showCoordsY = false;
 
 // 3D SAHNE
 const scene = new THREE.Scene();
@@ -298,7 +300,7 @@ const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness
 // Altın malzeme
 const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.2 });
 
-// --- ANA MERKEZ (KARE: x:-47 z:-47 ile x:47 z:47 arası) ---
+// --- ANA MERKEZ ---
 const squareSize = 94;
 const groundGeo = new THREE.PlaneGeometry(squareSize, squareSize);
 const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -307,7 +309,6 @@ ground.position.set(0, 0, 0);
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
-// --- DUVAR (gölgesiz, ana merkez kare) ---
 function createShadowlessWall(x, z, width, height, depth) {
     const geo = new THREE.BoxGeometry(width, height, depth);
     const wall = new THREE.Mesh(geo, stoneWallMat);
@@ -319,13 +320,11 @@ function createShadowlessWall(x, z, width, height, depth) {
     return wall;
 }
 
-// Kare duvarlar
 createShadowlessWall(0, 48, squareSize, 100, 2);
 createShadowlessWall(0, -48, squareSize, 100, 2);
 createShadowlessWall(48, 0, 2, 100, squareSize);
 createShadowlessWall(-48, 0, 2, 100, squareSize);
 
-// --- YOSUNLU DUVAR PARÇASI (50 birimlik) ---
 function createMossyWallSegment(x, z, width, height, depth, rotY = 0) {
     const geo = new THREE.BoxGeometry(width, height, depth);
     const wall = new THREE.Mesh(geo, mossyWallMat);
@@ -372,7 +371,6 @@ function createEnclosingWalls(minX, minZ, maxX, maxZ, height = 25) {
     }
 }
 
-// --- BÜYÜK ÇİMEN BLOK ---
 function createBigGrassBlock(x, z, width, depth, height) {
     const group = new THREE.Group();
     const bodyGeo = new THREE.BoxGeometry(width, height, depth);
@@ -393,7 +391,6 @@ function createBigGrassBlock(x, z, width, depth, height) {
     return group;
 }
 
-// --- AHŞAP EV ---
 function createWoodenHouse(x, z, rotY = 0) {
     const group = new THREE.Group();
     const bodyGeo = new THREE.BoxGeometry(6.0, 5.0, 6.0);
@@ -420,7 +417,6 @@ function createWoodenHouse(x, z, rotY = 0) {
     return group;
 }
 
-// --- AĞAÇ ---
 function createBigTree(x, z, scale = 2) {
     const group = new THREE.Group();
     const trunkGeo = new THREE.CylinderGeometry(0.3 * scale, 0.45 * scale, 3.0 * scale, 16);
@@ -441,7 +437,6 @@ function createBigTree(x, z, scale = 2) {
     return group;
 }
 
-// --- KAYA (sabit) ---
 function createRock(x, z, scale = 1) {
     const geo = new THREE.IcosahedronGeometry(0.8 * scale, 0);
     const mat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.5, metalness: 0.2 });
@@ -454,7 +449,6 @@ function createRock(x, z, scale = 1) {
     return rock;
 }
 
-// --- TAMAMEN ALTIN PORTAL ---
 function createGoldenPortal(x, z, targetX, targetZ) {
     const group = new THREE.Group();
     
@@ -493,7 +487,6 @@ function createGoldenPortal(x, z, targetX, targetZ) {
     return group;
 }
 
-// --- TABELA (yüzü kuzeye bakar) ---
 function createSign(x, z, text, rotY = 0) {
     const group = new THREE.Group();
     
@@ -537,7 +530,6 @@ function createSign(x, z, text, rotY = 0) {
     return group;
 }
 
-// --- YAĞMUR PARTİKÜL SİSTEMİ ---
 let rainParticles = null;
 function createRainSystem(x, z, width, depth) {
     if (rainParticles) {
@@ -610,6 +602,17 @@ for (let row = -90; row <= 90; row += rockSpacing) {
     }
 }
 
+// KÜP (X:165 Z:125 → X:185 Z:155, yükseklik: 10)
+const cubeMinX = 165, cubeMaxX = 185, cubeMinZ = 125, cubeMaxZ = 155, cubeHeight = 10;
+const cubeGeo = new THREE.BoxGeometry(cubeMaxX - cubeMinX, cubeHeight, cubeMaxZ - cubeMinZ);
+const cubeMat = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.7 });
+const cube = new THREE.Mesh(cubeGeo, cubeMat);
+cube.position.set((cubeMinX + cubeMaxX) / 2, cubeHeight / 2, (cubeMinZ + cubeMaxZ) / 2);
+cube.castShadow = true;
+cube.receiveShadow = true;
+gameplayGroup.add(cube);
+obstacles.push(cube);
+
 // ============ ANA MERKEZ ELEMANLARI ============
 createWoodenHouse(-25, -20, 0.2);
 createWoodenHouse(20, 15, -0.3);
@@ -632,13 +635,41 @@ createBigTree(40, 15, 2);
 createBigTree(-15, -40, 1.8);
 createBigTree(15, 40, 1.8);
 
-// Gidiş portalı (X:0 Z:40) ve tabelası (yüzü güneye bakar)
 createGoldenPortal(0, 40, 200, 80);
-createSign(0, 43, "Yağmurlu Orman", Math.PI); // yüzü güneye (merkezden dışarı)
+createSign(0, 43, "Yağmurlu Orman", Math.PI);
 
-// Geri dönüş portalı (X:200 Z:80) ve tabelası
 createGoldenPortal(200, 80, 0, 37);
-createSign(200, 83, "Geri Dön", 0); // yüzü kuzeye
+createSign(200, 76, "Geri Dön", 0);
+
+// --- MOD MENÜ ---
+const modMenuHTML = `
+<div id="mod-menu" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.9); padding:25px; border-radius:15px; z-index:30; color:white; text-align:center; border:2px solid gold;">
+    <h2 style="color:gold; margin-bottom:15px;">Mod Menü</h2>
+    <button onclick="toggleYCoord()" style="padding:10px 20px; margin:5px; background:#444; color:white; border:1px solid white; border-radius:5px; cursor:pointer;">Y Koordinatı Göster</button>
+    <button onclick="closeModMenu()" style="padding:10px 20px; margin:5px; background:#c44; color:white; border:1px solid white; border-radius:5px; cursor:pointer;">Kapat</button>
+</div>
+`;
+document.body.insertAdjacentHTML('beforeend', modMenuHTML);
+
+// Mod girişi (1234)
+document.addEventListener('keydown', (e) => {
+    if (e.key === '1' && e.ctrlKey && e.shiftKey) {
+        const code = prompt('Mod kodu:');
+        if (code === '1234') {
+            isModerator = true;
+            document.getElementById('mod-menu').style.display = 'block';
+        }
+    }
+});
+
+window.toggleYCoord = function() {
+    showCoordsY = !showCoordsY;
+    alert(showCoordsY ? 'Y koordinatı gösteriliyor' : 'Y koordinatı gizlendi');
+};
+
+window.closeModMenu = function() {
+    document.getElementById('mod-menu').style.display = 'none';
+};
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
@@ -872,14 +903,19 @@ document.getElementById('attack-button').addEventListener('touchstart', (e) => {
     }
 });
 
-// ANA DÖNGÜ + PORTAL + YAĞMUR
+// ANA DÖNGÜ
 let legWiggle = 0;
 function animate() {
     requestAnimationFrame(animate);
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
 
-    document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Z:${Math.round(rabbit.position.z)}`;
+    // Koordinat gösterimi (Y dâhil mod)
+    if (showCoordsY && isModerator) {
+        document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
+    } else {
+        document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Z:${Math.round(rabbit.position.z)}`;
+    }
 
     const inRFX = rabbit.position.x > rfMinX && rabbit.position.x < rfMaxX;
     const inRFZ = rabbit.position.z > rfMinZ && rabbit.position.z < rfMaxZ;
