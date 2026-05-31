@@ -298,14 +298,16 @@ const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness
 // Altın malzeme
 const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.2 });
 
-// --- ZEMİN (ANA MERKEZ) ---
-const groundGeo = new THREE.CircleGeometry(120, 128);
+// --- ANA MERKEZ (KARE: x:-47 z:-47 ile x:47 z:47 arası) ---
+const squareSize = 94; // 47 - (-47) = 94
+const groundGeo = new THREE.PlaneGeometry(squareSize, squareSize);
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
+ground.position.set(0, 0, 0);
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
-// --- DUVAR (gölgesiz, ana merkez) ---
+// --- DUVAR (gölgesiz, ana merkez kare) ---
 function createShadowlessWall(x, z, width, height, depth) {
     const geo = new THREE.BoxGeometry(width, height, depth);
     const wall = new THREE.Mesh(geo, stoneWallMat);
@@ -316,6 +318,12 @@ function createShadowlessWall(x, z, width, height, depth) {
     obstacles.push(wall);
     return wall;
 }
+
+// Kare duvarlar (x:-47 z:-47 ile x:47 z:47 arası, dışa doğru)
+createShadowlessWall(0, 48, squareSize, 100, 2);  // üst
+createShadowlessWall(0, -48, squareSize, 100, 2); // alt
+createShadowlessWall(48, 0, 2, 100, squareSize);  // sağ
+createShadowlessWall(-48, 0, 2, 100, squareSize); // sol
 
 // --- YOSUNLU DUVAR (yağmurlu orman için) ---
 function createMossyWall(x, z, width, height, depth, rotY = 0) {
@@ -534,39 +542,33 @@ returnRing.position.y = 1.2;
 returnPortalGroup.add(returnRing);
 returnPortalGroup.position.set(rfX, 0, rfZ + rfHalfD - 20);
 gameplayGroup.add(returnPortalGroup);
-portals.push({ mesh: returnPortalGroup, target: new THREE.Vector3(0, 0, 32), color: 0xffcc00 });
+portals.push({ mesh: returnPortalGroup, target: new THREE.Vector3(0, 0, 34), color: 0xffcc00 });
 
-// ============ ANA MERKEZ (ORTADA AĞAÇ YOK!) ============
-createWoodenHouse(-20, -16, 0.2);
-createWoodenHouse(18, 13, -0.3);
-createWoodenHouse(-20, 20, 0.5);
+// ============ ANA MERKEZ ELEMANLARI (KARE SINIRLAR İÇİNDE) ============
+createWoodenHouse(-25, -20, 0.2);
+createWoodenHouse(20, 15, -0.3);
+createWoodenHouse(-25, 25, 0.5);
 
-createBigGrassBlock(32, -22, 8, 8, 8);
-createBigGrassBlock(-28, -12, 9, 10, 6);
-createBigGrassBlock(33, 22, 10, 8, 7);
+createBigGrassBlock(30, -25, 8, 8, 8);
+createBigGrassBlock(-30, -15, 9, 10, 6);
+createBigGrassBlock(30, 25, 10, 8, 7);
 createBigGrassBlock(-30, -30, 9, 9, 10);
-createBigGrassBlock(22, 0, 8, 8, 6);
+createBigGrassBlock(25, 0, 8, 8, 6);
 
 // Ağaçlar (0,0 ve yakınında hiç yok!)
-createBigTree(-36, -36, 2);
-createBigTree(36, -32, 1.8);
-createBigTree(-32, 36, 2.2);
-createBigTree(34, 34, 2);
-createBigTree(-38, 8, 1.8);
-createBigTree(38, -8, 2);
-createBigTree(-40, -14, 2);
-createBigTree(40, 14, 2);
-createBigTree(-16, -38, 1.8);
-createBigTree(16, 38, 1.8);
-
-// 4 BÜYÜK DUVAR
-createShadowlessWall(0, 46, 90, 100, 2);
-createShadowlessWall(46, 0, 2, 100, 90);
-createShadowlessWall(0, -46, 90, 100, 2);
-createShadowlessWall(-46, 0, 2, 100, 90);
+createBigTree(-35, -35, 2);
+createBigTree(35, -30, 1.8);
+createBigTree(-30, 35, 2.2);
+createBigTree(35, 35, 2);
+createBigTree(-40, 10, 1.8);
+createBigTree(40, -10, 2);
+createBigTree(-40, -15, 2);
+createBigTree(40, 15, 2);
+createBigTree(-15, -40, 1.8);
+createBigTree(15, 40, 1.8);
 
 // ALTIN PORTAL (merkez → yağmurlu orman)
-createGoldenPortal(0, 35, rfX, rfZ - rfHalfD + 20);
+createGoldenPortal(0, 40, rfX, rfZ - rfHalfD + 20);
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
