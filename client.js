@@ -280,7 +280,7 @@ const groundMat = new THREE.MeshStandardMaterial({ map: groundTexture, roughness
 groundTexture.repeat.set(12, 12);
 
 const rainforestGroundMat = new THREE.MeshStandardMaterial({ map: rainforestGroundTexture, roughness: 0.85 });
-rainforestGroundTexture.repeat.set(20, 20); // daha büyük doku tekrarı
+rainforestGroundTexture.repeat.set(20, 20);
 
 const blockGrassMat = new THREE.MeshStandardMaterial({ map: blockGrassTexture, roughness: 0.85 });
 blockGrassTexture.repeat.set(8, 8);
@@ -492,9 +492,9 @@ function updateRain(active, x, z, width, depth) {
     rainParticles.geometry.attributes.position.needsUpdate = true;
 }
 
-// ============ YAĞMURLU ORMAN BÖLGESİ (BÜYÜK, KARE) ============
+// ============ YAĞMURLU ORMAN BÖLGESİ (5 KAT BÜYÜK) ============
 const rfX = 200, rfZ = 200;
-const rfWidth = 100, rfDepth = 100; // 60'tan 100'e büyütüldü
+const rfWidth = 500, rfDepth = 500; // 5 katına çıkarıldı
 const rfHalfW = rfWidth / 2, rfHalfD = rfDepth / 2;
 
 // Kare zemin
@@ -505,49 +505,40 @@ rfGround.position.set(rfX, 0, rfZ);
 rfGround.receiveShadow = true;
 gameplayGroup.add(rfGround);
 
-// Yosunlu duvarlar (4 kenar, yükseklik 25)
+// Yosunlu duvarlar (4 kenar)
 createMossyWall(rfX, rfZ - rfHalfD, rfWidth, 25, 2, 0);
 createMossyWall(rfX, rfZ + rfHalfD, rfWidth, 25, 2, 0);
 createMossyWall(rfX - rfHalfW, rfZ, 2, 25, rfDepth, Math.PI/2);
 createMossyWall(rfX + rfHalfW, rfZ, 2, 25, rfDepth, Math.PI/2);
 
-// Yağmur sistemi (geniş alan)
+// Yağmur sistemi
 createRainSystem(rfX, rfZ, rfWidth, rfDepth);
 
-// SABİT AĞAÇLAR (ızgara, ama portal noktasına denk geleni kaldırdık: 200,175 artık yok)
-const treeGrid = [
-    [-40, -40], [-20, -40], [0, -40], [20, -40], [40, -40],
-    [-40, -20], [-10, -20], [10, -20], [40, -20],
-    [-40, 0], [0, 0], [40, 0],
-    [-40, 20], [-10, 20], [10, 20], [40, 20],
-    [-40, 40], [-20, 40], [0, 40], [20, 40], [40, 40],
-    [-30, -30], [30, -30], [-30, 30], [30, 30],
-    [-45, 0], [45, 0], [0, -45], [0, 45],
-    [-15, -15], [15, -15], [-15, 15], [15, 15]
-];
-treeGrid.forEach(pos => {
-    createBigTree(rfX + pos[0], rfZ + pos[1], 1.5 + Math.random() * 1.0);
-});
+// SABİT AĞAÇLAR (daha geniş aralıklı ızgara)
+const treeSpacing = 40; // 5 kat daha geniş aralık
+for (let row = -200; row <= 200; row += treeSpacing) {
+    for (let col = -200; col <= 200; col += treeSpacing) {
+        if (Math.abs(row) <= 50 && Math.abs(col) <= 50) continue; // portal bölgesi boş
+        createBigTree(rfX + col, rfZ + row, 1.5 + Math.random() * 1.0);
+    }
+}
 
 // SABİT KAYALAR
-const rockPositions = [
-    [-35, -35], [35, -35], [-35, 35], [35, 35],
-    [-25, -45], [25, -45], [-45, -25], [45, -25],
-    [-25, 45], [25, 45], [-45, 25], [45, 25],
-    [0, -30], [0, 30], [-30, 0], [30, 0]
-];
-rockPositions.forEach(pos => {
-    createRock(rfX + pos[0], rfZ + pos[1], 0.8 + Math.random() * 0.8);
-});
+const rockSpacing = 60;
+for (let row = -180; row <= 180; row += rockSpacing) {
+    for (let col = -180; col <= 180; col += rockSpacing) {
+        createRock(rfX + col + 15, rfZ + row + 15, 0.8 + Math.random() * 0.8);
+    }
+}
 
-// Geri dönüş portalı (yağmurlu ormanda, güvenli nokta)
+// Geri dönüş portalı (yağmurlu ormanda)
 const returnPortalGroup = new THREE.Group();
 const returnRingGeo = new THREE.TorusGeometry(1.0, 0.12, 16, 32);
 const returnRing = new THREE.Mesh(returnRingGeo, goldMat);
 returnRing.rotation.x = Math.PI / 2;
 returnRing.position.y = 1.2;
 returnPortalGroup.add(returnRing);
-returnPortalGroup.position.set(rfX, 0, rfZ + rfHalfD - 8); // alt kenara yakın
+returnPortalGroup.position.set(rfX, 0, rfZ + rfHalfD - 40);
 gameplayGroup.add(returnPortalGroup);
 portals.push({ mesh: returnPortalGroup, target: new THREE.Vector3(0, 0, 32), color: 0xffcc00 });
 
@@ -581,8 +572,8 @@ createShadowlessWall(46, 0, 2, 100, 90);
 createShadowlessWall(0, -46, 90, 100, 2);
 createShadowlessWall(-46, 0, 2, 100, 90);
 
-// ALTIN PORTAL (merkez → yağmurlu orman, hedef güvenli alan)
-createGoldenPortal(0, 35, rfX, rfZ - rfHalfD + 15); // 200, 200-50+15=165, ağaç yok
+// ALTIN PORTAL (merkez → yağmurlu orman)
+createGoldenPortal(0, 35, rfX, rfZ - rfHalfD + 40);
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
