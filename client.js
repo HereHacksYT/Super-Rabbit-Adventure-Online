@@ -10,7 +10,6 @@ let respawnCountdown = 15;
 let lastTeleportTime = 0;
 const teleportCooldown = 3;
 let isModerator = false;
-let showModMenu = false;
 let showYCoord = false;
 
 // 3D SAHNE
@@ -301,7 +300,7 @@ const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness
 // Altın malzeme
 const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.2 });
 
-// --- MOD MENÜ HTML ---
+// --- MOD MENÜ HTML (dinamik ekleniyor) ---
 const modMenuHTML = `
 <div id="mod-menu" style="display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,0,0,0.95); padding:25px; border-radius:15px; z-index:30; color:white; text-align:center; border:2px solid gold; min-width:250px;">
     <h2 style="color:gold; margin-bottom:15px;">🔧 Mod Menü</h2>
@@ -310,6 +309,28 @@ const modMenuHTML = `
 </div>
 `;
 document.body.insertAdjacentHTML('beforeend', modMenuHTML);
+
+// Mod menü buton işlevi
+document.getElementById('btn-ycoord').addEventListener('click', function() {
+    showYCoord = !showYCoord;
+    this.textContent = 'Y Koordinatı: ' + (showYCoord ? 'AÇIK' : 'KAPALI');
+    this.style.background = showYCoord ? '#4a4' : '#444';
+});
+
+window.closeModMenu = function() {
+    document.getElementById('mod-menu').style.display = 'none';
+};
+
+// Mod girişi (Ctrl+Shift+M)
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'm' && e.ctrlKey && e.shiftKey) {
+        const code = prompt('Mod kodu:');
+        if (code === '1234') {
+            isModerator = true;
+            document.getElementById('mod-menu').style.display = 'block';
+        }
+    }
+});
 
 // --- ANA MERKEZ ---
 const squareSize = 94;
@@ -651,27 +672,6 @@ createSign(0, 43, "Yağmurlu Orman", Math.PI);
 
 createGoldenPortal(200, 80, 0, 37);
 createSign(200, 76, "Geri Dön", 0);
-
-// --- MOD MENÜ İŞLEVLERİ ---
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'm' && e.ctrlKey && e.shiftKey) {
-        const code = prompt('Mod kodu:');
-        if (code === '1234') {
-            isModerator = true;
-            document.getElementById('mod-menu').style.display = 'block';
-        }
-    }
-});
-
-document.getElementById('btn-ycoord').addEventListener('click', function() {
-    showYCoord = !showYCoord;
-    this.textContent = 'Y Koordinatı: ' + (showYCoord ? 'AÇIK' : 'KAPALI');
-    this.style.background = showYCoord ? '#4a4' : '#444';
-});
-
-window.closeModMenu = function() {
-    document.getElementById('mod-menu').style.display = 'none';
-};
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
