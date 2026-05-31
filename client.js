@@ -230,8 +230,8 @@ const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.
 
 const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.55 });
 
-// Altın malzeme
-const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.2, metalness: 0.9, emissive: 0xff8800, emissiveIntensity: 0.4 });
+// Altın malzeme (daha çok parlayan)
+const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.2 });
 
 // Mavi portal malzemesi
 const portalBlueMat = new THREE.MeshStandardMaterial({ color: 0x4488ff, roughness: 0.1, metalness: 0.2, emissive: 0x2266cc, emissiveIntensity: 0.8 });
@@ -324,45 +324,38 @@ function createBigTree(x, z, scale = 2) {
     return group;
 }
 
-// --- ÖZEL PORTAL (altın kaideli, mavi halkalı, altın dikilitaşlı) ---
+// --- ÖZEL PORTAL (altın kaide + üstüne yapışık mavi halka, mızrak yok) ---
 function createSpecialPortal(x, z, targetX, targetZ) {
     const group = new THREE.Group();
     
-    // Altın kaide (altta)
-    const baseGeo = new THREE.CylinderGeometry(0.9, 1.1, 0.4, 24);
+    // Altın kaide (altta, daha parlak)
+    const baseGeo = new THREE.CylinderGeometry(1.0, 1.2, 0.5, 32);
     const base = new THREE.Mesh(baseGeo, goldMat);
-    base.position.y = 0.2;
+    base.position.y = 0.25;
     base.castShadow = true;
     base.receiveShadow = true;
     group.add(base);
     
-    // Mavi portal halkası (kaidenin üstünde, biraz daha küçük)
-    const ringGeo = new THREE.TorusGeometry(0.7, 0.12, 16, 32);
+    // Mavi portal halkası (kaidenin tam üstüne yapışık)
+    const ringGeo = new THREE.TorusGeometry(0.75, 0.14, 16, 40);
     const ring = new THREE.Mesh(ringGeo, portalBlueMat);
     ring.rotation.x = Math.PI / 2;
-    ring.position.y = 1.2;
+    ring.position.y = 1.0;
     group.add(ring);
     
-    // Mavi iç ışık silindiri
-    const innerGeo = new THREE.CylinderGeometry(0.25, 0.25, 2.0, 16);
+    // Mavi iç ışık silindiri (halkanın içinde)
+    const innerGeo = new THREE.CylinderGeometry(0.25, 0.25, 1.8, 16);
     const innerMat = new THREE.MeshStandardMaterial({ color: 0x4488ff, emissive: 0x2266cc, emissiveIntensity: 0.5, transparent: true, opacity: 0.3 });
     const inner = new THREE.Mesh(innerGeo, innerMat);
-    inner.position.y = 1.2;
+    inner.position.y = 1.0;
     group.add(inner);
     
-    // Altın dikilitaş (arkanın hemen arkasında)
-    const pillarGeo = new THREE.CylinderGeometry(0.15, 0.22, 3.5, 8);
-    const pillar = new THREE.Mesh(pillarGeo, goldMat);
-    pillar.position.set(0, 2.0, -0.8);
-    pillar.castShadow = true;
-    group.add(pillar);
-    
-    // Dikilitaşın üstünde küçük altın piramit
-    const tipGeo = new THREE.ConeGeometry(0.22, 0.6, 8);
-    const tip = new THREE.Mesh(tipGeo, goldMat);
-    tip.position.set(0, 3.9, -0.8);
-    tip.castShadow = true;
-    group.add(tip);
+    // Küçük altın üst halka (mavinin üstünde dekoratif)
+    const topRingGeo = new THREE.TorusGeometry(0.5, 0.08, 8, 24);
+    const topRing = new THREE.Mesh(topRingGeo, goldMat);
+    topRing.rotation.x = Math.PI / 2;
+    topRing.position.y = 1.8;
+    group.add(topRing);
     
     group.position.set(x, 0, z);
     gameplayGroup.add(group);
