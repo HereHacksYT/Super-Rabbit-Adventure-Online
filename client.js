@@ -113,6 +113,12 @@ const mossyStoneTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
             ctx.fillRect(x + 2, y + 2, 60, 28);
         }
     }
+    for (let i = 0; i < 500; i++) {
+        ctx.fillStyle = `rgba(60, 100, 40, ${Math.random() * 0.6})`;
+        ctx.beginPath();
+        ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 8 + 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
 });
 
 const dirtTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
@@ -251,9 +257,6 @@ document.addEventListener('keydown', (e) => {
                 }
             });
         }
-    }
-    if (lightGameActive && (e.key === 'e' || e.key === 'f')) {
-        handleMirrorRotate();
     }
     if (e.key === 'm' && e.ctrlKey && e.shiftKey) {
         const code = prompt('Mod kodu:');
@@ -868,9 +871,119 @@ createSign(0, 43, "Yağmurlu Orman", Math.PI);
 createGoldenPortal(200, 80, 0, 37);
 createSign(200, 76, "Geri Dön", 0);
 
-// Işık oyununa giden portal
+// Tapınağa giden portal (ana merkezden Z:-50)
 createGoldenPortal(0, -50, 310, 100);
-createSign(0, -53, "Işık Oyunu", 0);
+createSign(0, -53, "Yosunlu Tapınak", 0);
+
+// ===================== YOSUNLU TAŞ TAPINAK (X:310 Z:100) =====================
+(function buildMossyTemple() {
+    const tx = 310, tz = 100;
+    
+    // Zemin platformu
+    const platformMat = new THREE.MeshStandardMaterial({ color: 0x7a8a6e, roughness: 0.7 });
+    const platform = new THREE.Mesh(new THREE.BoxGeometry(24, 1, 24), platformMat);
+    platform.position.set(tx, 0, tz);
+    platform.receiveShadow = true;
+    platform.castShadow = true;
+    gameplayGroup.add(platform);
+    
+    // Yosun lekeleri
+    const mossMat = new THREE.MeshStandardMaterial({ color: 0x4a6a3a });
+    for (let i = 0; i < 200; i++) {
+        const patch = new THREE.Mesh(new THREE.SphereGeometry(0.1 + Math.random() * 0.2, 3), mossMat);
+        patch.position.set(tx + (Math.random() - 0.5) * 22, 0.55, tz + (Math.random() - 0.5) * 22);
+        patch.castShadow = false;
+        gameplayGroup.add(patch);
+    }
+    
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x8a9a7a, roughness: 0.8 });
+    const wallH = 4;
+    const wallT = 0.8;
+    
+    // Duvarlar
+    const front = new THREE.Mesh(new THREE.BoxGeometry(20, wallH, wallT), wallMat);
+    front.position.set(tx, wallH/2, tz - 11);
+    front.castShadow = true;
+    gameplayGroup.add(front);
+    obstacles.push(front);
+    
+    const back = new THREE.Mesh(new THREE.BoxGeometry(20, wallH, wallT), wallMat);
+    back.position.set(tx, wallH/2, tz + 11);
+    back.castShadow = true;
+    gameplayGroup.add(back);
+    obstacles.push(back);
+    
+    const left = new THREE.Mesh(new THREE.BoxGeometry(wallT, wallH, 20), wallMat);
+    left.position.set(tx - 11, wallH/2, tz);
+    left.castShadow = true;
+    gameplayGroup.add(left);
+    obstacles.push(left);
+    
+    const right = new THREE.Mesh(new THREE.BoxGeometry(wallT, wallH, 20), wallMat);
+    right.position.set(tx + 11, wallH/2, tz);
+    right.castShadow = true;
+    gameplayGroup.add(right);
+    obstacles.push(right);
+    
+    // Köşe sütunları
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x9aaa8a });
+    const corners = [[-10, -10], [-10, 10], [10, -10], [10, 10]];
+    corners.forEach(([cx, cz]) => {
+        const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.2, wallH + 1, 1.2), pillarMat);
+        pillar.position.set(tx + cx, wallH/2, tz + cz);
+        pillar.castShadow = true;
+        gameplayGroup.add(pillar);
+        obstacles.push(pillar);
+    });
+    
+    // Çatı
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x6a5a4a, roughness: 0.9 });
+    const roofL = new THREE.Mesh(new THREE.BoxGeometry(22, 0.3, 14), roofMat);
+    roofL.position.set(tx - 3, wallH, tz);
+    roofL.rotation.z = -0.3;
+    roofL.castShadow = true;
+    gameplayGroup.add(roofL);
+    
+    const roofR = new THREE.Mesh(new THREE.BoxGeometry(22, 0.3, 14), roofMat);
+    roofR.position.set(tx + 3, wallH, tz);
+    roofR.rotation.z = 0.3;
+    roofR.castShadow = true;
+    gameplayGroup.add(roofR);
+    
+    // Kapı
+    const doorMat = new THREE.MeshStandardMaterial({ color: 0x5a4a3a });
+    const door = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.5, 0.3), doorMat);
+    door.position.set(tx, 1.8, tz - 10.8);
+    door.castShadow = true;
+    gameplayGroup.add(door);
+    
+    // Sunak (içerde)
+    const altarMat = new THREE.MeshStandardMaterial({ color: 0xaa9977, roughness: 0.5, metalness: 0.2 });
+    const altar = new THREE.Mesh(new THREE.BoxGeometry(2, 1.2, 2), altarMat);
+    altar.position.set(tx, 0.6, tz);
+    altar.castShadow = true;
+    gameplayGroup.add(altar);
+    
+    // Sunakta ışık efekti
+    const glowMat = new THREE.MeshStandardMaterial({ color: 0xffaa66, emissive: 0xff4411, emissiveIntensity: 0.5 });
+    const crystal = new THREE.Mesh(new THREE.SphereGeometry(0.4, 8, 8), glowMat);
+    crystal.position.set(tx, 1.2, tz);
+    crystal.castShadow = true;
+    gameplayGroup.add(crystal);
+    
+    // Etrafa yosunlu taşlar
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x7a8a6e });
+    for (let i = 0; i < 60; i++) {
+        const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.2 + Math.random() * 0.3), stoneMat);
+        const angle = Math.random() * Math.PI * 2;
+        const rad = 12 + Math.random() * 4;
+        stone.position.set(tx + Math.cos(angle) * rad, 0.2, tz + Math.sin(angle) * rad);
+        stone.castShadow = true;
+        gameplayGroup.add(stone);
+        obstacles.push(stone);
+    }
+})();
+// ==========================================================================
 
 const coordSpan = document.createElement('span');
 coordSpan.id = 'coords-display';
@@ -1156,111 +1269,12 @@ function showMessage(text) {
     }, 2000);
 }
 
-// ===================== IŞIK YANSITMA OYUNU =====================
-const lightGameZone = { x: 310, z: 100 };
-let lightGameActive = false, lightGameCompleted = false, hasSecondKey = false, currentLevel = 0, mirrors = [], rayLines = [];
-const levels = [
-    { sourceAngle: 0, targetPos: { x: 7, z: 0 }, mirrors: [{ x: 3, z: 2, angle: Math.PI/4, fixed: false }] },
-    { sourceAngle: Math.PI/4, targetPos: { x: -2, z: 5 }, mirrors: [{ x: 1, z: 1, angle: Math.PI/4, fixed: false }, { x: 4, z: 3, angle: -Math.PI/4, fixed: false }] },
-    { sourceAngle: Math.PI/2, targetPos: { x: 0, z: -4 }, mirrors: [{ x: 2, z: -1, angle: Math.PI/4, fixed: true }, { x: -1, z: 2, angle: -Math.PI/4, fixed: false }, { x: -3, z: -2, angle: Math.PI/4, fixed: false }] }
-];
-function createMirrorLight(x, z, angle, fixed) {
-    const group = new THREE.Group();
-    const mirrorMat = new THREE.MeshStandardMaterial({ color: 0xffaa66, metalness: 0.9 });
-    const surface = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.05, 0.8), mirrorMat);
-    surface.position.y = 0.2;
-    group.add(surface);
-    group.position.set(lightGameZone.x + x, 0.2, lightGameZone.z + z);
-    group.rotation.y = angle;
-    gameplayGroup.add(group);
-    if (!fixed) group.userData = { selectable: true };
-    return group;
-}
-function drawRayLight(from, to) {
-    const points = [new THREE.Vector3(from.x + lightGameZone.x, 0.4, from.y + lightGameZone.z), new THREE.Vector3(to.x + lightGameZone.x, 0.4, to.y + lightGameZone.z)];
-    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(points), new THREE.LineBasicMaterial({ color: 0xff3366 }));
-    gameplayGroup.add(line);
-    rayLines.push(line);
-}
-function updateLaserLight() {
-    rayLines.forEach(l => gameplayGroup.remove(l));
-    rayLines = [];
-    let pos = new THREE.Vector2(0, 0), dir = new THREE.Vector2(Math.sin(levels[currentLevel].sourceAngle), Math.cos(levels[currentLevel].sourceAngle));
-    const target = new THREE.Vector2(levels[currentLevel].targetPos.x, levels[currentLevel].targetPos.z);
-    for (let b = 0; b < 20; b++) {
-        let minT = Infinity, hitMirror = null, hitPoint = null, newDir = null;
-        for (let m of mirrors) {
-            const mpos = new THREE.Vector2(m.position.x - lightGameZone.x, m.position.z - lightGameZone.z);
-            const normal = new THREE.Vector2(Math.sin(m.rotation.y), Math.cos(m.rotation.y));
-            const toMirror = new THREE.Vector2(mpos.x - pos.x, mpos.y - pos.y);
-            const t = toMirror.dot(normal) / dir.dot(normal);
-            if (t > 0.001) {
-                const intersect = pos.clone().add(dir.clone().multiplyScalar(t));
-                const along = intersect.clone().sub(mpos).dot(new THREE.Vector2(-normal.y, normal.x));
-                if (Math.abs(along) < 0.7 && t < minT) {
-                    minT = t; hitMirror = m; hitPoint = intersect;
-                    const dot = dir.dot(normal);
-                    newDir = dir.clone().sub(normal.clone().multiplyScalar(2 * dot)).normalize();
-                }
-            }
-        }
-        const toTarget = target.clone().sub(pos);
-        const tTarget = toTarget.dot(dir);
-        if (tTarget > 0 && tTarget < minT) {
-            drawRayLight(pos, pos.clone().add(dir.clone().multiplyScalar(tTarget)));
-            if (!lightGameCompleted) {
-                if (currentLevel + 1 < levels.length) { currentLevel++; resetLightGame(); initLightLevel(); showMessage(`Seviye ${currentLevel+1}`, 1500); }
-                else { lightGameCompleted = true; showMessage("Işık Anahtarı kazanıldı! 🔑", 3000); hasSecondKey = true; const keyReward = new THREE.Mesh(new THREE.TorusGeometry(0.2,0.05,16,32), new THREE.MeshStandardMaterial({color:0xffcc00, metalness:0.9})); keyReward.position.set(0,1.2,0); rabbit.add(keyReward); setTimeout(()=>rabbit.remove(keyReward),8000); }
-            }
-            return;
-        }
-        if (hitMirror) { drawRayLight(pos, hitPoint); pos = hitPoint; dir = newDir; }
-        else { drawRayLight(pos, pos.clone().add(dir.clone().multiplyScalar(12))); break; }
-    }
-}
-let laserSourceLight = null, laserTargetLight = null;
-function initLightLevel() {
-    mirrors.forEach(m=>gameplayGroup.remove(m)); mirrors = [];
-    if(laserTargetLight) gameplayGroup.remove(laserTargetLight);
-    const targetMat = new THREE.MeshStandardMaterial({ color: 0x33ff33, emissive: 0x22ff22 });
-    laserTargetLight = new THREE.Mesh(new THREE.SphereGeometry(0.5,16,16), targetMat);
-    laserTargetLight.position.set(lightGameZone.x + levels[currentLevel].targetPos.x, 0.6, lightGameZone.z + levels[currentLevel].targetPos.z);
-    gameplayGroup.add(laserTargetLight);
-    levels[currentLevel].mirrors.forEach((m,idx)=>{ const mo = createMirrorLight(m.x, m.z, m.angle, m.fixed); mo.userData = { fixed: m.fixed }; mirrors.push(mo); });
-    updateLaserLight();
-}
-function resetLightGame() { mirrors.forEach(m=>gameplayGroup.remove(m)); mirrors = []; rayLines.forEach(l=>gameplayGroup.remove(l)); rayLines = []; if(laserSourceLight) gameplayGroup.remove(laserSourceLight); if(laserTargetLight) gameplayGroup.remove(laserTargetLight); }
-function buildLightPlatform() {
-    const platform = new THREE.Mesh(new THREE.BoxGeometry(20,0.5,20), new THREE.MeshStandardMaterial({ color: 0x222222, metalness: 0.8 }));
-    platform.position.set(lightGameZone.x,0,lightGameZone.z); platform.receiveShadow=true;
-    gameplayGroup.add(platform);
-    const grid = new THREE.GridHelper(20,20,0x88aaff,0x335588); grid.position.set(lightGameZone.x,0.26,lightGameZone.z);
-    gameplayGroup.add(grid);
-    const srcMat = new THREE.MeshStandardMaterial({ color: 0xff3333, emissive: 0xff2200 });
-    laserSourceLight = new THREE.Mesh(new THREE.SphereGeometry(0.5,16,16), srcMat);
-    laserSourceLight.position.set(lightGameZone.x,0.6,lightGameZone.z);
-    gameplayGroup.add(laserSourceLight);
-}
-function checkLightProximity() {
-    if(lightGameCompleted) return;
-    const dist = Math.hypot(rabbit.position.x - lightGameZone.x, rabbit.position.z - lightGameZone.z);
-    if(!lightGameActive && dist<5) { lightGameActive=true; currentLevel=0; buildLightPlatform(); initLightLevel(); showMessage("Işık oyunu başladı! Aynalara yaklaşıp E ile döndür.", 3500); }
-    else if(lightGameActive && dist>8) { resetLightGame(); lightGameActive=false; }
-}
-function handleMirrorRotate() {
-    if(!lightGameActive) return;
-    let closest=null, minD=2.5;
-    for(let m of mirrors) if(!m.userData.fixed) { const d = Math.hypot(rabbit.position.x - m.position.x, rabbit.position.z - m.position.z); if(d<minD) { minD=d; closest=m; } }
-    if(closest) { closest.rotation.y += Math.PI/4; updateLaserLight(); showMessage("Ayna döndürüldü", 800); }
-}
-// ===================== ANA DÖNGÜ =====================
 let legWiggle = 0;
 function animate() {
     requestAnimationFrame(animate);
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
     
-    checkLightProximity();
     updateAllMonkeys(deltaTime);
     
     let finalMoveX = 0, finalMoveZ = 0;
