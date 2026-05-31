@@ -16,12 +16,8 @@ let joystickActive = false;
 let moveX = 0;
 let moveZ = 0;
 
-// Maymun değişkenleri
-let monkey = null;
-let monkeyAlive = true;
-let monkeyRespawnTimer = null;
-let monkeyAttackCooldown = 0;
-let monkeyAnimTime = 0;
+// Maymunlar dizisi
+const monkeys = [];
 
 // 3D SAHNE
 const scene = new THREE.Scene();
@@ -737,7 +733,7 @@ cubeTop.receiveShadow = true;
 gameplayGroup.add(cubeTop);
 obstacles.push(cubeTop);
 
-// --- MAYMUN (SALDIRILI, CANLI) ---
+// --- 3 MAYMUN (gelişmiş, 2 kat hızlı, muz düzgün konumda) ---
 function createMonkey(x, y, z) {
     const monkeyGroup = new THREE.Group();
     monkeyGroup.name = 'monkey';
@@ -782,9 +778,9 @@ function createMonkey(x, y, z) {
     armR.rotation.z = -0.5;
     monkeyGroup.add(armR);
     
-    // Muz (sağ elinde)
+    // Muz (sağ elin ucunda)
     const bananaGroup = new THREE.Group();
-    bananaGroup.position.set(0.5, 0.7, 0);
+    bananaGroup.position.set(0.65, 1.25, 0.15); // Düzeltilmiş pozisyon
     const bananaCurve = new THREE.CatmullRomCurve3([
         new THREE.Vector3(0, 0, 0),
         new THREE.Vector3(0.05, 0.2, 0.05),
@@ -858,9 +854,9 @@ function createMonkey(x, y, z) {
         bananaGroup: bananaGroup,
         targetX: x,
         targetZ: z,
-        speed: 0.05,
+        speed: 0.10, // 2 kat hızlı
         attackRange: 1.5,
-        chaseRange: 8,
+        chaseRange: 10,
         homeRange: 15,
         health: 50,
         maxHealth: 50,
@@ -870,18 +866,21 @@ function createMonkey(x, y, z) {
     
     gameplayGroup.add(monkeyGroup);
     obstacles.push(monkeyGroup);
-    monkey = monkeyGroup;
+    monkeys.push(monkeyGroup);
     
     return monkeyGroup;
 }
 
-createMonkey(175, 25.3, 140);
+// 3 maymun oluştur (aralarında boşluk olacak)
+createMonkey(175, 25.3, 140); // Ortada
+createMonkey(168, 25.3, 130); // Solda
+createMonkey(182, 25.3, 150); // Sağda
 
-// Maymun sağlık barı
+// Maymun sağlık barı konteyneri
 const monkeyHealthBarContainer = document.createElement('div');
 monkeyHealthBarContainer.id = 'monkey-health-container';
 monkeyHealthBarContainer.style.cssText = 'display:none; position:absolute; top:55px; left:15px; z-index:5; width:180px; height:15px; background:rgba(0,0,0,0.6); border-radius:7px; border:1px solid white; overflow:hidden;';
-monkeyHealthBarContainer.innerHTML = '<div id="monkey-health-fill" style="width:100%; height:100%; background:linear-gradient(90deg, #f44336, #ff5722); transition:width 0.2s;"></div>';
+monkeyHealthBarContainer.innerHTML = '<div id="monkey-health-fill" style="width:100%; height:100%; background:linear-gradient(90deg, #f44336, #ff5722); transition:width 0.2s;"></div><div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:white; font-size:10px; text-shadow:0 1px 2px black;" id="monkey-health-text">50/50</div>';
 document.body.appendChild(monkeyHealthBarContainer);
 
 // --- PARKUR (4 BASAMAKLI, TOPLAM 16 BASAMAK) ---
@@ -1148,90 +1147,70 @@ window.addEventListener('touchmove', (e) => {
 
 window.addEventListener('touchend', () => { isTurningCamera = false; });
 
-// --- MAYMUN YAPAY ZEKA ---
-function updateMonkeyAI(deltaTime) {
-    if (!monkey || !monkeyAlive) return;
-    
-    const ud = monkey.userData;
-    const monkeyPos = monkey.position;
-    const playerPos = rabbit.position;
-    const dist = new THREE.Vector2(monkeyPos.x - playerPos.x, monkeyPos.z - playerPos.z).length();
-    const distFromHome = new THREE.Vector2(monkeyPos.x - ud.homeX, monkeyPos.z - ud.homeZ).length();
-    
-    // Ölüyse canlanma kontrolü
-    if (ud.isDead) {
-        if (Date.now() - ud.deathTime > 60000) { // 1 dakika
-            ud.isDead = false;
-            ud.health = ud.maxHealth;
-            monkey.visible = true;
-            monkey.position.set(ud.homeX, ud.homeY, ud.homeZ);
-            monkeyHealthBarContainer.style.display = 'none';
-            document.getElementById('monkey-health-fill').style.width = '100%';
-        }
-        return;
-    }
-    
-    // Oyuncu belirli mesafedeyse kovala
-    if (dist < ud.chaseRange && distFromHome < ud.homeRange) {
-        const angle = Math.atan2(playerPos.x - monkeyPos.x, playerPos.z - monkeyPos.z);
-        ud.targetX = monkeyPos.x + Math.sin(angle) * ud.speed;
-        ud.targetZ = monkeyPos.z + Math.cos(angle) * ud.speed;
-        
-        // Maymun oyuncuya dönük
-        monkey.rotation.y = angle;
-        
-        // Saldırı menzilinde ve cooldown hazırsa saldır
-        if (dist < ud.attackRange && monkeyAttackCooldown <= 0) {
-            // Muz animasyonu
-            ud.bananaGroup.rotation.x = Math.sin(Date.now() * 0.01) * 0.5;
-            
-            monkeyAttackCooldown = 1.5;
-            myHealth -= 10;
-            updateHealthBar();
-            
-            if (myHealth <= 0) {
-                myHealth = 0;
-                die();
-            }
-        }
-    } else if (distFromHome > 0.5) {
-        // Eve dön
-        const angle = Math.atan2(ud.homeX - monkeyPos.x, ud.homeZ - monkeyPos.z);
-        ud.targetX = monkeyPos.x + Math.sin(angle) * ud.speed;
-        ud.targetZ = monkeyPos.z + Math.cos(angle) * ud.speed;
-        monkey.rotation.y = angle;
-    }
-    
-    // Hareket
-    monkey.position.x += (ud.targetX - monkeyPos.x) * 0.1;
-    monkey.position.z += (ud.targetZ - monkeyPos.z) * 0.1;
-    
-    // Zıplama animasyonu
-    monkey.position.y = ud.homeY + Math.abs(Math.sin(Date.now() * 0.005)) * 0.2;
-    
-    // Cooldown güncelle
+// --- MAYMUN YAPAY ZEKA (TÜM MAYMUNLAR İÇİN) ---
+let monkeyAttackCooldown = 0;
+function updateAllMonkeys(deltaTime) {
     if (monkeyAttackCooldown > 0) monkeyAttackCooldown -= deltaTime;
     
-    // Sağlık barı
-    if (dist < ud.chaseRange) {
-        monkeyHealthBarContainer.style.display = 'block';
-        const healthPercent = (ud.health / ud.maxHealth) * 100;
-        document.getElementById('monkey-health-fill').style.width = healthPercent + '%';
-    } else {
-        monkeyHealthBarContainer.style.display = 'none';
-    }
-    
-    // Oyuncu maymuna vurdu mu?
-    if (isAttacking && dist < ud.attackRange + 0.5 && attackAnimTime < 0.2) {
-        ud.health -= 25;
-        if (ud.health <= 0) {
-            ud.health = 0;
-            ud.isDead = true;
-            ud.deathTime = Date.now();
-            monkey.visible = false;
-            monkeyHealthBarContainer.style.display = 'none';
+    monkeys.forEach((monkey) => {
+        const ud = monkey.userData;
+        const monkeyPos = monkey.position;
+        const playerPos = rabbit.position;
+        const dist = new THREE.Vector2(monkeyPos.x - playerPos.x, monkeyPos.z - playerPos.z).length();
+        const distFromHome = new THREE.Vector2(monkeyPos.x - ud.homeX, monkeyPos.z - ud.homeZ).length();
+        
+        if (ud.isDead) {
+            if (Date.now() - ud.deathTime > 60000) {
+                ud.isDead = false;
+                ud.health = ud.maxHealth;
+                monkey.visible = true;
+                monkey.position.set(ud.homeX, ud.homeY, ud.homeZ);
+            }
+            return;
         }
-    }
+        
+        if (dist < ud.chaseRange && distFromHome < ud.homeRange) {
+            const angle = Math.atan2(playerPos.x - monkeyPos.x, playerPos.z - monkeyPos.z);
+            ud.targetX = monkeyPos.x + Math.sin(angle) * ud.speed;
+            ud.targetZ = monkeyPos.z + Math.cos(angle) * ud.speed;
+            monkey.rotation.y = angle;
+            
+            if (dist < ud.attackRange && monkeyAttackCooldown <= 0) {
+                monkeyAttackCooldown = 1.5;
+                myHealth -= 10;
+                updateHealthBar();
+                if (myHealth <= 0) { myHealth = 0; die(); }
+            }
+        } else if (distFromHome > 0.5) {
+            const angle = Math.atan2(ud.homeX - monkeyPos.x, ud.homeZ - monkeyPos.z);
+            ud.targetX = monkeyPos.x + Math.sin(angle) * ud.speed;
+            ud.targetZ = monkeyPos.z + Math.cos(angle) * ud.speed;
+            monkey.rotation.y = angle;
+        }
+        
+        monkey.position.x += (ud.targetX - monkeyPos.x) * 0.1;
+        monkey.position.z += (ud.targetZ - monkeyPos.z) * 0.1;
+        monkey.position.y = ud.homeY + Math.abs(Math.sin(Date.now() * 0.005 + ud.homeX)) * 0.2;
+        
+        // En yakın maymunun sağlık barını göster
+        if (dist < ud.chaseRange) {
+            monkeyHealthBarContainer.style.display = 'block';
+            const healthPercent = (ud.health / ud.maxHealth) * 100;
+            document.getElementById('monkey-health-fill').style.width = healthPercent + '%';
+            document.getElementById('monkey-health-text').innerText = ud.health + '/' + ud.maxHealth;
+        }
+        
+        if (isAttacking && dist < ud.attackRange + 0.5 && attackAnimTime < 0.2) {
+            ud.health -= 25;
+            if (ud.health <= 0) {
+                ud.health = 0;
+                ud.isDead = true;
+                ud.deathTime = Date.now();
+                monkey.visible = false;
+                monkeyHealthBarContainer.style.display = 'none';
+            }
+        }
+    });
 }
 
 // --- ANA DÖNGÜ ---
@@ -1241,8 +1220,7 @@ function animate() {
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
     
-    // Maymun AI
-    updateMonkeyAI(deltaTime);
+    updateAllMonkeys(deltaTime);
     
     let finalMoveX = 0, finalMoveZ = 0;
     if (joystickActive) { finalMoveX = moveX; finalMoveZ = moveZ; }
