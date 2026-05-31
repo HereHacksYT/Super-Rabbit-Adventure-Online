@@ -18,6 +18,8 @@ let moveZ = 0;
 
 // Maymunlar dizisi
 const monkeys = [];
+let hasKey = false;
+let cageOpened = false;
 
 // 3D SAHNE
 const scene = new THREE.Scene();
@@ -369,7 +371,7 @@ document.addEventListener('keydown', (e) => {
 });
 document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
-// --- JOYSTICK (ZOOM SORUNU ÇÖZÜLDÜ) ---
+// --- JOYSTICK ---
 const zone = document.getElementById('joystick-zone');
 const stick = document.getElementById('joystick-stick');
 const maxRadius = 35;
@@ -733,7 +735,7 @@ cubeTop.receiveShadow = true;
 gameplayGroup.add(cubeTop);
 obstacles.push(cubeTop);
 
-// --- 3 MAYMUN (hız: 0.25) ---
+// --- 3 MAYMUN (kısa kuyruklu) ---
 function createMonkey(x, y, z) {
     const monkeyGroup = new THREE.Group();
     monkeyGroup.name = 'monkey';
@@ -778,7 +780,7 @@ function createMonkey(x, y, z) {
     armR.rotation.z = -0.5;
     monkeyGroup.add(armR);
     
-    // Muz (sağ elin ucunda)
+    // Muz
     const bananaGroup = new THREE.Group();
     bananaGroup.position.set(0.65, 1.25, 0.15);
     const bananaCurve = new THREE.CatmullRomCurve3([
@@ -829,39 +831,25 @@ function createMonkey(x, y, z) {
     nose.position.set(0, 1.52, 0.28);
     monkeyGroup.add(nose);
     
-    // Kuyruk
-    const tailPoints = [];
-    for (let i = 0; i < 10; i++) {
-        const angle = i * 0.6;
-        tailPoints.push(new THREE.Vector3(
-            Math.sin(angle) * 0.3,
-            0.5 - i * 0.2,
-            Math.cos(angle) * 0.3 - 0.3
-        ));
-    }
-    const tailCurve = new THREE.CatmullRomCurve3(tailPoints);
-    const tailGeo = new THREE.TubeGeometry(tailCurve, 16, 0.05, 6, false);
+    // Kısa kuyruk
+    const tailGeo = new THREE.CylinderGeometry(0.04, 0.06, 0.5, 6);
     const tailMat = new THREE.MeshStandardMaterial({ color: 0x8B5A3C, roughness: 0.6 });
     const tail = new THREE.Mesh(tailGeo, tailMat);
-    tail.position.y = 1.3;
+    tail.position.set(0, 0.5, -0.35);
+    tail.rotation.x = 0.6;
     monkeyGroup.add(tail);
     
     monkeyGroup.position.set(x, y, z);
     monkeyGroup.userData = {
-        homeX: x,
-        homeY: y,
-        homeZ: z,
+        homeX: x, homeY: y, homeZ: z,
         bananaGroup: bananaGroup,
-        targetX: x,
-        targetZ: z,
+        targetX: x, targetZ: z,
         speed: 0.25,
         attackRange: 1.5,
         chaseRange: 10,
         homeRange: 15,
-        health: 50,
-        maxHealth: 50,
-        isDead: false,
-        deathTime: 0
+        health: 50, maxHealth: 50,
+        isDead: false, deathTime: 0
     };
     
     gameplayGroup.add(monkeyGroup);
@@ -871,7 +859,6 @@ function createMonkey(x, y, z) {
     return monkeyGroup;
 }
 
-// 3 maymun oluştur
 createMonkey(175, 25.3, 140);
 createMonkey(168, 25.3, 130);
 createMonkey(182, 25.3, 150);
@@ -883,7 +870,113 @@ monkeyHealthBarContainer.style.cssText = 'display:none; position:absolute; top:5
 monkeyHealthBarContainer.innerHTML = '<div id="monkey-health-fill" style="width:100%; height:100%; background:linear-gradient(90deg, #f44336, #ff5722); transition:width 0.2s;"></div><div style="position:absolute; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:white; font-size:10px; text-shadow:0 1px 2px black;" id="monkey-health-text">50/50</div>';
 document.body.appendChild(monkeyHealthBarContainer);
 
-// --- PARKUR (4 BASAMAKLI, TOPLAM 16 BASAMAK) ---
+// --- ANAHTAR (başlangıçta görünmez) ---
+let keyMesh = null;
+function createKey(x, y, z) {
+    const group = new THREE.Group();
+    const goldKeyMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.2, metalness: 0.9, emissive: 0x886600, emissiveIntensity: 0.5 });
+    
+    // Anahtar başı (halka)
+    const ringGeo = new THREE.TorusGeometry(0.2, 0.06, 8, 16);
+    const ring = new THREE.Mesh(ringGeo, goldKeyMat);
+    ring.position.y = 0.6;
+    group.add(ring);
+    
+    // Anahtar gövdesi
+    const bodyGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.7, 8);
+    const body = new THREE.Mesh(bodyGeo, goldKeyMat);
+    body.position.y = 0.15;
+    group.add(body);
+    
+    // Anahtar dişleri
+    for (let i = 0; i < 2; i++) {
+        const toothGeo = new THREE.BoxGeometry(0.1, 0.08, 0.08);
+        const tooth = new THREE.Mesh(toothGeo, goldKeyMat);
+        tooth.position.set(0.08, 0.0 + i * 0.15, 0);
+        group.add(tooth);
+    }
+    
+    group.position.set(x, y, z);
+    group.visible = false;
+    gameplayGroup.add(group);
+    keyMesh = group;
+    return group;
+}
+
+// --- KAFES VE TAVŞAN ---
+let cageGroup = null;
+let cageRabbit = null;
+function createCage(x, z) {
+    const group = new THREE.Group();
+    const barMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.3 });
+    
+    // Kafes tabanı
+    const floorGeo = new THREE.BoxGeometry(3, 0.2, 3);
+    const floor = new THREE.Mesh(floorGeo, barMat);
+    floor.position.y = 0.1;
+    floor.receiveShadow = true;
+    group.add(floor);
+    
+    // Dikey parmaklıklar
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const barGeo = new THREE.CylinderGeometry(0.08, 0.08, 3, 8);
+        const bar = new THREE.Mesh(barGeo, barMat);
+        bar.position.set(Math.cos(angle) * 1.3, 1.7, Math.sin(angle) * 1.3);
+        bar.castShadow = true;
+        group.add(bar);
+    }
+    
+    // Üst halka
+    const topRingGeo = new THREE.TorusGeometry(1.3, 0.08, 8, 16);
+    const topRing = new THREE.Mesh(topRingGeo, barMat);
+    topRing.rotation.x = Math.PI / 2;
+    topRing.position.y = 3.1;
+    group.add(topRing);
+    
+    // Alt halka
+    const bottomRing = new THREE.Mesh(topRingGeo, barMat);
+    bottomRing.rotation.x = Math.PI / 2;
+    bottomRing.position.y = 0.3;
+    group.add(bottomRing);
+    
+    // Kafes kapısı (kilitli)
+    const lockGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
+    const lockMat = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.3, emissive: 0x330000, emissiveIntensity: 0.5 });
+    const lock = new THREE.Mesh(lockGeo, lockMat);
+    lock.position.set(0, 1.8, 1.35);
+    lock.name = 'lock';
+    group.add(lock);
+    
+    // Tavşan (kafesin içinde)
+    const rabbitGroup = new THREE.Group();
+    const rabbitBodyGeo = new THREE.BoxGeometry(0.5, 0.6, 0.5);
+    const rabbitMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const rabbitBody = new THREE.Mesh(rabbitBodyGeo, rabbitMat);
+    rabbitBody.position.y = 0.4;
+    rabbitGroup.add(rabbitBody);
+    const rabbitHeadGeo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+    const rabbitHead = new THREE.Mesh(rabbitHeadGeo, rabbitMat);
+    rabbitHead.position.y = 0.8;
+    rabbitGroup.add(rabbitHead);
+    const earGeo = new THREE.BoxGeometry(0.1, 0.3, 0.06);
+    const earL = new THREE.Mesh(earGeo, rabbitMat);
+    earL.position.set(-0.12, 0.6, 0);
+    rabbitGroup.add(earL);
+    const earR = new THREE.Mesh(earGeo, rabbitMat);
+    earR.position.set(0.12, 0.6, 0);
+    rabbitGroup.add(earR);
+    rabbitGroup.position.set(0, 0.5, 0);
+    group.add(rabbitGroup);
+    cageRabbit = rabbitGroup;
+    
+    group.position.set(x, 0, z);
+    gameplayGroup.add(group);
+    cageGroup = group;
+    return group;
+}
+
+// --- PARKUR ---
 function createParkourStep(x, z, y, w, d) {
     const geo = new THREE.BoxGeometry(w, 0.5, d);
     const mat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.5 });
@@ -906,6 +999,10 @@ parkourData.forEach((pos, i) => {
     const y = 0.25 + i * (25 / 16);
     createParkourStep(pos.x, pos.z, y, 3, 3);
 });
+
+// Anahtar ve kafes oluştur
+createKey(180, 25.5, 140);
+createCage(190, 150);
 
 // ============ ANA MERKEZ ELEMANLARI ============
 createWoodenHouse(-25, -20, 0.2);
@@ -1119,7 +1216,7 @@ socket.on('knockback', (angle) => { if (!gameActive || isDead) return; rabbit.po
 socket.on('playerDisconnected', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id].mesh); delete otherPlayers[id]; } });
 socket.on('hostDisconnected', () => { alert('Oda sahibi ayrıldı.'); location.reload(); });
 
-// --- KAMERA KONTROLLERİ (dokunmatik) ---
+// --- KAMERA KONTROLLERİ ---
 let cameraAngleY = 0, cameraAngleX = 0.4, cameraDistance = 10, touchStartX = 0, touchStartY = 0, isTurningCamera = false;
 window.addEventListener('touchstart', (e) => {
     const jBtn = document.getElementById('jump-button'), aBtn = document.getElementById('attack-button');
@@ -1152,6 +1249,8 @@ let monkeyAttackCooldown = 0;
 function updateAllMonkeys(deltaTime) {
     if (monkeyAttackCooldown > 0) monkeyAttackCooldown -= deltaTime;
     
+    let allDead = monkeys.length > 0;
+    
     monkeys.forEach((monkey) => {
         const ud = monkey.userData;
         const monkeyPos = monkey.position;
@@ -1168,6 +1267,8 @@ function updateAllMonkeys(deltaTime) {
             }
             return;
         }
+        
+        allDead = false; // En az bir maymun hayatta
         
         if (dist < ud.chaseRange && distFromHome < ud.homeRange) {
             const angle = Math.atan2(playerPos.x - monkeyPos.x, playerPos.z - monkeyPos.z);
@@ -1210,6 +1311,65 @@ function updateAllMonkeys(deltaTime) {
             }
         }
     });
+    
+    // Tüm maymunlar öldüyse anahtarı göster
+    if (allDead && !hasKey && keyMesh) {
+        keyMesh.visible = true;
+    }
+    
+    // Anahtar kontrolü
+    if (keyMesh && keyMesh.visible && !hasKey) {
+        const keyDist = rabbit.position.distanceTo(keyMesh.position);
+        if (keyDist < 2.0) {
+            hasKey = true;
+            keyMesh.visible = false;
+            // Anahtarı kafamızda göster
+            keyMesh.position.set(0, 0, 0);
+            keyMesh.scale.set(0.5, 0.5, 0.5);
+            rabbit.add(keyMesh);
+            keyMesh.position.set(0, 2.0, 0);
+            keyMesh.visible = true;
+        }
+    }
+    
+    // Kafes kontrolü
+    if (hasKey && cageGroup && !cageOpened) {
+        const cageDist = rabbit.position.distanceTo(cageGroup.position);
+        if (cageDist < 3.0) {
+            cageOpened = true;
+            // Kafesi ve tavşanı kaldır
+            if (cageRabbit) {
+                cageGroup.remove(cageRabbit);
+                cageRabbit = null;
+            }
+            // Kilit rengini değiştir
+            const lock = cageGroup.children.find(c => c.name === 'lock');
+            if (lock) {
+                lock.material.color.set(0x00ff00);
+                lock.material.emissive.set(0x003300);
+            }
+            // Anahtarı kaldır
+            if (keyMesh) {
+                rabbit.remove(keyMesh);
+                keyMesh = null;
+                hasKey = false;
+            }
+            // Mesaj göster
+            showMessage('Pamuk Kurtuldu!');
+        }
+    }
+}
+
+function showMessage(text) {
+    const msg = document.createElement('div');
+    msg.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:white; font-size:48px; font-weight:bold; text-shadow:0 0 20px gold; z-index:100; pointer-events:none;';
+    msg.innerText = text;
+    document.body.appendChild(msg);
+    setTimeout(() => {
+        msg.style.transition = 'opacity 1s';
+        msg.style.opacity = '0';
+        setTimeout(() => document.body.removeChild(msg), 1000);
+    }, 2000);
 }
 
 // --- ANA DÖNGÜ ---
