@@ -323,6 +323,44 @@ window.openModPrompt = function() {
     else { alert('Hatalı kod!'); }
 };
 
+// --- MOBİL KAYDIRMAYI ENGELLE ---
+document.addEventListener('touchmove', function(e) {
+    if (e.target.closest('#joystick-zone') || e.target.closest('.action-btn') || e.target.closest('#mod-btn')) {
+        e.preventDefault(); // Joystick ve butonlar hariç
+    }
+}, { passive: false });
+
+// --- KLAVYE KONTROLLERİ ---
+const keys = {};
+document.addEventListener('keydown', (e) => {
+    keys[e.key] = true;
+    // Zıplama
+    if (e.key === ' ' && gameActive && !isDead) {
+        e.preventDefault();
+        if (infiniteJump || jumpCount < 3) {
+            velocityY = jumpForce;
+            jumpCount++;
+        }
+    }
+    // Saldırı
+    if ((e.key === 'e' || e.key === 'f') && gameActive && !isDead && !isAttacking) {
+        e.preventDefault();
+        isAttacking = true;
+        attackAnimTime = 0;
+        if (isOnlineMode) socket.emit('playerAttack');
+        if (isOnlineMode && gameActive) {
+            Object.keys(otherPlayers).forEach((id) => {
+                const op = otherPlayers[id].mesh.position;
+                if (rabbit.position.distanceTo(op) < 2.0) {
+                    const angle = Math.atan2(op.x - rabbit.position.x, op.z - rabbit.position.z);
+                    socket.emit('playerKnockback', { targetId: id, angle: angle });
+                }
+            });
+        }
+    }
+});
+document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
 // --- ANA MERKEZ ---
 const squareSize = 94;
 const groundGeo = new THREE.PlaneGeometry(squareSize, squareSize);
@@ -611,7 +649,6 @@ cube.castShadow = true; cube.receiveShadow = true;
 gameplayGroup.add(cube);
 obstacles.push(cube);
 
-// Küp üstü çimen
 const cubeTopGeo = new THREE.BoxGeometry(cubeMaxX - cubeMinX - 0.2, 0.3, cubeMaxZ - cubeMinZ - 0.2);
 const cubeTop = new THREE.Mesh(cubeTopGeo, blockGrassMat);
 cubeTop.position.set((cubeMinX + cubeMaxX) / 2, cubeHeight + 0.15, (cubeMinZ + cubeMaxZ) / 2);
@@ -619,7 +656,6 @@ cubeTop.receiveShadow = true;
 gameplayGroup.add(cubeTop);
 obstacles.push(cubeTop);
 
-// --- PARKUR (YENİLENMİŞ: boşluksuz, araları açık) ---
 function createParkourStep(x, z, y, w, d) {
     const geo = new THREE.BoxGeometry(w, 0.5, d);
     const mat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.5 });
@@ -631,20 +667,15 @@ function createParkourStep(x, z, y, w, d) {
     return step;
 }
 
-// Her kenarda 3 basamak, toplam 12 basamak, kübe 1 birim mesafede
 const parkourData = [
-    // üst kenar (z = 124, küpün üstü 125)
     {x: 168, z: 124}, {x: 173, z: 124}, {x: 178, z: 124},
-    // sağ kenar (x = 186, küpün sağı 185)
     {x: 186, z: 129}, {x: 186, z: 135}, {x: 186, z: 141},
-    // alt kenar (z = 156, küpün altı 155)
     {x: 178, z: 156}, {x: 173, z: 156}, {x: 168, z: 156},
-    // sol kenar (x = 164, küpün solu 165)
     {x: 164, z: 141}, {x: 164, z: 135}, {x: 164, z: 129}
 ];
 
 parkourData.forEach((pos, i) => {
-    const y = 0.25 + i * (25 / 12); // 12 basamak, her biri ~2.08 yükseklik farkı
+    const y = 0.25 + i * (25 / 12);
     createParkourStep(pos.x, pos.z, y, 3, 3);
 });
 
@@ -676,7 +707,7 @@ createSign(0, 43, "Yağmurlu Orman", Math.PI);
 createGoldenPortal(200, 80, 0, 37);
 createSign(200, 76, "Geri Dön", 0);
 
-// --- KOORDİNAT GÖSTERGESİ (HER ZAMAN X Y Z) ---
+// --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
 coordSpan.id = 'coords-display';
 coordSpan.style.marginLeft = '15px';
@@ -860,73 +891,32 @@ socket.on('knockback', (angle) => { if (!gameActive || isDead) return; rabbit.po
 socket.on('playerDisconnected', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id].mesh); delete otherPlayers[id]; } });
 socket.on('hostDisconnected', () => { alert('Oda sahibi ayrıldı.'); location.reload(); });
 
-// KONTROLLER
-const zone = document.getElementById('joystick-zone'), stick = document.getElementById('joystick-stick'), maxRadius = 35;
-let joystickActive = false, moveX = 0, moveZ = 0;
-zone.addEventListener('touchstart', (e) => { if(!gameActive || isDead) return; joystickActive = true; handleJoystick(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
-window.addEventListener('touchmove', (e) => { if (joystickActive && gameActive && !isDead) { for (let i = 0; i < e.touches.length; i++) { if (zone.contains(e.touches[i].target)) { handleJoystick(e.touches[i].clientX, e.touches[i].clientY); break; } } } }, { passive: true });
-zone.addEventListener('touchend', () => { joystickActive = false; stick.style.transform = 'translate(0px, 0px)'; moveX = 0; moveZ = 0; });
-
-function handleJoystick(cx, cy) {
-    const zr = zone.getBoundingClientRect();
-    let dx = cx - (zr.left + zr.width / 2), dy = cy - (zr.top + zr.height / 2);
-    let dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > maxRadius) { dx = (dx / dist) * maxRadius; dy = (dy / dist) * maxRadius; }
-    stick.style.transform = `translate(${dx}px, ${dy}px)`;
-    moveX = dx / maxRadius; moveZ = dy / maxRadius;
+// --- HAREKET GÜNCELLEME (joystick + klavye) ---
+function updateMovement(deltaTime) {
+    let moveX = 0, moveZ = 0;
+    // Klavye
+    if (keys['w'] || keys['arrowup']) moveZ = -1;
+    if (keys['s'] || keys['arrowdown']) moveZ = 1;
+    if (keys['a'] || keys['arrowleft']) moveX = -1;
+    if (keys['d'] || keys['arrowright']) moveX = 1;
+    
+    // Joystick (dokunmatik)
+    if (joystickActive) {
+        moveX = window.moveX || 0;
+        moveZ = window.moveZ || 0;
+    }
+    
+    return { moveX, moveZ };
 }
 
-let cameraAngleY = 0, cameraAngleX = 0.4, cameraDistance = 10, touchStartX = 0, touchStartY = 0, isTurningCamera = false;
-window.addEventListener('touchstart', (e) => {
-    const jBtn = document.getElementById('jump-button'), aBtn = document.getElementById('attack-button');
-    if (e.touches.length === 1 && !zone.contains(e.target) && !jBtn.contains(e.target) && !aBtn.contains(e.target)) { isTurningCamera = true; touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; }
-}, { passive: true });
-window.addEventListener('touchmove', (e) => {
-    if (!isTurningCamera) return;
-    for (let i = 0; i < e.touches.length; i++) {
-        if (!zone.contains(e.touches[i].target) && !document.getElementById('jump-button').contains(e.touches[i].target) && !document.getElementById('attack-button').contains(e.touches[i].target)) {
-            cameraAngleY -= (e.touches[i].clientX - touchStartX) * 0.005;
-            cameraAngleX += (e.touches[i].clientY - touchStartY) * 0.005;
-            cameraAngleX = Math.max(0.1, Math.min(1.2, cameraAngleX));
-            touchStartX = e.touches[i].clientX; touchStartY = e.touches[i].clientY; break;
-        }
-    }
-}, { passive: true });
-window.addEventListener('touchend', () => { isTurningCamera = false; });
-
-document.getElementById('jump-button').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    if (gameActive && !isDead) {
-        if (infiniteJump || jumpCount < 3) {
-            velocityY = jumpForce;
-            jumpCount++;
-        }
-    }
-});
-
-document.getElementById('attack-button').addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    if (gameActive && !isDead && !isAttacking) {
-        isAttacking = true; attackAnimTime = 0;
-        if (isOnlineMode) socket.emit('playerAttack');
-        if (isOnlineMode && gameActive) {
-            Object.keys(otherPlayers).forEach((id) => {
-                const op = otherPlayers[id].mesh.position;
-                if (rabbit.position.distanceTo(op) < 2.0) {
-                    const angle = Math.atan2(op.x - rabbit.position.x, op.z - rabbit.position.z);
-                    socket.emit('playerKnockback', { targetId: id, angle: angle });
-                }
-            });
-        }
-    }
-});
-
-// ANA DÖNGÜ
+// --- ANA DÖNGÜ ---
 let legWiggle = 0;
 function animate() {
     requestAnimationFrame(animate);
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
+    
+    const { moveX, moveZ } = updateMovement(deltaTime);
 
     document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Y:${Math.round(rabbit.position.y)} Z:${Math.round(rabbit.position.z)}`;
     const modCoordEl = document.getElementById('mod-coords');
@@ -973,10 +963,11 @@ function animate() {
     }
 
     if (gameActive && !isDead) {
-        if (joystickActive && (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05)) {
+        if (Math.abs(moveX) > 0.05 || Math.abs(moveZ) > 0.05) {
             const fx = Math.sin(cameraAngleY), fz = Math.cos(cameraAngleY);
             const rx = Math.sin(cameraAngleY + Math.PI / 2), rz = Math.cos(cameraAngleY + Math.PI / 2);
-            const dx = (fx * -moveZ) - (rx * moveX), dz = (fz * -moveZ) - (rz * moveX);
+            const dx = (fx * -moveZ) - (rx * moveX);
+            const dz = (fz * -moveZ) - (rz * moveX);
             const nx = rabbit.position.x + dx * 12.0 * deltaTime, nz = rabbit.position.z + dz * 12.0 * deltaTime;
             if (!checkCollision(nx, rabbit.position.y, rabbit.position.z)) rabbit.position.x = nx;
             if (!checkCollision(rabbit.position.x, rabbit.position.y, nz)) rabbit.position.z = nz;
