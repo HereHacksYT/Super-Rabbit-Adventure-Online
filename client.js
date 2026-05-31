@@ -99,7 +99,7 @@ const blockGrassTexture = createCanvasTexture(256, 256, (ctx, w, h) => {
     }
 });
 
-// YAĞMURLU ORMAN ZEMİN DOKUSU (koyu, ıslak)
+// YAĞMURLU ORMAN ZEMİN DOKUSU (koyu, sade)
 const rainforestGroundTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     ctx.fillStyle = '#3d5a1e';
     ctx.fillRect(0, 0, w, h);
@@ -116,6 +116,52 @@ const rainforestGroundTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
         ctx.fillStyle = `rgba(20, 30, 5, ${Math.random() * 0.35})`;
         ctx.beginPath();
         ctx.arc(Math.random() * w, Math.random() * h, Math.random() * 4 + 1, 0, Math.PI * 2);
+        ctx.fill();
+    }
+});
+
+// YOSUNLU TAŞ DUVAR DOKUSU
+const mossyStoneTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
+    // Taş zemin
+    ctx.fillStyle = '#8a8a8a';
+    ctx.fillRect(0, 0, w, h);
+    for (let row = 0; row < 8; row++) {
+        const y = row * 64;
+        const offset = (row % 2) * 32;
+        for (let col = 0; col < 8; col++) {
+            const x = col * 64 + offset;
+            const shade = 120 + Math.random() * 40;
+            ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
+            ctx.fillRect(x + 2, y + 2, 60, 28);
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(x + 2, y + 2, 60, 28);
+        }
+    }
+    // Yosun efektleri (yeşil lekeler)
+    for (let i = 0; i < 300; i++) {
+        const x = Math.random() * w;
+        const y = Math.random() * h;
+        ctx.fillStyle = `rgba(60, 110, 40, ${Math.random() * 0.6})`;
+        ctx.beginPath();
+        ctx.arc(x, y, Math.random() * 12 + 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    for (let i = 0; i < 200; i++) {
+        const x = Math.random() * w;
+        const y = Math.random() * h;
+        ctx.fillStyle = `rgba(80, 140, 50, ${Math.random() * 0.4})`;
+        ctx.beginPath();
+        ctx.arc(x, y, Math.random() * 8 + 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    // Kenarlarda daha yoğun yosun
+    for (let i = 0; i < 100; i++) {
+        const x = Math.random() * w;
+        const y = Math.random() < 0.5 ? Math.random() * 80 : h - Math.random() * 80;
+        ctx.fillStyle = `rgba(50, 100, 30, ${Math.random() * 0.7})`;
+        ctx.beginPath();
+        ctx.arc(x, y, Math.random() * 15 + 5, 0, Math.PI * 2);
         ctx.fill();
     }
 });
@@ -161,7 +207,7 @@ const woodTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     }
 });
 
-// TAŞ DUVAR DOKUSU
+// TAŞ DUVAR DOKUSU (ana merkez için)
 const stoneTexture = createCanvasTexture(512, 512, (ctx, w, h) => {
     ctx.fillStyle = '#8a8a8a';
     ctx.fillRect(0, 0, w, h);
@@ -237,7 +283,7 @@ const groundMat = new THREE.MeshStandardMaterial({ map: groundTexture, roughness
 groundTexture.repeat.set(12, 12);
 
 const rainforestGroundMat = new THREE.MeshStandardMaterial({ map: rainforestGroundTexture, roughness: 0.85 });
-rainforestGroundTexture.repeat.set(12, 12);
+rainforestGroundTexture.repeat.set(16, 16);
 
 const blockGrassMat = new THREE.MeshStandardMaterial({ map: blockGrassTexture, roughness: 0.85 });
 blockGrassTexture.repeat.set(8, 8);
@@ -247,6 +293,7 @@ dirtTexture.repeat.set(4, 4);
 
 const woodMat = new THREE.MeshStandardMaterial({ map: woodTexture, roughness: 0.65 });
 const stoneWallMat = new THREE.MeshStandardMaterial({ map: stoneTexture, roughness: 0.6 });
+const mossyWallMat = new THREE.MeshStandardMaterial({ map: mossyStoneTexture, roughness: 0.65 });
 const barkMat = new THREE.MeshStandardMaterial({ map: barkTexture, roughness: 0.7 });
 const leafMat = new THREE.MeshStandardMaterial({ map: leafTexture, roughness: 0.4 });
 const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.55 });
@@ -254,20 +301,33 @@ const roofMat = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness
 // Altın malzeme (parlak)
 const goldMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.2 });
 
-// --- ZEMİN ---
+// --- ZEMİN (ANA MERKEZ) ---
 const groundGeo = new THREE.CircleGeometry(120, 128);
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 gameplayGroup.add(ground);
 
-// --- DUVAR (gölgesiz) ---
+// --- DUVAR (gölgesiz, ana merkez) ---
 function createShadowlessWall(x, z, width, height, depth) {
     const geo = new THREE.BoxGeometry(width, height, depth);
     const wall = new THREE.Mesh(geo, stoneWallMat);
     wall.position.set(x, height / 2, z);
     wall.castShadow = false;
     wall.receiveShadow = false;
+    gameplayGroup.add(wall);
+    obstacles.push(wall);
+    return wall;
+}
+
+// --- YOSUNLU DUVAR (yağmurlu orman için) ---
+function createMossyWall(x, z, width, height, depth, rotY = 0) {
+    const geo = new THREE.BoxGeometry(width, height, depth);
+    const wall = new THREE.Mesh(geo, mossyWallMat);
+    wall.position.set(x, height / 2, z);
+    wall.rotation.y = rotY;
+    wall.castShadow = true;
+    wall.receiveShadow = true;
     gameplayGroup.add(wall);
     obstacles.push(wall);
     return wall;
@@ -342,11 +402,23 @@ function createBigTree(x, z, scale = 2) {
     return group;
 }
 
+// --- KAYA (yağmurlu orman için sabit) ---
+function createRock(x, z, scale = 1) {
+    const geo = new THREE.IcosahedronGeometry(0.8 * scale, 0);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x666666, roughness: 0.5, metalness: 0.2 });
+    const rock = new THREE.Mesh(geo, mat);
+    rock.position.set(x, 0.3 * scale, z);
+    rock.castShadow = true; rock.receiveShadow = true;
+    rock.rotation.set(Math.random() * 0.5, Math.random() * 0.5, Math.random() * 0.5);
+    gameplayGroup.add(rock);
+    obstacles.push(rock);
+    return rock;
+}
+
 // --- TAMAMEN ALTIN PORTAL ---
 function createGoldenPortal(x, z, targetX, targetZ) {
     const group = new THREE.Group();
     
-    // Altın kaide
     const baseGeo = new THREE.CylinderGeometry(1.0, 1.2, 0.5, 32);
     const base = new THREE.Mesh(baseGeo, goldMat);
     base.position.y = 0.25;
@@ -354,28 +426,23 @@ function createGoldenPortal(x, z, targetX, targetZ) {
     base.receiveShadow = true;
     group.add(base);
     
-    // Altın halka (kaidenin tam üstüne)
     const ringGeo = new THREE.TorusGeometry(0.75, 0.14, 16, 40);
     const ring = new THREE.Mesh(ringGeo, goldMat);
     ring.rotation.x = Math.PI / 2;
     ring.position.y = 1.0;
     group.add(ring);
     
-    // Altın iç silindir
     const innerGeo = new THREE.CylinderGeometry(0.25, 0.25, 1.8, 16);
-    const inner = new THREE.Mesh(innerGeo, goldMat);
+    const inner = new THREE.Mesh(innerGeo, new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.0, transparent: true, opacity: 0.6 }));
     inner.position.y = 1.0;
-    inner.material = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 1.0, transparent: true, opacity: 0.6 });
     group.add(inner);
     
-    // Üst altın halka
     const topRingGeo = new THREE.TorusGeometry(0.5, 0.08, 8, 24);
     const topRing = new THREE.Mesh(topRingGeo, goldMat);
     topRing.rotation.x = Math.PI / 2;
     topRing.position.y = 1.8;
     group.add(topRing);
     
-    // Küçük altın küre (tepe)
     const topBallGeo = new THREE.SphereGeometry(0.2, 16, 12);
     const topBall = new THREE.Mesh(topBallGeo, goldMat);
     topBall.position.y = 1.9;
@@ -389,83 +456,108 @@ function createGoldenPortal(x, z, targetX, targetZ) {
 
 // --- YAĞMUR PARTİKÜL SİSTEMİ ---
 let rainParticles = null;
-function createRainSystem(x, z, radius = 30) {
+function createRainSystem(x, z, width, depth) {
     if (rainParticles) {
         gameplayGroup.remove(rainParticles);
     }
-    const particleCount = 3000;
+    const halfW = width / 2;
+    const halfD = depth / 2;
+    const particleCount = 4000;
     const positions = new Float32Array(particleCount * 3);
     for (let i = 0; i < particleCount; i++) {
-        positions[i * 3] = x + (Math.random() - 0.5) * radius * 2;
-        positions[i * 3 + 1] = Math.random() * 40;
-        positions[i * 3 + 2] = z + (Math.random() - 0.5) * radius * 2;
+        positions[i * 3] = x + (Math.random() - 0.5) * width;
+        positions[i * 3 + 1] = Math.random() * 50;
+        positions[i * 3 + 2] = z + (Math.random() - 0.5) * depth;
     }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    const mat = new THREE.PointsMaterial({ color: 0xaaccff, size: 0.15, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false });
+    const mat = new THREE.PointsMaterial({ color: 0xaaccff, size: 0.2, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false });
     rainParticles = new THREE.Points(geo, mat);
     gameplayGroup.add(rainParticles);
     return rainParticles;
 }
 
-function updateRain(active, x, z, radius = 30) {
+function updateRain(active, x, z, width, depth) {
     if (!rainParticles) return;
     rainParticles.visible = active;
     if (!active) return;
     const positions = rainParticles.geometry.attributes.position.array;
+    const halfW = width / 2;
+    const halfD = depth / 2;
     for (let i = 0; i < positions.length / 3; i++) {
-        positions[i * 3 + 1] -= 0.5 + Math.random() * 0.3;
+        positions[i * 3 + 1] -= 0.6 + Math.random() * 0.4;
         if (positions[i * 3 + 1] < 0) {
-            positions[i * 3] = x + (Math.random() - 0.5) * radius * 2;
-            positions[i * 3 + 1] = 35 + Math.random() * 10;
-            positions[i * 3 + 2] = z + (Math.random() - 0.5) * radius * 2;
+            positions[i * 3] = x + (Math.random() - 0.5) * width;
+            positions[i * 3 + 1] = 40 + Math.random() * 10;
+            positions[i * 3 + 2] = z + (Math.random() - 0.5) * depth;
         }
     }
     rainParticles.geometry.attributes.position.needsUpdate = true;
 }
 
-// --- YAĞMURLU ORMAN BÖLGESİ (x:200, z:200) ---
+// ============ YAĞMURLU ORMAN BÖLGESİ (KARE, x:200, z:200) ============
 const rfX = 200, rfZ = 200;
-const rfGroundGeo = new THREE.CircleGeometry(30, 64);
+const rfWidth = 60, rfDepth = 60;
+const rfHalfW = rfWidth / 2, rfHalfD = rfDepth / 2;
+
+// Kare zemin (sadece zemin)
+const rfGroundGeo = new THREE.PlaneGeometry(rfWidth, rfDepth);
 const rfGround = new THREE.Mesh(rfGroundGeo, rainforestGroundMat);
 rfGround.rotation.x = -Math.PI / 2;
 rfGround.position.set(rfX, 0, rfZ);
 rfGround.receiveShadow = true;
 gameplayGroup.add(rfGround);
 
-// Yağmur sistemi oluştur
-createRainSystem(rfX, rfZ, 28);
+// Yosunlu duvarlar (4 kenar)
+// Üst kenar (z = rfZ - rfHalfD)
+createMossyWall(rfX, rfZ - rfHalfD, rfWidth, 20, 2, 0);
+// Alt kenar (z = rfZ + rfHalfD)
+createMossyWall(rfX, rfZ + rfHalfD, rfWidth, 20, 2, 0);
+// Sol kenar (x = rfX - rfHalfW)
+createMossyWall(rfX - rfHalfW, rfZ, 2, 20, rfDepth, Math.PI/2);
+// Sağ kenar (x = rfX + rfHalfW)
+createMossyWall(rfX + rfHalfW, rfZ, 2, 20, rfDepth, Math.PI/2);
 
-// Orman ağaçları (sık)
-for (let i = 0; i < 30; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 5 + Math.random() * 22;
-    createBigTree(rfX + Math.cos(angle) * radius, rfZ + Math.sin(angle) * radius, 1.5 + Math.random() * 1.5);
-}
+// Yağmur sistemi
+createRainSystem(rfX, rfZ, rfWidth, rfDepth);
 
-// Büyük kayalar
-for (let i = 0; i < 10; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const radius = 8 + Math.random() * 18;
-    const rockGeo = new THREE.IcosahedronGeometry(1.0 + Math.random() * 1.5, 0);
-    const rockMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.5 });
-    const rock = new THREE.Mesh(rockGeo, rockMat);
-    rock.position.set(rfX + Math.cos(angle) * radius, 0.4, rfZ + Math.sin(angle) * radius);
-    rock.castShadow = true; rock.receiveShadow = true;
-    gameplayGroup.add(rock);
-    obstacles.push(rock);
-}
+// SABİT AĞAÇLAR (ızgara düzeninde)
+const treeGrid = [
+    [-20, -20], [-10, -20], [0, -20], [10, -20], [20, -20],
+    [-20, -10], [0, -10], [20, -10],
+    [-20, 0], [10, 0], [20, 0],
+    [-20, 10], [0, 10], [20, 10],
+    [-20, 20], [-10, 20], [0, 20], [10, 20], [20, 20],
+    [-15, -15], [15, -15], [-15, 15], [15, 15],
+    [-25, 0], [25, 0], [0, -25], [0, 25]
+];
+treeGrid.forEach(pos => {
+    createBigTree(rfX + pos[0], rfZ + pos[1], 1.5 + Math.random() * 1.0);
+});
+
+// SABİT KAYALAR
+const rockPositions = [
+    [-18, -18], [18, -18], [-18, 18], [18, 18],
+    [-8, -22], [8, -22], [-22, -8], [22, -8],
+    [-8, 22], [8, 22], [-22, 8], [22, 8],
+    [0, -15], [0, 15], [-15, 0], [15, 0]
+];
+rockPositions.forEach(pos => {
+    createRock(rfX + pos[0], rfZ + pos[1], 0.8 + Math.random() * 0.8);
+});
 
 // Geri dönüş portalı (yağmurlu ormanda)
-const returnPortalGeo = new THREE.TorusGeometry(1.0, 0.12, 16, 32);
-const returnPortalMat = new THREE.MeshStandardMaterial({ color: 0xffcc00, roughness: 0.15, metalness: 1.0, emissive: 0xff8800, emissiveIntensity: 0.8 });
-const returnPortal = new THREE.Mesh(returnPortalGeo, returnPortalMat);
-returnPortal.rotation.x = Math.PI / 2;
-returnPortal.position.set(rfX, 1.2, rfZ - 25);
-gameplayGroup.add(returnPortal);
-portals.push({ mesh: returnPortal, target: new THREE.Vector3(0, 0, 32), color: 0xffcc00 });
+const returnPortalGroup = new THREE.Group();
+const returnRingGeo = new THREE.TorusGeometry(1.0, 0.12, 16, 32);
+const returnRing = new THREE.Mesh(returnRingGeo, goldMat);
+returnRing.rotation.x = Math.PI / 2;
+returnRing.position.y = 1.2;
+returnPortalGroup.add(returnRing);
+returnPortalGroup.position.set(rfX, 0, rfZ + rfHalfD - 5);
+gameplayGroup.add(returnPortalGroup);
+portals.push({ mesh: returnPortalGroup, target: new THREE.Vector3(0, 0, 32), color: 0xffcc00 });
 
-// ============ HARİTA ELEMANLARI ============
+// ============ ANA MERKEZ ELEMANLARI ============
 createWoodenHouse(-20, -16, 0.2);
 createWoodenHouse(18, 13, -0.3);
 createWoodenHouse(-20, 20, 0.5);
@@ -489,14 +581,14 @@ createBigTree(40, 14, 2);
 createBigTree(-16, -38, 1.8);
 createBigTree(16, 38, 1.8);
 
-// ============ 4 BÜYÜK DUVAR (gölgesiz) ============
+// 4 BÜYÜK DUVAR (gölgesiz)
 createShadowlessWall(0, 46, 90, 100, 2);
 createShadowlessWall(46, 0, 2, 100, 90);
 createShadowlessWall(0, -46, 90, 100, 2);
 createShadowlessWall(-46, 0, 2, 100, 90);
 
-// ============ ALTIN PORTAL (x:0, z:35) → YAĞMURLU ORMAN ============
-createGoldenPortal(0, 35, rfX, rfZ - 20);
+// ALTIN PORTAL (merkez → yağmurlu orman)
+createGoldenPortal(0, 35, rfX, rfZ - rfHalfD + 5);
 
 // --- KOORDİNAT GÖSTERGESİ ---
 const coordSpan = document.createElement('span');
@@ -739,14 +831,15 @@ function animate() {
 
     document.getElementById('coords-display').innerText = `X:${Math.round(rabbit.position.x)} Z:${Math.round(rabbit.position.z)}`;
 
-    // Yağmur ormanı kontrolü
-    const distToRF = new THREE.Vector2(rabbit.position.x - rfX, rabbit.position.z - rfZ).length();
-    inRainforest = distToRF < 28;
-    updateRain(inRainforest, rfX, rfZ, 28);
+    // Yağmur ormanı kontrolü (kare sınırlar içinde mi?)
+    const inRFX = Math.abs(rabbit.position.x - rfX) < rfHalfW;
+    const inRFZ = Math.abs(rabbit.position.z - rfZ) < rfHalfD;
+    inRainforest = inRFX && inRFZ;
+    updateRain(inRainforest, rfX, rfZ, rfWidth, rfDepth);
     
     // Yağmur ormanında atmosfer değişimi
     if (inRainforest) {
-        scene.fog = new THREE.Fog(0x556633, 30, 80);
+        scene.fog = new THREE.Fog(0x556633, 40, 90);
         ambientLight.intensity = 0.4;
     } else {
         scene.fog = new THREE.Fog(0x87CEEB, 120, 400);
