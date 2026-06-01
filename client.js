@@ -871,146 +871,166 @@ createSign(0, 43, "Yağmurlu Orman", Math.PI);
 createGoldenPortal(200, 80, 0, 37);
 createSign(200, 76, "Geri Dön", 0);
 
-// ===================== YOSUNLU ORMAN YAPISI (X:310 Z:100) =====================
-(function buildMossyStructure() {
-    const tx = 310, tz = 100;
-    const mossyMat = new THREE.MeshStandardMaterial({ color: 0x7a8a6a, roughness: 0.8 });
-    const darkMossyMat = new THREE.MeshStandardMaterial({ color: 0x5a6a4a, roughness: 0.85 });
-    const mossMat = new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 0.9 });
+// ===================== ORMAN TAPINAĞI + SİYAH PORTAL + YEŞİL ODA =====================
+const templePos = { x: 310, z: 100 };
+let greenRoomBuilt = false;
+let lastPortalTouchTime = 0;
+const portalTouchCooldown = 2.5;
+
+// Malzemeler
+const greenStoneMatSecret = new THREE.MeshStandardMaterial({ color: 0x6a8a5a, roughness: 0.6, emissive: 0x226622, emissiveIntensity: 0.1 });
+const blackPortalMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x111111, emissiveIntensity: 0.5, transparent: true, opacity: 0.9 });
+
+function buildJungleTemple() {
+    const tx = templePos.x, tz = templePos.z;
+    const mossyMatT = new THREE.MeshStandardMaterial({ color: 0x7a8a6a, roughness: 0.8 });
+    const darkMossyT = new THREE.MeshStandardMaterial({ color: 0x5a6a4a, roughness: 0.85 });
     
-    // Zemin
-    const floor = new THREE.Mesh(new THREE.BoxGeometry(16, 0.8, 16), mossyMat);
-    floor.position.set(tx, 0, tz);
-    floor.receiveShadow = true;
-    gameplayGroup.add(floor);
+    // Taban
+    const base = new THREE.Mesh(new THREE.BoxGeometry(12, 0.6, 10), mossyMatT);
+    base.position.set(tx, -0.2, tz);
+    base.castShadow = true; base.receiveShadow = true;
+    gameplayGroup.add(base);
+    obstacles.push(base);
     
-    // 4 sütun (tamamen yosunlu taş)
-    const pillarPos = [[-5, -5], [-5, 5], [5, -5], [5, 5]];
-    pillarPos.forEach(([px, pz]) => {
-        const pillar = new THREE.Mesh(new THREE.BoxGeometry(1.2, 5, 1.2), darkMossyMat);
-        pillar.position.set(tx + px, 2.5, tz + pz);
+    // Merdiven (5 basamak)
+    for (let i = 0; i < 5; i++) {
+        const step = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 0.9), mossyMatT);
+        step.position.set(tx, i * 0.3 + 0.15, tz + 3.2 + i * 0.55);
+        step.castShadow = true;
+        gameplayGroup.add(step);
+        obstacles.push(step);
+    }
+    
+    // Sütunlar
+    const pillarPos = [[-3.5, -3], [3.5, -3], [-3.5, 3], [3.5, 3]];
+    pillarPos.forEach(([dx, dz]) => {
+        const pillar = new THREE.Mesh(new THREE.BoxGeometry(1, 3.5, 1), darkMossyT);
+        pillar.position.set(tx + dx, 1.3, tz + dz);
         pillar.castShadow = true;
         gameplayGroup.add(pillar);
         obstacles.push(pillar);
-        
-        // Sütun üstü yosun
-        const topMoss = new THREE.Mesh(new THREE.SphereGeometry(0.4, 5), mossMat);
-        topMoss.position.set(tx + px, 5.2, tz + pz);
-        topMoss.castShadow = false;
-        gameplayGroup.add(topMoss);
+        const cap = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.3, 1.2), mossyMatT);
+        cap.position.set(tx + dx, 2.9, tz + dz);
+        cap.castShadow = true;
+        gameplayGroup.add(cap);
+        obstacles.push(cap);
     });
     
-    // Çatı (basamaklı, tamamen taş)
-    for (let i = 0; i < 3; i++) {
-        const size = 11 - i * 2;
-        const yOff = 4.5 + i * 0.7;
-        const layer = new THREE.Mesh(new THREE.BoxGeometry(size, 0.5, size), mossyMat);
-        layer.position.set(tx, yOff, tz);
-        layer.castShadow = true;
-        gameplayGroup.add(layer);
-        
-        // Çatı kenarlarında yosun
-        for (let j = 0; j < 8; j++) {
-            const edgeMoss = new THREE.Mesh(new THREE.SphereGeometry(0.2, 4), mossMat);
-            const angle = (j / 8) * Math.PI * 2;
-            const rad = size / 2 + 0.2;
-            edgeMoss.position.set(tx + Math.cos(angle) * rad, yOff + 0.3, tz + Math.sin(angle) * rad);
-            edgeMoss.castShadow = false;
-            gameplayGroup.add(edgeMoss);
-        }
+    // Arka duvar
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(10, 3.2, 0.5), mossyMatT);
+    backWall.position.set(tx, 1.3, tz - 3.8);
+    backWall.castShadow = true;
+    gameplayGroup.add(backWall);
+    obstacles.push(backWall);
+    
+    // Yan duvarlar
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.5, 5), mossyMatT);
+    leftWall.position.set(tx - 4.2, 1, tz);
+    leftWall.castShadow = true;
+    gameplayGroup.add(leftWall);
+    obstacles.push(leftWall);
+    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.5, 5), mossyMatT);
+    rightWall.position.set(tx + 4.2, 1, tz);
+    rightWall.castShadow = true;
+    gameplayGroup.add(rightWall);
+    obstacles.push(rightWall);
+    
+    // Çatı
+    const roofMatT = new THREE.MeshStandardMaterial({ color: 0x6a5a4a, roughness: 0.85 });
+    const roofLeft = new THREE.Mesh(new THREE.BoxGeometry(7, 0.3, 5.5), roofMatT);
+    roofLeft.position.set(tx - 1.8, 2.9, tz);
+    roofLeft.rotation.z = -0.25;
+    roofLeft.castShadow = true;
+    gameplayGroup.add(roofLeft);
+    const roofRight = new THREE.Mesh(new THREE.BoxGeometry(7, 0.3, 5.5), roofMatT);
+    roofRight.position.set(tx + 1.8, 2.9, tz);
+    roofRight.rotation.z = 0.25;
+    roofRight.castShadow = true;
+    gameplayGroup.add(roofRight);
+    
+    // SİYAH PORTAL (tam girişte, merdivenlerin bitiminde duvar içinde)
+    const portalWall = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3, 0.3), blackPortalMat);
+    portalWall.position.set(tx, 1.3, tz + 4.8);
+    portalWall.castShadow = false;
+    gameplayGroup.add(portalWall);
+    obstacles.push(portalWall);
+    
+    // Portal çerçevesi (taş)
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x7a8a6a });
+    const fLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 0.3), frameMat);
+    fLeft.position.set(tx - 1.4, 1.4, tz + 4.9);
+    gameplayGroup.add(fLeft);
+    const fRight = new THREE.Mesh(new THREE.BoxGeometry(0.3, 3.2, 0.3), frameMat);
+    fRight.position.set(tx + 1.4, 1.4, tz + 4.9);
+    gameplayGroup.add(fRight);
+    const fTop = new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.3, 0.3), frameMat);
+    fTop.position.set(tx, 2.9, tz + 4.9);
+    gameplayGroup.add(fTop);
+    
+    // Portal efekti parçacıkları
+    for (let i = 0; i < 80; i++) {
+        const particle = new THREE.Mesh(new THREE.SphereGeometry(0.08, 4), new THREE.MeshStandardMaterial({ color: 0x220000, emissive: 0x330000 }));
+        particle.position.set(tx + (Math.random() - 0.5) * 2.2, 0.5 + Math.random() * 2.5, tz + 5.0);
+        particle.castShadow = false;
+        gameplayGroup.add(particle);
     }
-    // Tepe noktası
-    const top = new THREE.Mesh(new THREE.ConeGeometry(1, 1.2, 4), darkMossyMat);
-    top.position.set(tx, 6.2, tz);
-    top.castShadow = true;
-    gameplayGroup.add(top);
-    
-    // Merdiven (yosunlu taş basamaklar)
-    for (let i = 1; i <= 4; i++) {
-        const step = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.3, 1), mossyMat);
-        step.position.set(tx, i * 0.15, tz - 7 + i * 0.6);
-        step.castShadow = true;
-        gameplayGroup.add(step);
-        
-        // Basamaklarda yosun
-        const stepMoss = new THREE.Mesh(new THREE.SphereGeometry(0.15, 3), mossMat);
-        stepMoss.position.set(tx + (Math.random() - 0.5) * 1.5, i * 0.15 + 0.2, tz - 7 + i * 0.6);
-        stepMoss.castShadow = false;
-        gameplayGroup.add(stepMoss);
-    }
-    
-    // Kapı girişi (yosunlu taş kemer)
-    const doorMat = new THREE.MeshStandardMaterial({ color: 0x5a4a3a, roughness: 0.7 });
-    const door = new THREE.Mesh(new THREE.BoxGeometry(2, 2.8, 0.4), doorMat);
-    door.position.set(tx, 1.4, tz - 6.5);
-    door.castShadow = true;
-    gameplayGroup.add(door);
-    
-    // Kapı kemeri
-    for (let i = -1; i <= 1; i++) {
-        const archBlock = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), mossyMat);
-        archBlock.position.set(tx + i * 0.9, 3, tz - 6.7);
-        archBlock.castShadow = true;
-        gameplayGroup.add(archBlock);
-    }
-    
-    // Işınlanma pedi (içeride, parlayan)
-    const glowMat = new THREE.MeshStandardMaterial({ color: 0x88aaff, emissive: 0x4488ff, emissiveIntensity: 0.8 });
-    const teleportPad = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.2, 16), glowMat);
-    teleportPad.position.set(tx, 0.2, tz);
-    teleportPad.castShadow = false;
-    gameplayGroup.add(teleportPad);
-    
-    // Ped etrafında yosun
-    for (let i = 0; i < 12; i++) {
-        const padMoss = new THREE.Mesh(new THREE.SphereGeometry(0.1, 3), mossMat);
-        const angle = (i / 12) * Math.PI * 2;
-        padMoss.position.set(tx + Math.cos(angle) * 1.4, 0.15, tz + Math.sin(angle) * 1.4);
-        padMoss.castShadow = false;
-        gameplayGroup.add(padMoss);
-    }
-    
-    // Duvarlarda yosun süslemeleri
-    for (let i = 0; i < 60; i++) {
-        const wallMoss = new THREE.Mesh(new THREE.SphereGeometry(0.15 + Math.random()*0.15, 4), mossMat);
-        const angle = Math.random() * Math.PI * 2;
-        const rad = 6 + Math.random() * 1.5;
-        const yOff = 1 + Math.random() * 4;
-        wallMoss.position.set(tx + Math.cos(angle) * rad, yOff, tz + Math.sin(angle) * rad);
-        wallMoss.castShadow = false;
-        gameplayGroup.add(wallMoss);
-    }
-    
-    // Etrafa yosunlu taşlar
-    for (let i = 0; i < 50; i++) {
-        const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.2 + Math.random()*0.3), mossyMat);
-        const angle = Math.random() * Math.PI * 2;
-        const rad = 7.5 + Math.random() * 3;
-        rock.position.set(tx + Math.cos(angle) * rad, 0.2, tz + Math.sin(angle) * rad);
-        rock.castShadow = true;
-        gameplayGroup.add(rock);
-        obstacles.push(rock);
-    }
-    
-    // Teleport fonksiyonu (pede basınca)
-    teleportPad.userData = { isTeleporter: true };
-})();
+}
+
+function buildGreenRoom() {
+    if (greenRoomBuilt) return;
+    const gx = 400, gz = 100;
+    // Zemin
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 6), greenStoneMatSecret);
+    floor.position.set(gx, -0.2, gz);
+    floor.castShadow = true;
+    gameplayGroup.add(floor);
+    obstacles.push(floor);
+    // Duvarlar
+    const walls = [
+        { pos: [0, 1.4, -2.8], size: [5.5, 2.8, 0.4] },
+        { pos: [0, 1.4, 2.8], size: [5.5, 2.8, 0.4] },
+        { pos: [-2.8, 1.4, 0], size: [0.4, 2.8, 5.5] },
+        { pos: [2.8, 1.4, 0], size: [0.4, 2.8, 5.5] }
+    ];
+    walls.forEach(w => {
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(w.size[0], w.size[1], w.size[2]), greenStoneMatSecret);
+        wall.position.set(gx + w.pos[0], w.pos[1], gz + w.pos[2]);
+        wall.castShadow = true;
+        gameplayGroup.add(wall);
+        obstacles.push(wall);
+    });
+    // Tavan
+    const ceiling = new THREE.Mesh(new THREE.BoxGeometry(5.2, 0.2, 5.2), new THREE.MeshStandardMaterial({ color: 0x88aa77, transparent: true, opacity: 0.5, emissive: 0x226622 }));
+    ceiling.position.set(gx, 2.9, gz);
+    ceiling.castShadow = true;
+    gameplayGroup.add(ceiling);
+    // Kristal
+    const crystal = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, 1, 8), new THREE.MeshStandardMaterial({ color: 0xaaffaa, emissive: 0x44ff44, emissiveIntensity: 0.5 }));
+    crystal.position.set(gx, 0.3, gz);
+    crystal.castShadow = true;
+    gameplayGroup.add(crystal);
+    greenRoomBuilt = true;
+}
 
 // Işınlanma kontrolü
-let lastStructureTeleport = 0;
-function checkStructureTeleport() {
-    const distToCenter = Math.hypot(rabbit.position.x - 310, rabbit.position.z - 100);
-    if (distToCenter < 1.5 && (Date.now() / 1000 - lastStructureTeleport > 3)) {
-        lastStructureTeleport = Date.now() / 1000;
-        showMessage("Işınlanılıyor...", 800);
+function checkDarkPortalTeleport() {
+    const distToPortal = Math.hypot(rabbit.position.x - templePos.x, rabbit.position.z - (templePos.z + 4.8));
+    if (distToPortal < 1.2 && (Date.now() / 1000 - lastPortalTouchTime > portalTouchCooldown)) {
+        lastPortalTouchTime = Date.now() / 1000;
+        showMessage("Işınlanıyor...", 800);
         setTimeout(() => {
             rabbit.position.x = 400;
             rabbit.position.z = 100;
-            showMessage("Boş Alan", 1200);
+            rabbit.position.y = 0.6;
+            buildGreenRoom();
+            showMessage("Yeşil Gizli Oda", 1500);
         }, 400);
     }
 }
 // ==========================================================================
+
+buildJungleTemple();
 
 const coordSpan = document.createElement('span');
 coordSpan.id = 'coords-display';
@@ -1284,16 +1304,16 @@ function updateAllMonkeys(deltaTime) {
     }
 }
 
-function showMessage(text) {
+function showMessage(text, duration = 2000) {
     const msg = document.createElement('div');
-    msg.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:white; font-size:48px; font-weight:bold; text-shadow:0 0 20px gold; z-index:100; pointer-events:none;';
+    msg.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:white; font-size:48px; font-weight:bold; text-shadow:0 0 20px gold; z-index:100; pointer-events:none; white-space:nowrap;';
     msg.innerText = text;
     document.body.appendChild(msg);
     setTimeout(() => {
         msg.style.transition = 'opacity 1s';
         msg.style.opacity = '0';
         setTimeout(() => document.body.removeChild(msg), 1000);
-    }, 2000);
+    }, duration);
 }
 
 let legWiggle = 0;
@@ -1302,8 +1322,8 @@ function animate() {
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
     
-    checkStructureTeleport();
     updateAllMonkeys(deltaTime);
+    checkDarkPortalTeleport();
     
     let finalMoveX = 0, finalMoveZ = 0;
     if (joystickActive) { finalMoveX = moveX; finalMoveZ = moveZ; }
