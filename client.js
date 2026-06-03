@@ -871,83 +871,70 @@ createSign(0, 43, "Yağmurlu Orman", Math.PI);
 createGoldenPortal(200, 80, 0, 37);
 createSign(200, 76, "Geri Dön", 0);
 
-// ===================== MINECRAFT ORMAN TAPINAĞI (Birebir) =====================
+// ===================== YENİLENEN MOSS-STONE ORMAN TAPINAĞI =====================
 const templeLoc = { x: 310, z: 100 };
 let secretRoomReady = false;
 let lastPortalTime = 0;
+let templePortalMesh; // İçeriye çekilecek siyah kapı referansı
 
 function buildJungleTemple() {
     const tx = templeLoc.x, tz = templeLoc.z;
-    const mossy = new THREE.MeshStandardMaterial({ color: 0x7c8a6e, roughness: 0.85 });
-    const mossyDark = new THREE.MeshStandardMaterial({ color: 0x5c6a4e, roughness: 0.9 });
+    const templeGroup = new THREE.Group();
+
+    // A) YOSUNLU MERDİVENLER (Aşağıdan yukarıya 3 basamak)
+    const stepsData = [
+        { w: 9, h: 0.5, d: 7, y: 0.25, z: 0 },
+        { w: 7.5, h: 0.5, d: 5.5, y: 0.75, z: 0.5 },
+        { w: 6, h: 0.5, d: 4, y: 1.25, z: 1 }
+    ];
+
+    stepsData.forEach(data => {
+        const stepGeo = new THREE.BoxGeometry(data.w, data.h, data.d);
+        const stepMesh = new THREE.Mesh(stepGeo, mossyWallMat);
+        stepMesh.position.set(0, data.y, data.z);
+        stepMesh.receiveShadow = true;
+        stepMesh.castShadow = true;
+        colliders.push(stepMesh); 
+        obstacles.push(stepMesh);
+        templeGroup.add(stepMesh);
+    });
+
+    // B) ANTİK SÜTUNLAR (Girişin Sağı ve Solu)
+    const columnGeo = new THREE.CylinderGeometry(0.35, 0.5, 4.5, 12);
     
-    // Zemin (9x9)
-    const floor = new THREE.Mesh(new THREE.BoxGeometry(9, 0.5, 9), mossy);
-    floor.position.set(tx, -0.2, tz);
-    floor.castShadow = true;
-    gameplayGroup.add(floor);
-    obstacles.push(floor);
-    
-    // Duvarlar (yükseklik 2 blok)
-    const back = new THREE.Mesh(new THREE.BoxGeometry(9, 1, 0.5), mossy);
-    back.position.set(tx, 0.5, tz - 4);
-    back.castShadow = true;
-    gameplayGroup.add(back);
-    obstacles.push(back);
-    
-    const left = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 8), mossy);
-    left.position.set(tx - 4, 0.5, tz);
-    left.castShadow = true;
-    gameplayGroup.add(left);
-    obstacles.push(left);
-    
-    const right = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 8), mossy);
-    right.position.set(tx + 4, 0.5, tz);
-    right.castShadow = true;
-    gameplayGroup.add(right);
-    obstacles.push(right);
-    
-    // Ön duvar (giriş için boşluk bırak)
-    const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1, 0.5), mossy);
-    frontLeft.position.set(tx - 2.5, 0.5, tz + 4);
-    frontLeft.castShadow = true;
-    gameplayGroup.add(frontLeft);
-    obstacles.push(frontLeft);
-    
-    const frontRight = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1, 0.5), mossy);
-    frontRight.position.set(tx + 2.5, 0.5, tz + 4);
-    frontRight.castShadow = true;
-    gameplayGroup.add(frontRight);
-    obstacles.push(frontRight);
-    
-    // Merdivenler (3 basamak)
-    for (let i = 0; i < 3; i++) {
-        const step = new THREE.Mesh(new THREE.BoxGeometry(2, 0.3, 1), mossyDark);
-        step.position.set(tx, i * 0.3 + 0.15, tz + 5 + i * 0.7);
-        step.castShadow = true;
-        gameplayGroup.add(step);
-        obstacles.push(step);
-    }
-    
-    // Siyah Portal (girişin ortasında)
-    const portalMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x111111, transparent: true, opacity: 0.9 });
-    const portalBlock = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 0.3), portalMat);
-    portalBlock.position.set(tx, 1, tz + 4.6);
-    portalBlock.castShadow = false;
-    gameplayGroup.add(portalBlock);
-    obstacles.push(portalBlock);
-    
-    // Portal çerçevesi
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0x7c8a6e });
-    const fL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.2, 0.3), frameMat);
-    fL.position.set(tx - 1.2, 1, tz + 4.7);
-    gameplayGroup.add(fL);
-    const fR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.2, 0.3), frameMat);
-    fR.position.set(tx + 1.2, 1, tz + 4.7);
-    gameplayGroup.add(fR);
-    const fT = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.3, 0.3), frameMat);
-    fT.position.set(tx, 2.1, tz + 4.7);
-    gameplayGroup.add(fT);
+    const leftColumn = new THREE.Mesh(columnGeo, mossyWallMat);
+    leftColumn.position.set(-2.4, 3.5, 1.5);
+    leftColumn.castShadow = true;
+    colliders.push(leftColumn);
+    obstacles.push(leftColumn);
+    templeGroup.add(leftColumn);
+
+    const rightColumn = new THREE.Mesh(columnGeo, mossyWallMat);
+    rightColumn.position.set(2.4, 3.5, 1.5);
+    rightColumn.castShadow = true;
+    colliders.push(rightColumn);
+    obstacles.push(rightColumn);
+    templeGroup.add(rightColumn);
+
+    // C) ÜST TAŞ ÇATI
+    const roofGeo = new THREE.BoxGeometry(6.2, 0.7, 2.8);
+    const roofMesh = new THREE.Mesh(roofGeo, mossyWallMat);
+    roofMesh.position.set(0, 6.0, 1.5);
+    roofMesh.castShadow = true;
+    colliders.push(roofMesh);
+    obstacles.push(roofMesh);
+    templeGroup.add(roofMesh);
+
+    // D) SİYAH PORTAL KAPISI (Boyutları güncellenen karanlık geçiş)
+    const portalGeo = new THREE.PlaneGeometry(4, 4.2);
+    const portalMat = new THREE.MeshBasicMaterial({ color: 0x010101, transparent: true, opacity: 0.95 });
+    templePortalMesh = new THREE.Mesh(portalGeo, portalMat);
+    templePortalMesh.position.set(0, 3.5, 1.4);
+    templeGroup.add(templePortalMesh);
+
+    // Konumlandırma ve Gruba Ekleme
+    templeGroup.position.set(tx, 0, tz);
+    gameplayGroup.add(templeGroup);
 }
 
 function buildGreenSecretRoom() {
@@ -982,9 +969,16 @@ function buildGreenSecretRoom() {
     secretRoomReady = true;
 }
 
+// Yeni tapınağa göre entegre edilen Mesafe/Işınlanma tetikleyicisi
 function teleportToGreenRoom() {
-    const dist = Math.hypot(rabbit.position.x - templeLoc.x, rabbit.position.z - (templeLoc.z + 4.6));
-    if (dist < 1.2 && (Date.now() / 1000 - lastPortalTime > 2)) {
+    if (!rabbit || !templePortalMesh) return;
+
+    const portalWorldPos = new THREE.Vector3();
+    templePortalMesh.getWorldPosition(portalWorldPos);
+
+    const dist = rabbit.position.distanceTo(portalWorldPos);
+    
+    if (dist < 1.6 && (Date.now() / 1000 - lastPortalTime > 2)) {
         lastPortalTime = Date.now() / 1000;
         showMessage("Işınlanıyor...", 600);
         setTimeout(() => {
