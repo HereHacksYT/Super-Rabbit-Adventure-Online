@@ -871,70 +871,158 @@ createSign(0, 43, "Yağmurlu Orman", Math.PI);
 createGoldenPortal(200, 80, 0, 37);
 createSign(200, 76, "Geri Dön", 0);
 
-// ===================== YENİLENEN MOSS-STONE ORMAN TAPINAĞI =====================
+// ===================== MINECRAFT ORMAN TAPINAĞI (Birebir) =====================
 const templeLoc = { x: 310, z: 100 };
 let secretRoomReady = false;
 let lastPortalTime = 0;
-let templePortalMesh; // İçeriye çekilecek siyah kapı referansı
 
 function buildJungleTemple() {
     const tx = templeLoc.x, tz = templeLoc.z;
+    const mossy = new THREE.MeshStandardMaterial({ color: 0x7c8a6e, roughness: 0.85 });
+    const mossyDark = new THREE.MeshStandardMaterial({ color: 0x5c6a4e, roughness: 0.9 });
+    
+    // Zemin (9x9)
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(9, 0.5, 9), mossy);
+    floor.position.set(tx, -0.2, tz);
+    floor.castShadow = true;
+    gameplayGroup.add(floor);
+    obstacles.push(floor);
+    
+    // Duvarlar (yükseklik 2 blok)
+    const back = new THREE.Mesh(new THREE.BoxGeometry(9, 1, 0.5), mossy);
+    back.position.set(tx, 0.5, tz - 4);
+    back.castShadow = true;
+    gameplayGroup.add(back);
+    obstacles.push(back);
+    
+    const left = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 8), mossy);
+    left.position.set(tx - 4, 0.5, tz);
+    left.castShadow = true;
+    gameplayGroup.add(left);
+    obstacles.push(left);
+    
+    const right = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 8), mossy);
+    right.position.set(tx + 4, 0.5, tz);
+    right.castShadow = true;
+    gameplayGroup.add(right);
+    obstacles.push(right);
+    
+    // Ön duvar (giriş için boşluk bırak)
+    const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1, 0.5), mossy);
+    frontLeft.position.set(tx - 2.5, 0.5, tz + 4);
+    frontLeft.castShadow = true;
+    gameplayGroup.add(frontLeft);
+    obstacles.push(frontLeft);
+    
+    const frontRight = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1, 0.5), mossy);
+    frontRight.position.set(tx + 2.5, 0.5, tz + 4);
+    frontRight.castShadow = true;
+    gameplayGroup.add(frontRight);
+    obstacles.push(frontRight);
+    
+    // Merdivenler (3 basamak)
+    for (let i = 0; i < 3; i++) {
+        const step = new THREE.Mesh(new THREE.BoxGeometry(2, 0.3, 1), mossyDark);
+        step.position.set(tx, i * 0.3 + 0.15, tz + 5 + i * 0.7);
+        step.castShadow = true;
+        gameplayGroup.add(step);
+        obstacles.push(step);
+    }
+    
+    // Siyah Portal (girişin ortasında)
+    const portalMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x111111, transparent: true, opacity: 0.9 });
+    const portalBlock = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 0.3), portalMat);
+    portalBlock.position.set(tx, 1, tz + 4.6);
+    portalBlock.castShadow = false;
+    gameplayGroup.add(portalBlock);
+    obstacles.push(portalBlock);
+    
+    // Portal çerçevesi
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x7c8a6e });
+    const fL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.2, 0.3), frameMat);
+    fL.position.set(tx - 1.2, 1, tz + 4.7);
+    gameplayGroup.add(fL);
+    const fR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.2, 0.3), frameMat);
+    fR.position.set(tx + 1.2, 1, tz + 4.7);
+    gameplayGroup.add(fR);
+    const fT = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.3, 0.3), frameMat);
+    fT.position.set(tx, 2.1, tz + 4.7);
+    gameplayGroup.add(fT);
+}
+
+// ===================== YENİ EKLENEN GÖRKEMLİ TAPINAK FONKSİYONU =====================
+function createGorkemliTemple(x, y, z) {
     const templeGroup = new THREE.Group();
+    templeGroup.position.set(x, y, z);
 
-    // A) YOSUNLU MERDİVENLER (Aşağıdan yukarıya 3 basamak)
-    const stepsData = [
-        { w: 9, h: 0.5, d: 7, y: 0.25, z: 0 },
-        { w: 7.5, h: 0.5, d: 5.5, y: 0.75, z: 0.5 },
-        { w: 6, h: 0.5, d: 4, y: 1.25, z: 1 }
+    const stoneMaterial = new THREE.MeshStandardMaterial({ map: stoneTexture, roughness: 0.8 });
+    const roofMaterial = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.6 });
+
+    // 1. TAPINAK TABANI (Podyum)
+    const base1Geo = new THREE.BoxGeometry(16, 1, 16);
+    const base1 = new THREE.Mesh(base1Geo, stoneMaterial);
+    base1.position.y = 0.5;
+    base1.receiveShadow = true; base1.castShadow = true;
+    templeGroup.add(base1);
+    obstacles.push(base1);
+
+    const base2Geo = new THREE.BoxGeometry(14, 1, 14);
+    const base2 = new THREE.Mesh(base2Geo, stoneMaterial);
+    base2.position.y = 1.5;
+    base2.receiveShadow = true; base2.castShadow = true;
+    templeGroup.add(base2);
+    obstacles.push(base2);
+
+    // 2. MERDİVENLER
+    for (let i = 0; i < 4; i++) {
+        const stepGeo = new THREE.BoxGeometry(6, 0.4, 1);
+        const step = new THREE.Mesh(stepGeo, stoneMaterial);
+        step.position.set(0, 0.2 + (i * 0.4), 7 + (i * 0.8));
+        step.receiveShadow = true; step.castShadow = true;
+        templeGroup.add(step);
+        obstacles.push(step);
+    }
+
+    // 3. SÜTUNLAR
+    const columnPositions = [
+        [-5, -5], [-5, 0], [-5, 5],
+        [5, -5],  [5, 0],  [5, 5]
     ];
-
-    stepsData.forEach(data => {
-        const stepGeo = new THREE.BoxGeometry(data.w, data.h, data.d);
-        const stepMesh = new THREE.Mesh(stepGeo, mossyWallMat);
-        stepMesh.position.set(0, data.y, data.z);
-        stepMesh.receiveShadow = true;
-        stepMesh.castShadow = true;
-        colliders.push(stepMesh); 
-        obstacles.push(stepMesh);
-        templeGroup.add(stepMesh);
+    columnPositions.forEach(pos => {
+        const columnGeo = new THREE.CylinderGeometry(0.5, 0.6, 6, 8);
+        const column = new THREE.Mesh(columnGeo, stoneMaterial);
+        column.position.set(pos[0], 5, pos[1]);
+        column.castShadow = true; column.receiveShadow = true;
+        templeGroup.add(column);
+        obstacles.push(column);
     });
 
-    // B) ANTİK SÜTUNLAR (Girişin Sağı ve Solu)
-    const columnGeo = new THREE.CylinderGeometry(0.35, 0.5, 4.5, 12);
-    
-    const leftColumn = new THREE.Mesh(columnGeo, mossyWallMat);
-    leftColumn.position.set(-2.4, 3.5, 1.5);
-    leftColumn.castShadow = true;
-    colliders.push(leftColumn);
-    obstacles.push(leftColumn);
-    templeGroup.add(leftColumn);
+    // 4. TAPINAK ÇATISI
+    const roofBaseGeo = new THREE.BoxGeometry(14, 1, 14);
+    const roofBase = new THREE.Mesh(roofBaseGeo, stoneMaterial);
+    roofBase.position.y = 8.5;
+    roofBase.castShadow = true; roofBase.receiveShadow = true;
+    templeGroup.add(roofBase);
+    obstacles.push(roofBase);
 
-    const rightColumn = new THREE.Mesh(columnGeo, mossyWallMat);
-    rightColumn.position.set(2.4, 3.5, 1.5);
-    rightColumn.castShadow = true;
-    colliders.push(rightColumn);
-    obstacles.push(rightColumn);
-    templeGroup.add(rightColumn);
+    const pyramidGeo = new THREE.ConeGeometry(10, 4, 4);
+    const roofPyramid = new THREE.Mesh(pyramidGeo, roofMaterial);
+    roofPyramid.position.y = 11;
+    roofPyramid.rotation.y = Math.PI / 4;
+    roofPyramid.castShadow = true;
+    templeGroup.add(roofPyramid);
+    obstacles.push(roofPyramid);
 
-    // C) ÜST TAŞ ÇATI
-    const roofGeo = new THREE.BoxGeometry(6.2, 0.7, 2.8);
-    const roofMesh = new THREE.Mesh(roofGeo, mossyWallMat);
-    roofMesh.position.set(0, 6.0, 1.5);
-    roofMesh.castShadow = true;
-    colliders.push(roofMesh);
-    obstacles.push(roofMesh);
-    templeGroup.add(roofMesh);
+    // 5. MERKEZDEKİ ALTIN KRİSTAL
+    const crystalGeo = new THREE.OctahedronGeometry(1.2, 0);
+    const crystal = new THREE.Mesh(crystalGeo, goldMat);
+    crystal.position.set(0, 4, 0);
+    crystal.castShadow = true;
+    templeGroup.add(crystal);
+    crystal.name = "templeCrystal";
 
-    // D) SİYAH PORTAL KAPISI (Boyutları güncellenen karanlık geçiş)
-    const portalGeo = new THREE.PlaneGeometry(4, 4.2);
-    const portalMat = new THREE.MeshBasicMaterial({ color: 0x010101, transparent: true, opacity: 0.95 });
-    templePortalMesh = new THREE.Mesh(portalGeo, portalMat);
-    templePortalMesh.position.set(0, 3.5, 1.4);
-    templeGroup.add(templePortalMesh);
-
-    // Konumlandırma ve Gruba Ekleme
-    templeGroup.position.set(tx, 0, tz);
     gameplayGroup.add(templeGroup);
+    return templeGroup;
 }
 
 function buildGreenSecretRoom() {
@@ -969,16 +1057,9 @@ function buildGreenSecretRoom() {
     secretRoomReady = true;
 }
 
-// Yeni tapınağa göre entegre edilen Mesafe/Işınlanma tetikleyicisi
 function teleportToGreenRoom() {
-    if (!rabbit || !templePortalMesh) return;
-
-    const portalWorldPos = new THREE.Vector3();
-    templePortalMesh.getWorldPosition(portalWorldPos);
-
-    const dist = rabbit.position.distanceTo(portalWorldPos);
-    
-    if (dist < 1.6 && (Date.now() / 1000 - lastPortalTime > 2)) {
+    const dist = Math.hypot(rabbit.position.x - templeLoc.x, rabbit.position.z - (templeLoc.z + 4.6));
+    if (dist < 1.2 && (Date.now() / 1000 - lastPortalTime > 2)) {
         lastPortalTime = Date.now() / 1000;
         showMessage("Işınlanıyor...", 600);
         setTimeout(() => {
@@ -989,7 +1070,9 @@ function teleportToGreenRoom() {
     }
 }
 
+// Haritaya iki tapınağı birden yükleme satırları
 buildJungleTemple();
+createGorkemliTemple(0, 0, -25); // Haritanın merkezinin biraz ilerisine kuruldu. İstediğin koordinatla değiştirebilirsin.
 
 const coordSpan = document.createElement('span');
 coordSpan.id = 'coords-display';
@@ -1284,6 +1367,13 @@ function animate() {
     updateAllMonkeys(deltaTime);
     teleportToGreenRoom();
     
+    // Tapınak Kristalinin kendi etrafında dönme animasyonu
+    const crystalMesh = scene.getObjectByName("templeCrystal");
+    if(crystalMesh) {
+        crystalMesh.rotation.y += deltaTime * 0.8;
+        crystalMesh.position.y = 4 + Math.sin(Date.now() * 0.002) * 0.15;
+    }
+    
     let finalMoveX = 0, finalMoveZ = 0;
     if (joystickActive) { finalMoveX = moveX; finalMoveZ = moveZ; }
     if (keys['w'] || keys['arrowup']) finalMoveZ = -1;
@@ -1338,7 +1428,7 @@ function animate() {
             legWiggle += 15 * deltaTime;
             footFL.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12;
             footBR.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12;
-            footFR.position.y = 0.08 + Math.abs(Math.cos(legWiggle)) * 0.12;
+            footFR.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12; // Sabit kısımdaki düzeltme korundu
             footBL.position.y = 0.08 + Math.abs(Math.cos(legWiggle)) * 0.12;
         } else { footFL.position.y = 0.08; footFR.position.y = 0.08; footBL.position.y = 0.08; footBR.position.y = 0.08; }
         if (isAttacking) {
