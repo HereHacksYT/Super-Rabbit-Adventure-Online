@@ -50,18 +50,6 @@ scene.add(gameplayGroup);
 const obstacles = [];
 const portals = [];
 
-// ============ GLTF YÜKLEYİCİ ============
-const loader = new THREE.GLTFLoader();
-
-// ============ SALDIRI COOLDOWN ============
-let attackCooldown = 0;
-const ATTACK_COOLDOWN = 2.0;
-
-// ============ TAVŞAN MODELLERİ ============
-let rabbitModelData = null;
-let rabbitMixer = null;
-let rabbitAttackAction = null;
-
 // ============ ORİJİNAL createRabbitModel ============
 function createRabbitModel(isLocal = false) {
     const group = new THREE.Group();
@@ -114,99 +102,6 @@ function createRabbitModel(isLocal = false) {
     fBR.position.set(0.32, -0.08, -0.22);
     group.add(fBR);
     return { mesh: group, visual: visualGroup, head: head, feet: [fFL, fFR, fBL, fBR] };
-}
-
-// ============ GLTF İLE TAVŞAN YÜKLEME ============
-function loadGLTFRabbit(isLocal = false) {
-    return new Promise((resolve) => {
-        loader.load('tavşan.gltf', (gltf) => {
-            const model = gltf.scene;
-            model.scale.set(0.8, 0.8, 0.8);
-            model.traverse((child) => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-            
-            const mixer = new THREE.AnimationMixer(model);
-            let attackAction = null;
-            
-            if (gltf.animations && gltf.animations.length > 0) {
-                const attackAnim = gltf.animations.find(a => 
-                    a.name.toLowerCase().includes('attack') || 
-                    a.name.toLowerCase().includes('hit') ||
-                    a.name.toLowerCase().includes('vur')
-                ) || gltf.animations[0];
-                
-                attackAction = mixer.clipAction(attackAnim);
-                attackAction.setLoop(THREE.LoopOnce);
-                attackAction.clampWhenFinished = true;
-                attackAction.stop();
-            }
-            
-            resolve({
-                mesh: model,
-                mixer: mixer,
-                attackAction: attackAction,
-                isGLTF: true
-            });
-        }, undefined, (error) => {
-            console.error('GLTF yüklenemedi, yedek model kullanılıyor:', error);
-            const fallback = createRabbitModel(isLocal);
-            resolve({
-                mesh: fallback.mesh,
-                mixer: null,
-                attackAction: null,
-                isGLTF: false,
-                visual: fallback.visual,
-                head: fallback.head,
-                feet: fallback.feet
-            });
-        });
-    });
-}
-
-// ============ SALDIRI FONKSİYONU ============
-function performAttack() {
-    if (!gameActive || isDead) return;
-    if (attackCooldown > 0) return;
-    
-    attackCooldown = ATTACK_COOLDOWN;
-    
-    if (rabbitAttackAction) {
-        rabbitAttackAction.stop();
-        rabbitAttackAction.reset();
-        rabbitAttackAction.play();
-    }
-    
-    if (isOnlineMode) socket.emit('playerAttack');
-    
-    monkeys.forEach((monkey) => {
-        const ud = monkey.userData;
-        if (ud.isDead) return;
-        const dist = rabbit.position.distanceTo(monkey.position);
-        if (dist < 2.5) {
-            ud.health -= 25;
-            if (ud.health <= 0) {
-                ud.health = 0;
-                ud.isDead = true;
-                ud.deathTime = Date.now();
-                monkey.visible = false;
-                monkeyHealthBarContainer.style.display = 'none';
-            }
-        }
-    });
-    
-    if (isOnlineMode && gameActive) {
-        Object.keys(otherPlayers).forEach((id) => {
-            const op = otherPlayers[id].mesh.position;
-            if (rabbit.position.distanceTo(op) < 2.0) {
-                const angle = Math.atan2(op.x - rabbit.position.x, op.z - rabbit.position.z);
-                socket.emit('playerKnockback', { targetId: id, angle: angle });
-            }
-        });
-    }
 }
 
 function createCanvasTexture(width, height, drawFunc) {
@@ -403,10 +298,6 @@ document.addEventListener('keydown', (e) => {
             jumpCount++;
         }
     }
-    if ((e.key === 'e' || e.key === 'f') && gameActive && !isDead) {
-        e.preventDefault();
-        performAttack();
-    }
     if (e.key === 'm' && e.ctrlKey && e.shiftKey) {
         const code = prompt('Mod kodu:');
         if (code === '1234') { isModerator = true; document.getElementById('mod-menu').style.display = 'block'; }
@@ -466,7 +357,7 @@ document.getElementById('jump-button').addEventListener('touchstart', (e) => {
 
 document.getElementById('attack-button').addEventListener('touchstart', (e) => {
     e.preventDefault();
-    performAttack();
+    // Saldırı sonra eklenecek
 }, { passive: false });
 
 const squareSize = 94;
@@ -1183,12 +1074,15 @@ coordSpan.style.marginLeft = '15px';
 coordSpan.style.color = '#ffeb3b';
 document.getElementById('game-info-ui').appendChild(coordSpan);
 
-// ============ ANA TAVŞAN ============
-const localPlayer = createRabbitModel(true);
-const rabbit = localPlayer.mesh;
-const rabbitVisualGroup = localPlayer.visual;
-const head = localPlayer.head;
-const [footFL, footFR, footBL, footBR] = localPlayer.feet;
+// ============ ANA TAVŞAN (GLOBAL) ============
+let localPlayer = createRabbitModel(true);
+let rabbit = localPlayer.mesh;
+let rabbitVisualGroup = localPlayer.visual;
+let head = localPlayer.head;
+let footFL = localPlayer.feet[0];
+let footFR = localPlayer.feet[1];
+let footBL = localPlayer.feet[2];
+let footBR = localPlayer.feet[3];
 scene.add(rabbit);
 
 let otherPlayers = {};
@@ -1472,8 +1366,6 @@ function animate() {
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
     
-    if (attackCooldown > 0) attackCooldown -= deltaTime;
-    
     updateAllMonkeys(deltaTime);
     teleportToGreenRoom();
     
@@ -1585,29 +1477,3 @@ function animate() {
 animate();
 
 window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
-
-// ============ GLTF YÜKLE (OPSİYONEL) ============
-setTimeout(() => {
-    loadGLTFRabbit(true).then((gltfData) => {
-        if (gltfData.isGLTF !== false) {
-            // Eski modeli kaldır
-            scene.remove(rabbit);
-            
-            // GLTF modelini ekle
-            const newRabbit = gltfData.mesh;
-            newRabbit.position.copy(rabbit.position);
-            newRabbit.rotation.copy(rabbit.rotation);
-            scene.add(newRabbit);
-            
-            // Değişkenleri güncelle
-            rabbitModelData = gltfData;
-            rabbitMixer = gltfData.mixer;
-            rabbitAttackAction = gltfData.attackAction;
-            
-            // rabbit değişkenini güncelle (diğer fonksiyonlar kullanıyor)
-            Object.assign(rabbit, newRabbit);
-            
-            console.log('✅ GLTF tavşan yüklendi!');
-        }
-    });
-}, 1000);
