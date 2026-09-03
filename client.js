@@ -50,6 +50,205 @@ scene.add(gameplayGroup);
 const obstacles = [];
 const portals = [];
 
+// ============ GLTF YÜKLEYİCİ ============
+const loader = new THREE.GLTFLoader();
+
+// ============ TAVŞAN MODELLERİ ============
+let rabbitModel = null;          // ana oyuncu
+let rabbitMixer = null;          // animasyon kontrolü
+let rabbitAttackAction = null;   // vurma animasyonu
+let attackCooldown = 0;          // 2 saniye cooldown
+const ATTACK_COOLDOWN = 2.0;     // 2 saniye
+
+let otherPlayerModels = {};      // diğer oyuncular için
+
+// ============ ESKİ TAVŞAN FONKSİYONLARINI DEĞİŞTİR ============
+// Artık createRabbitModel yerine GLTF kullanacağız
+
+function loadRabbitModel(isLocal = true) {
+    return new Promise((resolve) => {
+        loader.load('tavşan.gltf', (gltf) => {
+            const model = gltf.scene;
+            model.scale.set(0.8, 0.8, 0.8);
+            model.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+            
+            const mixer = new THREE.AnimationMixer(model);
+            let attackAction = null;
+            
+            if (gltf.animations && gltf.animations.length > 0) {
+                // Vurma animasyonunu bul (adında "attack" veya ilk animasyon)
+                const attackAnim = gltf.animations.find(a => 
+                    a.name.toLowerCase().includes('attack') || 
+                    a.name.toLowerCase().includes('hit') ||
+                    a.name.toLowerCase().includes('vur')
+                ) || gltf.animations[0];
+                
+                attackAction = mixer.clipAction(attackAnim);
+                attackAction.setLoop(THREE.LoopOnce);
+                attackAction.clampWhenFinished = true;
+                attackAction.stop();
+            }
+            
+            resolve({
+                model: model,
+                mixer: mixer,
+                attackAction: attackAction
+            });
+        }, undefined, (error) => {
+            console.error('GLTF yüklenemedi:', error);
+            // Hata durumunda eski küp tavşanı kullan
+            resolve(createFallbackRabbit(isLocal));
+        });
+    });
+}
+
+// Eski modeli yedek olarak tut
+function createFallbackRabbit(isLocal = false) {
+    const group = new THREE.Group();
+    const visualGroup = new THREE.Group();
+    group.add(visualGroup);
+    const color = isLocal ? 0xffffff : 0xddf0ff;
+    const mat = new THREE.MeshStandardMaterial({ color: color });
+    
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.75, 0.75), mat);
+    body.position.y = 0.4;
+    body.castShadow = true;
+    visualGroup.add(body);
+    
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), mat);
+    head.position.y = 0.95;
+    head.position.z = 0.1;
+    head.castShadow = true;
+    visualGroup.add(head);
+    
+    const noseMat = new THREE.MeshStandardMaterial({ color: 0xffaaaa });
+    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), noseMat);
+    nose.position.set(0, -0.05, 0.33);
+    head.add(nose);
+    
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+    const eyeGeo = new THREE.BoxGeometry(0.07, 0.07, 0.07);
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeL.position.set(-0.18, 0.1, 0.25);
+    head.add(eyeL);
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeR.position.set(0.18, 0.1, 0.25);
+    head.add(eyeR);
+    
+    const earGeo = new THREE.BoxGeometry(0.12, 0.55, 0.06);
+    const earL = new THREE.Mesh(earGeo, mat);
+    earL.position.set(-0.16, 0.45, -0.05);
+    head.add(earL);
+    const earR = new THREE.Mesh(earGeo, mat);
+    earR.position.set(0.16, 0.45, -0.05);
+    head.add(earR);
+    
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), mat);
+    tail.position.set(0, 0.25, -0.4);
+    visualGroup.add(tail);
+    
+    const footMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+    const footGeo = new THREE.BoxGeometry(0.24, 0.16, 0.34);
+    const fFL = new THREE.Mesh(footGeo, footMat);
+    fFL.position.set(-0.32, 0.08, 0.22);
+    group.add(fFL);
+    const fFR = new THREE.Mesh(footGeo, footMat);
+    fFR.position.set(0.32, 0.08, 0.22);
+    group.add(fFR);
+    const fBL = new THREE.Mesh(footGeo, footMat);
+    fBL.position.set(-0.32, -0.08, -0.22);
+    group.add(fBL);
+    const fBR = new THREE.Mesh(footGeo, footMat);
+    fBR.position.set(0.32, -0.08, -0.22);
+    group.add(fBR);
+    
+    return { model: group, mixer: null, attackAction: null, isFallback: true };
+}
+
+// ============ TAVŞAN OLUŞTUR ============
+let localRabbitData = null;
+let rabbit = null;
+
+async function initRabbit() {
+    const data = await loadRabbitModel(true);
+    localRabbitData = data;
+    rabbit = data.model;
+    rabbitMixer = data.mixer;
+    rabbitAttackAction = data.attackAction;
+    scene.add(rabbit);
+    return data;
+}
+
+// Diğer oyuncular için
+async function createOtherPlayer(id) {
+    const data = await loadRabbitModel(false);
+    otherPlayerModels[id] = data;
+    scene.add(data.model);
+    return data;
+}
+
+// ============ ESKİ FONKSİYONLARI GÜNCELLE ============
+function addOtherPlayer(id, x, y, z) {
+    if (otherPlayerModels[id]) return;
+    createOtherPlayer(id).then((data) => {
+        data.model.position.set(x, y, z);
+        otherPlayerModels[id] = data;
+    });
+}
+
+// ============ SALDIRI FONKSİYONU ============
+function performAttack() {
+    if (!gameActive || isDead) return;
+    if (attackCooldown > 0) return; // 2 saniye bekle
+    
+    attackCooldown = ATTACK_COOLDOWN;
+    
+    // Vurma animasyonunu oynat
+    if (rabbitAttackAction) {
+        rabbitAttackAction.stop();
+        rabbitAttackAction.reset();
+        rabbitAttackAction.play();
+    }
+    
+    // Online saldırı
+    if (isOnlineMode) socket.emit('playerAttack');
+    
+    // Maymunlara vur
+    monkeys.forEach((monkey) => {
+        const ud = monkey.userData;
+        if (ud.isDead) return;
+        const dist = rabbit.position.distanceTo(monkey.position);
+        if (dist < 2.5) {
+            ud.health -= 25;
+            if (ud.health <= 0) {
+                ud.health = 0;
+                ud.isDead = true;
+                ud.deathTime = Date.now();
+                monkey.visible = false;
+                monkeyHealthBarContainer.style.display = 'none';
+            }
+        }
+    });
+    
+    // Online oyunculara vur
+    if (isOnlineMode && gameActive) {
+        Object.keys(otherPlayerModels).forEach((id) => {
+            const op = otherPlayerModels[id].model.position;
+            if (rabbit.position.distanceTo(op) < 2.0) {
+                const angle = Math.atan2(op.x - rabbit.position.x, op.z - rabbit.position.z);
+                socket.emit('playerKnockback', { targetId: id, angle: angle });
+            }
+        });
+    }
+}
+
+// ============ ESKİ KODLAR (Değişmeyenler) ============
+
 function createCanvasTexture(width, height, drawFunc) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -244,19 +443,9 @@ document.addEventListener('keydown', (e) => {
             jumpCount++;
         }
     }
-    if ((e.key === 'e' || e.key === 'f') && gameActive && !isDead && !isAttacking) {
+    if ((e.key === 'e' || e.key === 'f') && gameActive && !isDead) {
         e.preventDefault();
-        isAttacking = true; attackAnimTime = 0;
-        if (isOnlineMode) socket.emit('playerAttack');
-        if (isOnlineMode && gameActive) {
-            Object.keys(otherPlayers).forEach((id) => {
-                const op = otherPlayers[id].mesh.position;
-                if (rabbit.position.distanceTo(op) < 2.0) {
-                    const angle = Math.atan2(op.x - rabbit.position.x, op.z - rabbit.position.z);
-                    socket.emit('playerKnockback', { targetId: id, angle: angle });
-                }
-            });
-        }
+        performAttack();
     }
     if (e.key === 'm' && e.ctrlKey && e.shiftKey) {
         const code = prompt('Mod kodu:');
@@ -317,19 +506,7 @@ document.getElementById('jump-button').addEventListener('touchstart', (e) => {
 
 document.getElementById('attack-button').addEventListener('touchstart', (e) => {
     e.preventDefault();
-    if (gameActive && !isDead && !isAttacking) {
-        isAttacking = true; attackAnimTime = 0;
-        if (isOnlineMode) socket.emit('playerAttack');
-        if (isOnlineMode && gameActive) {
-            Object.keys(otherPlayers).forEach((id) => {
-                const op = otherPlayers[id].mesh.position;
-                if (rabbit.position.distanceTo(op) < 2.0) {
-                    const angle = Math.atan2(op.x - rabbit.position.x, op.z - rabbit.position.z);
-                    socket.emit('playerKnockback', { targetId: id, angle: angle });
-                }
-            });
-        }
-    }
+    performAttack();
 }, { passive: false });
 
 const squareSize = 94;
@@ -742,36 +919,8 @@ function createKey(x, y, z) {
     return group;
 }
 
-const bodyMatRabbit = new THREE.MeshStandardMaterial({ color: 0xffffff });
-const otherBodyMatRabbit = new THREE.MeshStandardMaterial({ color: 0xddf0ff });
-const noseMatRabbit = new THREE.MeshStandardMaterial({ color: 0xffaaaa });
-const eyeMatRabbit = new THREE.MeshBasicMaterial({ color: 0x333333 });
-
-function createRabbitModel(isLocal = false) {
-    const group = new THREE.Group(); const visualGroup = new THREE.Group(); group.add(visualGroup);
-    const currentMat = isLocal ? bodyMatRabbit : otherBodyMatRabbit;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.75, 0.75), currentMat);
-    body.position.y = 0.4; body.castShadow = true; visualGroup.add(body);
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), currentMat);
-    head.position.y = 0.95; head.position.z = 0.1; head.castShadow = true; visualGroup.add(head);
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), noseMatRabbit);
-    nose.position.y = -0.05; nose.position.z = 0.33; head.add(nose);
-    const eyeGeo = new THREE.BoxGeometry(0.07, 0.07, 0.07);
-    const eyeL = new THREE.Mesh(eyeGeo, eyeMatRabbit); eyeL.position.set(-0.18, 0.1, 0.25); head.add(eyeL);
-    const eyeR = new THREE.Mesh(eyeGeo, eyeMatRabbit); eyeR.position.set(0.18, 0.1, 0.25); head.add(eyeR);
-    const earGeo = new THREE.BoxGeometry(0.12, 0.55, 0.06);
-    const earL = new THREE.Mesh(earGeo, currentMat); earL.position.set(-0.16, 0.45, -0.05); head.add(earL);
-    const earR = new THREE.Mesh(earGeo, currentMat); earR.position.set(0.16, 0.45, -0.05); head.add(earR);
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), currentMat);
-    tail.position.set(0, 0.25, -0.4); visualGroup.add(tail);
-    const footGeo = new THREE.BoxGeometry(0.24, 0.16, 0.34);
-    const footMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
-    const fFL = new THREE.Mesh(footGeo, footMat); fFL.position.set(-0.32, 0.08, 0.22); group.add(fFL);
-    const fFR = new THREE.Mesh(footGeo, footMat); fFR.position.set(0.32, 0.08, 0.22); group.add(fFR);
-    const fBL = new THREE.Mesh(footGeo, footMat); fBL.position.set(-0.32, -0.08, -0.22); group.add(fBL);
-    const fBR = new THREE.Mesh(footGeo, footMat); fBR.position.set(0.32, -0.08, -0.22); group.add(fBR);
-    return { mesh: group, visual: visualGroup, head: head, feet: [fFL, fFR, fBL, fBR] };
-}
+let cageGroup = null;
+let cageRabbit = null;
 
 function createCage(x, z) {
     const group = new THREE.Group();
@@ -781,6 +930,7 @@ function createCage(x, z) {
     floor.position.y = 0.1;
     floor.receiveShadow = true;
     group.add(floor);
+    obstacles.push(floor);
     for (let i = 0; i < 12; i++) {
         const angle = (i / 12) * Math.PI * 2;
         const barGeo = new THREE.CylinderGeometry(0.08, 0.08, 3, 8);
@@ -788,33 +938,54 @@ function createCage(x, z) {
         bar.position.set(Math.cos(angle) * 1.3, 1.7, Math.sin(angle) * 1.3);
         bar.castShadow = true;
         group.add(bar);
+        obstacles.push(bar);
     }
     const bottomRingGeo = new THREE.TorusGeometry(1.3, 0.08, 8, 16);
     const bottomRing = new THREE.Mesh(bottomRingGeo, barMat);
     bottomRing.rotation.x = Math.PI / 2;
     bottomRing.position.y = 0.3;
     group.add(bottomRing);
+    obstacles.push(bottomRing);
     const roofGeo = new THREE.CylinderGeometry(1.45, 1.45, 0.15, 8);
     const roofMat = new THREE.MeshStandardMaterial({ color: 0xaa8866, roughness: 0.7 });
     const roof = new THREE.Mesh(roofGeo, roofMat);
     roof.position.y = 3.25;
     roof.castShadow = true;
     group.add(roof);
+    obstacles.push(roof);
     const lockGeo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
     const lockMat = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.3, emissive: 0x330000, emissiveIntensity: 0.5 });
     const lock = new THREE.Mesh(lockGeo, lockMat);
     lock.position.set(0, 1.8, 1.35);
     lock.name = 'lock';
     group.add(lock);
-    const captiveModel = createRabbitModel(true);
-    const captiveRabbitMesh = captiveModel.mesh;
-    captiveRabbitMesh.position.set(0, 0.5, 0);
-    captiveRabbitMesh.scale.set(0.9, 0.9, 0.9);
-    group.add(captiveRabbitMesh);
+    obstacles.push(lock);
+    
+    // Kafesteki tavşan için GLTF kullan
+    loader.load('tavşan.gltf', (gltf) => {
+        const captiveModel = gltf.scene;
+        captiveModel.scale.set(0.6, 0.6, 0.6);
+        captiveModel.position.set(0, 0.3, 0);
+        captiveModel.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+        group.add(captiveModel);
+        cageRabbit = captiveModel;
+    }, undefined, () => {
+        // Hata durumunda yedek küp tavşan
+        const fallback = createFallbackRabbit(true);
+        fallback.model.scale.set(0.8, 0.8, 0.8);
+        fallback.model.position.set(0, 0.3, 0);
+        group.add(fallback.model);
+        cageRabbit = fallback.model;
+    });
+    
     group.position.set(x, 0, z);
     gameplayGroup.add(group);
     cageGroup = group;
-    cageRabbit = captiveRabbitMesh;
     return group;
 }
 
@@ -871,7 +1042,7 @@ createSign(0, 43, "Yağmurlu Orman", Math.PI);
 createGoldenPortal(200, 80, 0, 37);
 createSign(200, 76, "Geri Dön", 0);
 
-// ===================== MINECRAFT ORMAN TAPINAĞI (Birebir) =====================
+// ===================== TAPINAKLAR =====================
 const templeLoc = { x: 310, z: 100 };
 let secretRoomReady = false;
 let lastPortalTime = 0;
@@ -881,14 +1052,12 @@ function buildJungleTemple() {
     const mossy = new THREE.MeshStandardMaterial({ color: 0x7c8a6e, roughness: 0.85 });
     const mossyDark = new THREE.MeshStandardMaterial({ color: 0x5c6a4e, roughness: 0.9 });
     
-    // Zemin (9x9)
     const floor = new THREE.Mesh(new THREE.BoxGeometry(9, 0.5, 9), mossy);
     floor.position.set(tx, -0.2, tz);
     floor.castShadow = true;
     gameplayGroup.add(floor);
     obstacles.push(floor);
     
-    // Duvarlar (yükseklik 2 blok)
     const back = new THREE.Mesh(new THREE.BoxGeometry(9, 1, 0.5), mossy);
     back.position.set(tx, 0.5, tz - 4);
     back.castShadow = true;
@@ -907,7 +1076,6 @@ function buildJungleTemple() {
     gameplayGroup.add(right);
     obstacles.push(right);
     
-    // Ön duvar (giriş için boşluk bırak)
     const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1, 0.5), mossy);
     frontLeft.position.set(tx - 2.5, 0.5, tz + 4);
     frontLeft.castShadow = true;
@@ -920,7 +1088,6 @@ function buildJungleTemple() {
     gameplayGroup.add(frontRight);
     obstacles.push(frontRight);
     
-    // Merdivenler (3 basamak)
     for (let i = 0; i < 3; i++) {
         const step = new THREE.Mesh(new THREE.BoxGeometry(2, 0.3, 1), mossyDark);
         step.position.set(tx, i * 0.3 + 0.15, tz + 5 + i * 0.7);
@@ -929,7 +1096,6 @@ function buildJungleTemple() {
         obstacles.push(step);
     }
     
-    // Siyah Portal (girişin ortasında)
     const portalMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0x111111, transparent: true, opacity: 0.9 });
     const portalBlock = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 0.3), portalMat);
     portalBlock.position.set(tx, 1, tz + 4.6);
@@ -937,7 +1103,6 @@ function buildJungleTemple() {
     gameplayGroup.add(portalBlock);
     obstacles.push(portalBlock);
     
-    // Portal çerçevesi
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x7c8a6e });
     const fL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2.2, 0.3), frameMat);
     fL.position.set(tx - 1.2, 1, tz + 4.7);
@@ -950,7 +1115,6 @@ function buildJungleTemple() {
     gameplayGroup.add(fT);
 }
 
-// ===================== YENİ EKLENEN GÖRKEMLİ TAPINAK FONKSİYONU =====================
 function createGorkemliTemple(x, y, z) {
     const templeGroup = new THREE.Group();
     templeGroup.position.set(x, y, z);
@@ -958,7 +1122,6 @@ function createGorkemliTemple(x, y, z) {
     const stoneMaterial = new THREE.MeshStandardMaterial({ map: stoneTexture, roughness: 0.8 });
     const roofMaterial = new THREE.MeshStandardMaterial({ map: roofTileTexture, roughness: 0.6 });
 
-    // 1. TAPINAK TABANI (Podyum)
     const base1Geo = new THREE.BoxGeometry(16, 1, 16);
     const base1 = new THREE.Mesh(base1Geo, stoneMaterial);
     base1.position.y = 0.5;
@@ -973,7 +1136,6 @@ function createGorkemliTemple(x, y, z) {
     templeGroup.add(base2);
     obstacles.push(base2);
 
-    // 2. MERDİVENLER
     for (let i = 0; i < 4; i++) {
         const stepGeo = new THREE.BoxGeometry(6, 0.4, 1);
         const step = new THREE.Mesh(stepGeo, stoneMaterial);
@@ -983,7 +1145,6 @@ function createGorkemliTemple(x, y, z) {
         obstacles.push(step);
     }
 
-    // 3. SÜTUNLAR
     const columnPositions = [
         [-5, -5], [-5, 0], [-5, 5],
         [5, -5],  [5, 0],  [5, 5]
@@ -997,7 +1158,6 @@ function createGorkemliTemple(x, y, z) {
         obstacles.push(column);
     });
 
-    // 4. TAPINAK ÇATISI
     const roofBaseGeo = new THREE.BoxGeometry(14, 1, 14);
     const roofBase = new THREE.Mesh(roofBaseGeo, stoneMaterial);
     roofBase.position.y = 8.5;
@@ -1013,7 +1173,6 @@ function createGorkemliTemple(x, y, z) {
     templeGroup.add(roofPyramid);
     obstacles.push(roofPyramid);
 
-    // 5. MERKEZDEKİ ALTIN KRİSTAL
     const crystalGeo = new THREE.OctahedronGeometry(1.2, 0);
     const crystal = new THREE.Mesh(crystalGeo, goldMat);
     crystal.position.set(0, 4, 0);
@@ -1070,9 +1229,8 @@ function teleportToGreenRoom() {
     }
 }
 
-// Haritaya iki tapınağı birden yükleme satırları
 buildJungleTemple();
-createGorkemliTemple(0, 0, -25); // Haritanın merkezinin biraz ilerisine kuruldu. İstediğin koordinatla değiştirebilirsin.
+createGorkemliTemple(0, 0, -25);
 
 const coordSpan = document.createElement('span');
 coordSpan.id = 'coords-display';
@@ -1080,12 +1238,6 @@ coordSpan.style.marginLeft = '15px';
 coordSpan.style.color = '#ffeb3b';
 document.getElementById('game-info-ui').appendChild(coordSpan);
 
-const localPlayer = createRabbitModel(true);
-const rabbit = localPlayer.mesh; const rabbitVisualGroup = localPlayer.visual; const head = localPlayer.head;
-const [footFL, footFR, footBL, footBR] = localPlayer.feet;
-scene.add(rabbit);
-
-let otherPlayers = {};
 let isAttacking = false, attackAnimTime = 0;
 let myHealth = 100; const maxHealth = 100;
 let inRainforest = false;
@@ -1121,11 +1273,11 @@ function checkCollision(newX, newY, newZ) {
     if (!gameActive) return false;
     const playerBox = new THREE.Box3(new THREE.Vector3(newX - 0.28, newY + 0.15, newZ - 0.28), new THREE.Vector3(newX + 0.28, newY + 1.1, newZ + 0.28));
     gameplayGroup.updateMatrixWorld(true);
-    for (let i = 0; i < obstacles.length; i++) {
+    for (let i = 0; i < obstacles.length; i++)obby {
         let obj = obstacles[i];
         if (!obj || !obj.parent) continue;
         let obstacleBox = new THREE.Box3().setFromObject(obj);
-        if (playerBox.intersectsBox(obstacleBox)) { if (newY >= obstacleBox.max.y - 0.3) continue; return true; }
+UI        if (playerBox.intersectsBox(obstacleBox)) { if (newY >= obstacleBox.max.y - 0.3) continue; return true; }
     }
     return false;
 }
@@ -1182,7 +1334,7 @@ for (let i = 0; i < 4; i++) {
     pads.push(pad);
 }
 
-function setupLobbyUI(d) {
+function setupL(d) {
     maxPlayersLimit = d.maxPlayers;
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('lobby-ui').style.display = 'block';
@@ -1193,8 +1345,8 @@ function setupLobbyUI(d) {
     else { document.getElementById('ui-start-btn').style.display = 'none'; document.getElementById('ui-waiting-msg').style.display = 'block'; }
     gameplayGroup.visible = false; lobbyGroup.visible = true;
     rabbit.position.set(padPositions[0].x, 0.2, padPositions[0].z);
-    Object.keys(otherPlayers).forEach(id => scene.remove(otherPlayers[id].mesh));
-    otherPlayers = {};
+    Object.keys(otherPlayerModels).forEach(id => scene.remove(otherPlayerModels[id].model));
+    otherPlayerModels = {};
     let pi = 1;
     Object.keys(d.players).forEach((id) => { if (id !== socket.id && pi < 4) { const pos = padPositions[pi]; addOtherPlayer(id, pos.x, 0.2, pos.z); pi++; } });
 }
@@ -1210,24 +1362,28 @@ socket.on('gameStartedAtAll', (ap) => {
     lobbyGroup.visible = false; gameplayGroup.visible = true;
     rabbit.position.set(0, 0, 0); rabbit.rotation.y = 0;
     myHealth = maxHealth; updateHealthBar();
-    Object.keys(otherPlayers).forEach(id => scene.remove(otherPlayers[id].mesh));
-    otherPlayers = {};
+    Object.keys(otherPlayerModels).forEach(id => scene.remove(otherPlayerModels[id].model));
+    otherPlayerModels = {};
     Object.keys(ap).forEach((id) => { if (id !== socket.id) addOtherPlayer(id, 0, 0, 0); });
     gameActive = true; isDead = false;
     gameplayGroup.updateMatrixWorld(true);
 });
 
-function addOtherPlayer(id, x, y, z) {
-    if (otherPlayers[id]) return;
-    const md = createRabbitModel(false);
-    md.mesh.position.set(x, y, z); scene.add(md.mesh);
-    otherPlayers[id] = { mesh: md.mesh, visual: md.visual, head: md.head, isAttacking: false, attackAnimTime: 0 };
-}
-
-socket.on('playerMoved', (pi) => { if (gameActive && otherPlayers[pi.id]) { otherPlayers[pi.id].mesh.position.set(pi.x, pi.y, pi.z); otherPlayers[pi.id].mesh.rotation.y = pi.ry; } });
-socket.on('playerAttacked', (id) => { if (gameActive && otherPlayers[id]) { otherPlayers[id].isAttacking = true; otherPlayers[id].attackAnimTime = 0; } });
+socket.on('playerMoved', (pi) => {
+    if (gameActive && otherPlayerModels[pi.id]) {
+        otherPlayerModels[pi.id].model.position.set(pi.x, pi.y, pi.z);
+        otherPlayerModels[pi.id].model.rotation.y = pi.ry;
+    }
+});
+socket.on('playerAttacked', (id) => {
+    if (gameActive && otherPlayerModels[id] && otherPlayerModels[id].attackAction) {
+        otherPlayerModels[id].attackAction.stop();
+        otherPlayerModels[id].attackAction.reset();
+        otherPlayerModels[id].attackAction.play();
+    }
+});
 socket.on('knockback', (angle) => { if (!gameActive || isDead) return; rabbit.position.x += Math.sin(angle) * 2.0; rabbit.position.z += Math.cos(angle) * 2.0; socket.emit('playerMovement', { x: rabbit.position.x, y: rabbit.position.y, z: rabbit.position.z, ry: rabbit.rotation.y }); });
-socket.on('playerDisconnected', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id].mesh); delete otherPlayers[id]; } });
+socket.on('playerDisconnected', (id) => { if (otherPlayerModels[id]) { scene.remove(otherPlayerModels[id].model); delete otherPlayerModels[id]; } });
 socket.on('hostDisconnected', () => { alert('Oda sahibi ayrıldı.'); location.reload(); });
 
 let cameraAngleY = 0, cameraAngleX = 0.4, cameraDistance = 10, touchStartX = 0, touchStartY = 0, isTurningCamera = false;
@@ -1303,16 +1459,7 @@ function updateAllMonkeys(deltaTime) {
             document.getElementById('monkey-health-fill').style.width = healthPercent + '%';
             document.getElementById('monkey-health-text').innerText = ud.health + '/' + ud.maxHealth;
         }
-        if (isAttacking && dist < ud.attackRange + 0.5 && attackAnimTime < 0.2) {
-            ud.health -= 25;
-            if (ud.health <= 0) {
-                ud.health = 0;
-                ud.isDead = true;
-                ud.deathTime = Date.now();
-                monkey.visible = false;
-                monkeyHealthBarContainer.style.display = 'none';
-            }
-        }
+        // Saldırı kontrolü artık performAttack içinde yapılıyor
     });
     if (allDead && !hasKey && keyMesh) {
         keyMesh.visible = true;
@@ -1359,15 +1506,27 @@ function showMessage(text, duration = 2000) {
 }
 
 let legWiggle = 0;
+
+// ============ GAME LOOP ============
 function animate() {
     requestAnimationFrame(animate);
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
     
+    // Cooldown'u azalt
+    if (attackCooldown > 0) attackCooldown -= deltaTime;
+    
+    // Animasyon mixer'ları güncelle
+    if (rabbitMixer) rabbitMixer.update(deltaTime);
+    Object.keys(otherPlayerModels).forEach(id => {
+        if (otherPlayerModels[id].mixer) {
+            otherPlayerModels[id].mixer.update(deltaTime);
+        }
+    });
+    
     updateAllMonkeys(deltaTime);
     teleportToGreenRoom();
     
-    // Tapınak Kristalinin kendi etrafında dönme animasyonu
     const crystalMesh = scene.getObjectByName("templeCrystal");
     if(crystalMesh) {
         crystalMesh.rotation.y += deltaTime * 0.8;
@@ -1411,7 +1570,7 @@ function animate() {
     }
     if (isOnlineMode && !gameActive && !isDead) {
         rabbit.rotation.y += 1.2 * deltaTime;
-        Object.keys(otherPlayers).forEach((id) => { otherPlayers[id].mesh.rotation.y += 1.2 * deltaTime; });
+        Object.keys(otherPlayerModels).forEach((id) => { otherPlayerModels[id].model.rotation.y += 1.2 * deltaTime; });
         camera.position.set(0, 3.5, 43); camera.lookAt(0, 1.2, 50);
     }
     if (gameActive && !isDead) {
@@ -1426,41 +1585,25 @@ function animate() {
             rabbit.rotation.y = Math.atan2(dx, dz);
             hasMoved = true;
             legWiggle += 15 * deltaTime;
-            footFL.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12;
-            footBR.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12;
-            footFR.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12; // Sabit kısımdaki düzeltme korundu
-            footBL.position.y = 0.08 + Math.abs(Math.cos(legWiggle)) * 0.12;
-        } else { footFL.position.y = 0.08; footFR.position.y = 0.08; footBL.position.y = 0.08; footBR.position.y = 0.08; }
-        if (isAttacking) {
-            attackAnimTime += 12 * deltaTime; const f = Math.sin(attackAnimTime * Math.PI);
-            if (attackAnimTime <= 1.0) { rabbitVisualGroup.position.z = f * 0.5; head.position.z = 0.1 + f * 0.25; head.rotation.x = f * 0.4; }
-            else { isAttacking = false; rabbitVisualGroup.position.z = 0; head.position.z = 0.1; head.rotation.x = 0; }
+            // Ayak animasyonu - GLTF modelinde olmayabilir, ama kalabilir
         }
-        Object.keys(otherPlayers).forEach((id) => {
-            const op = otherPlayers[id];
-            if (op.isAttacking) {
-                op.attackAnimTime += 12 * deltaTime; const f = Math.sin(op.attackAnimTime * Math.PI);
-                if (op.attackAnimTime <= 1.0) { op.visual.position.z = f * 0.5; op.head.position.z = 0.1 + f * 0.25; op.head.rotation.x = f * 0.4; }
-                else { op.isAttacking = false; op.visual.position.z = 0; op.head.position.z = 0.1; op.head.rotation.x = 0; }
-            }
-        });
         const floorY = getFloorY(rabbit.position.x, rabbit.position.y, rabbit.position.z);
         velocityY -= gravity * 60 * deltaTime;
         rabbit.position.y += velocityY * deltaTime;
         if (rabbit.position.y <= floorY) { rabbit.position.y = floorY; velocityY = 0; jumpCount = 0; }
         if (isOnlineMode) {
-            Object.keys(otherPlayers).forEach((id) => {
-                const other = otherPlayers[id].mesh;
-                const dist = rabbit.position.distanceTo(other.position);
+            Object.keys(otherPlayerModels).forEach((id) => {
+                const other = otherPlayerModels[id].model.position;
+                const dist = rabbit.position.distanceTo(other);
                 if (dist < 1.2 && dist > 0.01) {
-                    const angle = Math.atan2(rabbit.position.x - other.position.x, rabbit.position.z - other.position.z);
+                    const angle = Math.atan2(rabbit.position.x - other.x, rabbit.position.z - other.z);
                     const px = Math.sin(angle) * 0.05, pz = Math.cos(angle) * 0.05;
                     rabbit.position.x += px; rabbit.position.z += pz;
-                    other.position.x -= px; other.position.z -= pz;
+                    other.x -= px; other.z -= pz;
                 }
             });
         }
-        if (hasMoved || isAttacking) socket.emit('playerMovement', { x: rabbit.position.x, y: rabbit.position.y, z: rabbit.position.z, ry: rabbit.rotation.y });
+        if (hasMoved) socket.emit('playerMovement', { x: rabbit.position.x, y: rabbit.position.y, z: rabbit.position.z, ry: rabbit.rotation.y });
         camera.position.x = rabbit.position.x - Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
         camera.position.z = rabbit.position.z - Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
         camera.position.y = rabbit.position.y + Math.sin(cameraAngleX) * cameraDistance;
@@ -1468,5 +1611,22 @@ function animate() {
     }
     renderer.render(scene, camera);
 }
-animate();
+
+// ============ BAŞLAT ============
+async function startGame() {
+    await initRabbit();
+    animate();
+}
+
+// GLTFLoader'ı ekleyelim
+const script = document.createElement('script');
+script.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
+script.onload = startGame;
+document.head.appendChild(script);
+
+// Eğer GLTFLoader zaten yüklüyse
+if (typeof THREE.GLTFLoader !== 'undefined') {
+    startGame();
+}
+
 window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
