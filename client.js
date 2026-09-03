@@ -53,17 +53,71 @@ const portals = [];
 // ============ GLTF YÜKLEYİCİ ============
 const loader = new THREE.GLTFLoader();
 
-// ============ TAVŞAN MODELLERİ ============
-let rabbitModel = null;
-let rabbitMixer = null;
-let rabbitAttackAction = null;
+// ============ SALDIRI COOLDOWN ============
 let attackCooldown = 0;
 const ATTACK_COOLDOWN = 2.0;
 
-let otherPlayerModels = {};
+// ============ TAVŞAN MODELİ ============
+let rabbitModelData = null;
+let rabbitMixer = null;
+let rabbitAttackAction = null;
 
-// ============ TAVŞAN YÜKLEME ============
-function loadRabbitModel(isLocal = true) {
+// ============ ORİJİNAL createRabbitModel FONKSİYONU (DEĞİŞMEDİ) ============
+function createRabbitModel(isLocal = false) {
+    const group = new THREE.Group();
+    const visualGroup = new THREE.Group();
+    group.add(visualGroup);
+    const currentMat = isLocal ? new THREE.MeshStandardMaterial({ color: 0xffffff }) : new THREE.MeshStandardMaterial({ color: 0xddf0ff });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.75, 0.75), currentMat);
+    body.position.y = 0.4;
+    body.castShadow = true;
+    visualGroup.add(body);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), currentMat);
+    head.position.y = 0.95;
+    head.position.z = 0.1;
+    head.castShadow = true;
+    visualGroup.add(head);
+    const noseMat = new THREE.MeshStandardMaterial({ color: 0xffaaaa });
+    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), noseMat);
+    nose.position.set(0, -0.05, 0.33);
+    head.add(nose);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+    const eyeGeo = new THREE.BoxGeometry(0.07, 0.07, 0.07);
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeL.position.set(-0.18, 0.1, 0.25);
+    head.add(eyeL);
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeR.position.set(0.18, 0.1, 0.25);
+    head.add(eyeR);
+    const earGeo = new THREE.BoxGeometry(0.12, 0.55, 0.06);
+    const earL = new THREE.Mesh(earGeo, currentMat);
+    earL.position.set(-0.16, 0.45, -0.05);
+    head.add(earL);
+    const earR = new THREE.Mesh(earGeo, currentMat);
+    earR.position.set(0.16, 0.45, -0.05);
+    head.add(earR);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), currentMat);
+    tail.position.set(0, 0.25, -0.4);
+    visualGroup.add(tail);
+    const footGeo = new THREE.BoxGeometry(0.24, 0.16, 0.34);
+    const footMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+    const fFL = new THREE.Mesh(footGeo, footMat);
+    fFL.position.set(-0.32, 0.08, 0.22);
+    group.add(fFL);
+    const fFR = new THREE.Mesh(footGeo, footMat);
+    fFR.position.set(0.32, 0.08, 0.22);
+    group.add(fFR);
+    const fBL = new THREE.Mesh(footGeo, footMat);
+    fBL.position.set(-0.32, -0.08, -0.22);
+    group.add(fBL);
+    const fBR = new THREE.Mesh(footGeo, footMat);
+    fBR.position.set(0.32, -0.08, -0.22);
+    group.add(fBR);
+    return { mesh: group, visual: visualGroup, head: head, feet: [fFL, fFR, fBL, fBR] };
+}
+
+// ============ GLTF İLE TAVŞAN YÜKLEME ============
+function loadGLTFRabbit(isLocal = false) {
     return new Promise((resolve) => {
         loader.load('tavşan.gltf', (gltf) => {
             const model = gltf.scene;
@@ -92,110 +146,35 @@ function loadRabbitModel(isLocal = true) {
             }
             
             resolve({
-                model: model,
+                mesh: model,
                 mixer: mixer,
-                attackAction: attackAction
+                attackAction: attackAction,
+                isGLTF: true
             });
         }, undefined, (error) => {
-            console.error('GLTF yüklenemedi:', error);
-            resolve(createFallbackRabbit(isLocal));
+            console.error('GLTF yüklenemedi, yedek model kullanılıyor:', error);
+            const fallback = createRabbitModel(isLocal);
+            resolve({
+                mesh: fallback.mesh,
+                mixer: null,
+                attackAction: null,
+                isGLTF: false,
+                visual: fallback.visual,
+                head: fallback.head,
+                feet: fallback.feet
+            });
         });
     });
 }
 
-function createFallbackRabbit(isLocal = false) {
-    const group = new THREE.Group();
-    const visualGroup = new THREE.Group();
-    group.add(visualGroup);
-    const color = isLocal ? 0xffffff : 0xddf0ff;
-    const mat = new THREE.MeshStandardMaterial({ color: color });
-    
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.75, 0.75), mat);
-    body.position.y = 0.4;
-    body.castShadow = true;
-    visualGroup.add(body);
-    
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), mat);
-    head.position.y = 0.95;
-    head.position.z = 0.1;
-    head.castShadow = true;
-    visualGroup.add(head);
-    
-    const noseMat = new THREE.MeshStandardMaterial({ color: 0xffaaaa });
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), noseMat);
-    nose.position.set(0, -0.05, 0.33);
-    head.add(nose);
-    
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
-    const eyeGeo = new THREE.BoxGeometry(0.07, 0.07, 0.07);
-    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeL.position.set(-0.18, 0.1, 0.25);
-    head.add(eyeL);
-    const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeR.position.set(0.18, 0.1, 0.25);
-    head.add(eyeR);
-    
-    const earGeo = new THREE.BoxGeometry(0.12, 0.55, 0.06);
-    const earL = new THREE.Mesh(earGeo, mat);
-    earL.position.set(-0.16, 0.45, -0.05);
-    head.add(earL);
-    const earR = new THREE.Mesh(earGeo, mat);
-    earR.position.set(0.16, 0.45, -0.05);
-    head.add(earR);
-    
-    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), mat);
-    tail.position.set(0, 0.25, -0.4);
-    visualGroup.add(tail);
-    
-    const footMat = new THREE.MeshStandardMaterial({ color: 0xcccccc });
-    const footGeo = new THREE.BoxGeometry(0.24, 0.16, 0.34);
-    const fFL = new THREE.Mesh(footGeo, footMat);
-    fFL.position.set(-0.32, 0.08, 0.22);
-    group.add(fFL);
-    const fFR = new THREE.Mesh(footGeo, footMat);
-    fFR.position.set(0.32, 0.08, 0.22);
-    group.add(fFR);
-    const fBL = new THREE.Mesh(footGeo, footMat);
-    fBL.position.set(-0.32, -0.08, -0.22);
-    group.add(fBL);
-    const fBR = new THREE.Mesh(footGeo, footMat);
-    fBR.position.set(0.32, -0.08, -0.22);
-    group.add(fBR);
-    
-    return { model: group, mixer: null, attackAction: null, isFallback: true };
-}
-
-// ============ ANA TAVŞAN ============
-let localRabbitData = null;
-let rabbit = null;
-
-async function initRabbit() {
-    const data = await loadRabbitModel(true);
-    localRabbitData = data;
-    rabbit = data.model;
-    rabbitMixer = data.mixer;
-    rabbitAttackAction = data.attackAction;
-    scene.add(rabbit);
-    return data;
-}
-
-// ============ DİĞER OYUNCULAR ============
-function addOtherPlayer(id, x, y, z) {
-    if (otherPlayerModels[id]) return;
-    loadRabbitModel(false).then((data) => {
-        data.model.position.set(x, y, z);
-        scene.add(data.model);
-        otherPlayerModels[id] = data;
-    });
-}
-
-// ============ SALDIRI ============
+// ============ SALDIRI FONKSİYONU ============
 function performAttack() {
     if (!gameActive || isDead) return;
     if (attackCooldown > 0) return;
     
     attackCooldown = ATTACK_COOLDOWN;
     
+    // GLTF animasyonu varsa oynat
     if (rabbitAttackAction) {
         rabbitAttackAction.stop();
         rabbitAttackAction.reset();
@@ -221,8 +200,8 @@ function performAttack() {
     });
     
     if (isOnlineMode && gameActive) {
-        Object.keys(otherPlayerModels).forEach((id) => {
-            const op = otherPlayerModels[id].model.position;
+        Object.keys(otherPlayers).forEach((id) => {
+            const op = otherPlayers[id].mesh.position;
             if (rabbit.position.distanceTo(op) < 2.0) {
                 const angle = Math.atan2(op.x - rabbit.position.x, op.z - rabbit.position.z);
                 socket.emit('playerKnockback', { targetId: id, angle: angle });
@@ -943,25 +922,13 @@ function createCage(x, z) {
     group.add(lock);
     obstacles.push(lock);
     
-    loader.load('tavşan.gltf', (gltf) => {
-        const captiveModel = gltf.scene;
-        captiveModel.scale.set(0.6, 0.6, 0.6);
-        captiveModel.position.set(0, 0.3, 0);
-        captiveModel.traverse((child) => {
-            if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
-        });
-        group.add(captiveModel);
-        cageRabbit = captiveModel;
-    }, undefined, () => {
-        const fallback = createFallbackRabbit(true);
-        fallback.model.scale.set(0.8, 0.8, 0.8);
-        fallback.model.position.set(0, 0.3, 0);
-        group.add(fallback.model);
-        cageRabbit = fallback.model;
-    });
+    // Kafesteki tavşan - yedek model kullan
+    const captiveData = createRabbitModel(true);
+    const captiveRabbitMesh = captiveData.mesh;
+    captiveRabbitMesh.position.set(0, 0.5, 0);
+    captiveRabbitMesh.scale.set(0.9, 0.9, 0.9);
+    group.add(captiveRabbitMesh);
+    cageRabbit = captiveRabbitMesh;
     
     group.position.set(x, 0, z);
     gameplayGroup.add(group);
@@ -1218,6 +1185,15 @@ coordSpan.style.marginLeft = '15px';
 coordSpan.style.color = '#ffeb3b';
 document.getElementById('game-info-ui').appendChild(coordSpan);
 
+// ============ ORİJİNAL createRabbitModel KULLAN ============
+const localPlayer = createRabbitModel(true);
+const rabbit = localPlayer.mesh;
+const rabbitVisualGroup = localPlayer.visual;
+const head = localPlayer.head;
+const [footFL, footFR, footBL, footBR] = localPlayer.feet;
+scene.add(rabbit);
+
+let otherPlayers = {};
 let isAttacking = false, attackAnimTime = 0;
 let myHealth = 100; const maxHealth = 100;
 let inRainforest = false;
@@ -1325,8 +1301,8 @@ function setupLobbyUI(d) {
     else { document.getElementById('ui-start-btn').style.display = 'none'; document.getElementById('ui-waiting-msg').style.display = 'block'; }
     gameplayGroup.visible = false; lobbyGroup.visible = true;
     rabbit.position.set(padPositions[0].x, 0.2, padPositions[0].z);
-    Object.keys(otherPlayerModels).forEach(id => scene.remove(otherPlayerModels[id].model));
-    otherPlayerModels = {};
+    Object.keys(otherPlayers).forEach(id => scene.remove(otherPlayers[id].mesh));
+    otherPlayers = {};
     let pi = 1;
     Object.keys(d.players).forEach((id) => { if (id !== socket.id && pi < 4) { const pos = padPositions[pi]; addOtherPlayer(id, pos.x, 0.2, pos.z); pi++; } });
 }
@@ -1342,28 +1318,24 @@ socket.on('gameStartedAtAll', (ap) => {
     lobbyGroup.visible = false; gameplayGroup.visible = true;
     rabbit.position.set(0, 0, 0); rabbit.rotation.y = 0;
     myHealth = maxHealth; updateHealthBar();
-    Object.keys(otherPlayerModels).forEach(id => scene.remove(otherPlayerModels[id].model));
-    otherPlayerModels = {};
+    Object.keys(otherPlayers).forEach(id => scene.remove(otherPlayers[id].mesh));
+    otherPlayers = {};
     Object.keys(ap).forEach((id) => { if (id !== socket.id) addOtherPlayer(id, 0, 0, 0); });
     gameActive = true; isDead = false;
     gameplayGroup.updateMatrixWorld(true);
 });
 
-socket.on('playerMoved', (pi) => {
-    if (gameActive && otherPlayerModels[pi.id]) {
-        otherPlayerModels[pi.id].model.position.set(pi.x, pi.y, pi.z);
-        otherPlayerModels[pi.id].model.rotation.y = pi.ry;
-    }
-});
-socket.on('playerAttacked', (id) => {
-    if (gameActive && otherPlayerModels[id] && otherPlayerModels[id].attackAction) {
-        otherPlayerModels[id].attackAction.stop();
-        otherPlayerModels[id].attackAction.reset();
-        otherPlayerModels[id].attackAction.play();
-    }
-});
+function addOtherPlayer(id, x, y, z) {
+    if (otherPlayers[id]) return;
+    const md = createRabbitModel(false);
+    md.mesh.position.set(x, y, z); scene.add(md.mesh);
+    otherPlayers[id] = { mesh: md.mesh, visual: md.visual, head: md.head, isAttacking: false, attackAnimTime: 0 };
+}
+
+socket.on('playerMoved', (pi) => { if (gameActive && otherPlayers[pi.id]) { otherPlayers[pi.id].mesh.position.set(pi.x, pi.y, pi.z); otherPlayers[pi.id].mesh.rotation.y = pi.ry; } });
+socket.on('playerAttacked', (id) => { if (gameActive && otherPlayers[id]) { otherPlayers[id].isAttacking = true; otherPlayers[id].attackAnimTime = 0; } });
 socket.on('knockback', (angle) => { if (!gameActive || isDead) return; rabbit.position.x += Math.sin(angle) * 2.0; rabbit.position.z += Math.cos(angle) * 2.0; socket.emit('playerMovement', { x: rabbit.position.x, y: rabbit.position.y, z: rabbit.position.z, ry: rabbit.rotation.y }); });
-socket.on('playerDisconnected', (id) => { if (otherPlayerModels[id]) { scene.remove(otherPlayerModels[id].model); delete otherPlayerModels[id]; } });
+socket.on('playerDisconnected', (id) => { if (otherPlayers[id]) { scene.remove(otherPlayers[id].mesh); delete otherPlayers[id]; } });
 socket.on('hostDisconnected', () => { alert('Oda sahibi ayrıldı.'); location.reload(); });
 
 let cameraAngleY = 0, cameraAngleX = 0.4, cameraDistance = 10, touchStartX = 0, touchStartY = 0, isTurningCamera = false;
@@ -1439,6 +1411,16 @@ function updateAllMonkeys(deltaTime) {
             document.getElementById('monkey-health-fill').style.width = healthPercent + '%';
             document.getElementById('monkey-health-text').innerText = ud.health + '/' + ud.maxHealth;
         }
+        if (isAttacking && dist < ud.attackRange + 0.5 && attackAnimTime < 0.2) {
+            ud.health -= 25;
+            if (ud.health <= 0) {
+                ud.health = 0;
+                ud.isDead = true;
+                ud.deathTime = Date.now();
+                monkey.visible = false;
+                monkeyHealthBarContainer.style.display = 'none';
+            }
+        }
     });
     if (allDead && !hasKey && keyMesh) {
         keyMesh.visible = true;
@@ -1492,14 +1474,8 @@ function animate() {
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
     
+    // Cooldown'ı azalt
     if (attackCooldown > 0) attackCooldown -= deltaTime;
-    
-    if (rabbitMixer) rabbitMixer.update(deltaTime);
-    Object.keys(otherPlayerModels).forEach(id => {
-        if (otherPlayerModels[id].mixer) {
-            otherPlayerModels[id].mixer.update(deltaTime);
-        }
-    });
     
     updateAllMonkeys(deltaTime);
     teleportToGreenRoom();
@@ -1547,7 +1523,7 @@ function animate() {
     }
     if (isOnlineMode && !gameActive && !isDead) {
         rabbit.rotation.y += 1.2 * deltaTime;
-        Object.keys(otherPlayerModels).forEach((id) => { otherPlayerModels[id].model.rotation.y += 1.2 * deltaTime; });
+        Object.keys(otherPlayers).forEach((id) => { otherPlayers[id].mesh.rotation.y += 1.2 * deltaTime; });
         camera.position.set(0, 3.5, 43); camera.lookAt(0, 1.2, 50);
     }
     if (gameActive && !isDead) {
@@ -1561,14 +1537,37 @@ function animate() {
             if (!checkCollision(rabbit.position.x, rabbit.position.y, nz)) rabbit.position.z = nz;
             rabbit.rotation.y = Math.atan2(dx, dz);
             hasMoved = true;
+            legWiggle += 15 * deltaTime;
+            footFL.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12;
+            footBR.position.y = 0.08 + Math.abs(Math.sin(legWiggle)) * 0.12;
+            footFR.position.y = 0.08 + Math.abs(Math.sin(legWiggle + Math.PI/2)) * 0.12;
+            footBL.position.y = 0.08 + Math.abs(Math.cos(legWiggle)) * 0.12;
+        } else { footFL.position.y = 0.08; footFR.position.y = 0.08; footBL.position.y = 0.08; footBR.position.y = 0.08; }
+        
+        // ESKİ SALDIRI ANİMASYONU (GLTF yoksa çalışır)
+        if (isAttacking) {
+            attackAnimTime += 12 * deltaTime; const f = Math.sin(attackAnimTime * Math.PI);
+            if (attackAnimTime <= 1.0) { rabbitVisualGroup.position.z = f * 0.5; head.position.z = 0.1 + f * 0.25; head.rotation.x = f * 0.4; }
+            else { isAttacking = false; rabbitVisualGroup.position.z = 0; head.position.z = 0.1; head.rotation.x = 0; }
         }
+        
+        // Diğer oyuncuların saldırı animasyonu
+        Object.keys(otherPlayers).forEach((id) => {
+            const op = otherPlayers[id];
+            if (op.isAttacking) {
+                op.attackAnimTime += 12 * deltaTime; const f = Math.sin(op.attackAnimTime * Math.PI);
+                if (op.attackAnimTime <= 1.0) { op.visual.position.z = f * 0.5; op.head.position.z = 0.1 + f * 0.25; op.head.rotation.x = f * 0.4; }
+                else { op.isAttacking = false; op.visual.position.z = 0; op.head.position.z = 0.1; op.head.rotation.x = 0; }
+            }
+        });
+        
         const floorY = getFloorY(rabbit.position.x, rabbit.position.y, rabbit.position.z);
         velocityY -= gravity * 60 * deltaTime;
         rabbit.position.y += velocityY * deltaTime;
         if (rabbit.position.y <= floorY) { rabbit.position.y = floorY; velocityY = 0; jumpCount = 0; }
         if (isOnlineMode) {
-            Object.keys(otherPlayerModels).forEach((id) => {
-                const other = otherPlayerModels[id].model.position;
+            Object.keys(otherPlayers).forEach((id) => {
+                const other = otherPlayers[id].mesh.position;
                 const dist = rabbit.position.distanceTo(other);
                 if (dist < 1.2 && dist > 0.01) {
                     const angle = Math.atan2(rabbit.position.x - other.x, rabbit.position.z - other.z);
@@ -1578,7 +1577,7 @@ function animate() {
                 }
             });
         }
-        if (hasMoved) socket.emit('playerMovement', { x: rabbit.position.x, y: rabbit.position.y, z: rabbit.position.z, ry: rabbit.rotation.y });
+        if (hasMoved || isAttacking) socket.emit('playerMovement', { x: rabbit.position.x, y: rabbit.position.y, z: rabbit.position.z, ry: rabbit.rotation.y });
         camera.position.x = rabbit.position.x - Math.sin(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
         camera.position.z = rabbit.position.z - Math.cos(cameraAngleY) * Math.cos(cameraAngleX) * cameraDistance;
         camera.position.y = rabbit.position.y + Math.sin(cameraAngleX) * cameraDistance;
@@ -1587,20 +1586,41 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// ============ BAŞLAT ============
-async function startGame() {
-    await initRabbit();
+// ============ GLTF YÜKLEME ============
+async function loadGLTFModel() {
+    try {
+        const gltfData = await loadGLTFRabbit(true);
+        // GLTF başarılı yüklendiyse, eski rabbit'i kaldır ve GLTF'yi ekle
+        if (gltfData.isGLTF !== false) {
+            scene.remove(rabbit);
+            rabbitModelData = gltfData;
+            rabbit = gltfData.mesh;
+            rabbitMixer = gltfData.mixer;
+            rabbitAttackAction = gltfData.attackAction;
+            scene.add(rabbit);
+            
+            // Pozisyonu koru
+            rabbit.position.set(0, 0, 0);
+            rabbit.rotation.y = 0;
+            
+            console.log('✅ GLTF tavşan yüklendi!');
+        }
+    } catch (e) {
+        console.log('⚠️ GLTF yüklenemedi, standart model kullanılıyor');
+    }
     animate();
 }
 
-// GLTFLoader'ı ekleyelim
+// ============ BAŞLAT ============
 const script = document.createElement('script');
 script.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
-script.onload = startGame;
+script.onload = () => {
+    loadGLTFModel();
+};
 document.head.appendChild(script);
 
 if (typeof THREE.GLTFLoader !== 'undefined') {
-    startGame();
+    loadGLTFModel();
 }
 
 window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
