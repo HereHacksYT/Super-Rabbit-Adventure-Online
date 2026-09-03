@@ -54,17 +54,15 @@ const portals = [];
 const loader = new THREE.GLTFLoader();
 
 // ============ TAVŞAN MODELLERİ ============
-let rabbitModel = null;          // ana oyuncu
-let rabbitMixer = null;          // animasyon kontrolü
-let rabbitAttackAction = null;   // vurma animasyonu
-let attackCooldown = 0;          // 2 saniye cooldown
-const ATTACK_COOLDOWN = 2.0;     // 2 saniye
+let rabbitModel = null;
+let rabbitMixer = null;
+let rabbitAttackAction = null;
+let attackCooldown = 0;
+const ATTACK_COOLDOWN = 2.0;
 
-let otherPlayerModels = {};      // diğer oyuncular için
+let otherPlayerModels = {};
 
-// ============ ESKİ TAVŞAN FONKSİYONLARINI DEĞİŞTİR ============
-// Artık createRabbitModel yerine GLTF kullanacağız
-
+// ============ TAVŞAN YÜKLEME ============
 function loadRabbitModel(isLocal = true) {
     return new Promise((resolve) => {
         loader.load('tavşan.gltf', (gltf) => {
@@ -81,7 +79,6 @@ function loadRabbitModel(isLocal = true) {
             let attackAction = null;
             
             if (gltf.animations && gltf.animations.length > 0) {
-                // Vurma animasyonunu bul (adında "attack" veya ilk animasyon)
                 const attackAnim = gltf.animations.find(a => 
                     a.name.toLowerCase().includes('attack') || 
                     a.name.toLowerCase().includes('hit') ||
@@ -101,13 +98,11 @@ function loadRabbitModel(isLocal = true) {
             });
         }, undefined, (error) => {
             console.error('GLTF yüklenemedi:', error);
-            // Hata durumunda eski küp tavşanı kullan
             resolve(createFallbackRabbit(isLocal));
         });
     });
 }
 
-// Eski modeli yedek olarak tut
 function createFallbackRabbit(isLocal = false) {
     const group = new THREE.Group();
     const visualGroup = new THREE.Group();
@@ -170,7 +165,7 @@ function createFallbackRabbit(isLocal = false) {
     return { model: group, mixer: null, attackAction: null, isFallback: true };
 }
 
-// ============ TAVŞAN OLUŞTUR ============
+// ============ ANA TAVŞAN ============
 let localRabbitData = null;
 let rabbit = null;
 
@@ -184,41 +179,31 @@ async function initRabbit() {
     return data;
 }
 
-// Diğer oyuncular için
-async function createOtherPlayer(id) {
-    const data = await loadRabbitModel(false);
-    otherPlayerModels[id] = data;
-    scene.add(data.model);
-    return data;
-}
-
-// ============ ESKİ FONKSİYONLARI GÜNCELLE ============
+// ============ DİĞER OYUNCULAR ============
 function addOtherPlayer(id, x, y, z) {
     if (otherPlayerModels[id]) return;
-    createOtherPlayer(id).then((data) => {
+    loadRabbitModel(false).then((data) => {
         data.model.position.set(x, y, z);
+        scene.add(data.model);
         otherPlayerModels[id] = data;
     });
 }
 
-// ============ SALDIRI FONKSİYONU ============
+// ============ SALDIRI ============
 function performAttack() {
     if (!gameActive || isDead) return;
-    if (attackCooldown > 0) return; // 2 saniye bekle
+    if (attackCooldown > 0) return;
     
     attackCooldown = ATTACK_COOLDOWN;
     
-    // Vurma animasyonunu oynat
     if (rabbitAttackAction) {
         rabbitAttackAction.stop();
         rabbitAttackAction.reset();
         rabbitAttackAction.play();
     }
     
-    // Online saldırı
     if (isOnlineMode) socket.emit('playerAttack');
     
-    // Maymunlara vur
     monkeys.forEach((monkey) => {
         const ud = monkey.userData;
         if (ud.isDead) return;
@@ -235,7 +220,6 @@ function performAttack() {
         }
     });
     
-    // Online oyunculara vur
     if (isOnlineMode && gameActive) {
         Object.keys(otherPlayerModels).forEach((id) => {
             const op = otherPlayerModels[id].model.position;
@@ -246,8 +230,6 @@ function performAttack() {
         });
     }
 }
-
-// ============ ESKİ KODLAR (Değişmeyenler) ============
 
 function createCanvasTexture(width, height, drawFunc) {
     const canvas = document.createElement('canvas');
@@ -961,7 +943,6 @@ function createCage(x, z) {
     group.add(lock);
     obstacles.push(lock);
     
-    // Kafesteki tavşan için GLTF kullan
     loader.load('tavşan.gltf', (gltf) => {
         const captiveModel = gltf.scene;
         captiveModel.scale.set(0.6, 0.6, 0.6);
@@ -975,7 +956,6 @@ function createCage(x, z) {
         group.add(captiveModel);
         cageRabbit = captiveModel;
     }, undefined, () => {
-        // Hata durumunda yedek küp tavşan
         const fallback = createFallbackRabbit(true);
         fallback.model.scale.set(0.8, 0.8, 0.8);
         fallback.model.position.set(0, 0.3, 0);
@@ -1273,11 +1253,11 @@ function checkCollision(newX, newY, newZ) {
     if (!gameActive) return false;
     const playerBox = new THREE.Box3(new THREE.Vector3(newX - 0.28, newY + 0.15, newZ - 0.28), new THREE.Vector3(newX + 0.28, newY + 1.1, newZ + 0.28));
     gameplayGroup.updateMatrixWorld(true);
-    for (let i = 0; i < obstacles.length; i++)obby {
+    for (let i = 0; i < obstacles.length; i++) {
         let obj = obstacles[i];
         if (!obj || !obj.parent) continue;
         let obstacleBox = new THREE.Box3().setFromObject(obj);
-UI        if (playerBox.intersectsBox(obstacleBox)) { if (newY >= obstacleBox.max.y - 0.3) continue; return true; }
+        if (playerBox.intersectsBox(obstacleBox)) { if (newY >= obstacleBox.max.y - 0.3) continue; return true; }
     }
     return false;
 }
@@ -1334,7 +1314,7 @@ for (let i = 0; i < 4; i++) {
     pads.push(pad);
 }
 
-function setupL(d) {
+function setupLobbyUI(d) {
     maxPlayersLimit = d.maxPlayers;
     document.getElementById('main-menu').style.display = 'none';
     document.getElementById('lobby-ui').style.display = 'block';
@@ -1459,7 +1439,6 @@ function updateAllMonkeys(deltaTime) {
             document.getElementById('monkey-health-fill').style.width = healthPercent + '%';
             document.getElementById('monkey-health-text').innerText = ud.health + '/' + ud.maxHealth;
         }
-        // Saldırı kontrolü artık performAttack içinde yapılıyor
     });
     if (allDead && !hasKey && keyMesh) {
         keyMesh.visible = true;
@@ -1513,10 +1492,8 @@ function animate() {
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
     
-    // Cooldown'u azalt
     if (attackCooldown > 0) attackCooldown -= deltaTime;
     
-    // Animasyon mixer'ları güncelle
     if (rabbitMixer) rabbitMixer.update(deltaTime);
     Object.keys(otherPlayerModels).forEach(id => {
         if (otherPlayerModels[id].mixer) {
@@ -1584,8 +1561,6 @@ function animate() {
             if (!checkCollision(rabbit.position.x, rabbit.position.y, nz)) rabbit.position.z = nz;
             rabbit.rotation.y = Math.atan2(dx, dz);
             hasMoved = true;
-            legWiggle += 15 * deltaTime;
-            // Ayak animasyonu - GLTF modelinde olmayabilir, ama kalabilir
         }
         const floorY = getFloorY(rabbit.position.x, rabbit.position.y, rabbit.position.z);
         velocityY -= gravity * 60 * deltaTime;
@@ -1624,7 +1599,6 @@ script.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLT
 script.onload = startGame;
 document.head.appendChild(script);
 
-// Eğer GLTFLoader zaten yüklüyse
 if (typeof THREE.GLTFLoader !== 'undefined') {
     startGame();
 }
