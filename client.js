@@ -57,12 +57,12 @@ const loader = new THREE.GLTFLoader();
 let attackCooldown = 0;
 const ATTACK_COOLDOWN = 2.0;
 
-// ============ TAVŞAN MODELİ ============
+// ============ TAVŞAN MODELLERİ ============
 let rabbitModelData = null;
 let rabbitMixer = null;
 let rabbitAttackAction = null;
 
-// ============ ORİJİNAL createRabbitModel FONKSİYONU (DEĞİŞMEDİ) ============
+// ============ ORİJİNAL createRabbitModel ============
 function createRabbitModel(isLocal = false) {
     const group = new THREE.Group();
     const visualGroup = new THREE.Group();
@@ -174,7 +174,6 @@ function performAttack() {
     
     attackCooldown = ATTACK_COOLDOWN;
     
-    // GLTF animasyonu varsa oynat
     if (rabbitAttackAction) {
         rabbitAttackAction.stop();
         rabbitAttackAction.reset();
@@ -922,7 +921,6 @@ function createCage(x, z) {
     group.add(lock);
     obstacles.push(lock);
     
-    // Kafesteki tavşan - yedek model kullan
     const captiveData = createRabbitModel(true);
     const captiveRabbitMesh = captiveData.mesh;
     captiveRabbitMesh.position.set(0, 0.5, 0);
@@ -1185,7 +1183,7 @@ coordSpan.style.marginLeft = '15px';
 coordSpan.style.color = '#ffeb3b';
 document.getElementById('game-info-ui').appendChild(coordSpan);
 
-// ============ ORİJİNAL createRabbitModel KULLAN ============
+// ============ ANA TAVŞAN ============
 const localPlayer = createRabbitModel(true);
 const rabbit = localPlayer.mesh;
 const rabbitVisualGroup = localPlayer.visual;
@@ -1474,7 +1472,6 @@ function animate() {
     const deltaTime = Math.min(clock.getDelta(), 0.1);
     let hasMoved = false;
     
-    // Cooldown'ı azalt
     if (attackCooldown > 0) attackCooldown -= deltaTime;
     
     updateAllMonkeys(deltaTime);
@@ -1544,14 +1541,12 @@ function animate() {
             footBL.position.y = 0.08 + Math.abs(Math.cos(legWiggle)) * 0.12;
         } else { footFL.position.y = 0.08; footFR.position.y = 0.08; footBL.position.y = 0.08; footBR.position.y = 0.08; }
         
-        // ESKİ SALDIRI ANİMASYONU (GLTF yoksa çalışır)
         if (isAttacking) {
             attackAnimTime += 12 * deltaTime; const f = Math.sin(attackAnimTime * Math.PI);
             if (attackAnimTime <= 1.0) { rabbitVisualGroup.position.z = f * 0.5; head.position.z = 0.1 + f * 0.25; head.rotation.x = f * 0.4; }
             else { isAttacking = false; rabbitVisualGroup.position.z = 0; head.position.z = 0.1; head.rotation.x = 0; }
         }
         
-        // Diğer oyuncuların saldırı animasyonu
         Object.keys(otherPlayers).forEach((id) => {
             const op = otherPlayers[id];
             if (op.isAttacking) {
@@ -1586,41 +1581,33 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-// ============ GLTF YÜKLEME ============
-async function loadGLTFModel() {
-    try {
-        const gltfData = await loadGLTFRabbit(true);
-        // GLTF başarılı yüklendiyse, eski rabbit'i kaldır ve GLTF'yi ekle
+// ============ BAŞLAT ============
+animate();
+
+window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+
+// ============ GLTF YÜKLE (OPSİYONEL) ============
+setTimeout(() => {
+    loadGLTFRabbit(true).then((gltfData) => {
         if (gltfData.isGLTF !== false) {
+            // Eski modeli kaldır
             scene.remove(rabbit);
+            
+            // GLTF modelini ekle
+            const newRabbit = gltfData.mesh;
+            newRabbit.position.copy(rabbit.position);
+            newRabbit.rotation.copy(rabbit.rotation);
+            scene.add(newRabbit);
+            
+            // Değişkenleri güncelle
             rabbitModelData = gltfData;
-            rabbit = gltfData.mesh;
             rabbitMixer = gltfData.mixer;
             rabbitAttackAction = gltfData.attackAction;
-            scene.add(rabbit);
             
-            // Pozisyonu koru
-            rabbit.position.set(0, 0, 0);
-            rabbit.rotation.y = 0;
+            // rabbit değişkenini güncelle (diğer fonksiyonlar kullanıyor)
+            Object.assign(rabbit, newRabbit);
             
             console.log('✅ GLTF tavşan yüklendi!');
         }
-    } catch (e) {
-        console.log('⚠️ GLTF yüklenemedi, standart model kullanılıyor');
-    }
-    animate();
-}
-
-// ============ BAŞLAT ============
-const script = document.createElement('script');
-script.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
-script.onload = () => {
-    loadGLTFModel();
-};
-document.head.appendChild(script);
-
-if (typeof THREE.GLTFLoader !== 'undefined') {
-    loadGLTFModel();
-}
-
-window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    });
+}, 1000);
